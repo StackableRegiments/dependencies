@@ -94,8 +94,29 @@ class JsonSerializer(configName:String) extends Serializer{
       case jo:JObject if (isOfType(jo,"submission")) => toSubmission(jo)
       case jo:JObject if (isOfType(jo,"quiz")) => toMeTLQuiz(jo)
       case jo:JObject if (isOfType(jo,"quizResponse")) => toMeTLQuizResponse(jo)
+      case jo:JObject if (isOfType(jo,"move")) => toMeTLMove(jo)
       case _ => MeTLStanza.empty
     }
+  })
+  override def toMeTLMove(i:JValue):MeTLMove = Stopwatch.time("JsonSerializer.toMeTLMove",() => {
+    i match{
+      case move:JObject => {
+	val mc = parseJObjForMeTLContent(move)
+	val cc = parseJObjForCanvasContent(move)
+	val inks = (i \ "inks").children.map(toMeTLInk _)
+	val texts = (i \ "texts").children.map(toMeTLText _)
+	val images = (i \ "images").children.map(toMeTLImage _)
+	MeTLMove(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"move",inks,texts,images)
+      }
+      case _ => MeTLMove.empty
+    }
+  })
+  override def fromMeTLMove(input:MeTLMove):JValue = Stopwatch.time("JsonSerializer.fromMeTLMove", ()=>{
+    toJsObj("move",List(
+      JField("inks",JArray(input.inks.map(fromMeTLInk).toList)),
+      JField("texts",JArray(input.texts.map(fromMeTLText).toList)),
+      JField("images",JArray(input.images.map(fromMeTLImage).toList))
+    ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
   override def toMeTLInk(i:JValue):MeTLInk = Stopwatch.time("JsonSerializer.toMeTLInk", () => {
     i match {
