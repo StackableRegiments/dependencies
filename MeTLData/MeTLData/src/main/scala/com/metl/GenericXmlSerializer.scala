@@ -26,7 +26,7 @@ object XmlUtils {
 	def parsedCanvasContentToXml(p:ParsedCanvasContent):List[NodeSeq] = {
 		List(
 			<target>{p.target}</target>,
-			<privacy>{p.privacy}</privacy>,
+			<privacy>{p.privacy.toString.toLowerCase}</privacy>,
 			<slide>{p.slide}</slide>,
 			<identity>{p.identity}</identity>
 		)	
