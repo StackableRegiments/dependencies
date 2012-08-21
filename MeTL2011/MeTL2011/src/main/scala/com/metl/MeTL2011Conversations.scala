@@ -26,13 +26,23 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 		val jid = getNewJid
 		val now = new java.util.Date()
 		val local = Conversation(config,currentUser,now.getTime,List(Slide(config,currentUser,jid + 1,0)),"unrestricted","",jid,title,now.toString,Permissions.default(config))	
-		val pbytes = serializer.fromConversation(local).toString.getBytes("UTF-8")
-		http.getClient.postBytes("%s/upload_nested.yaws?overwrite=true&path=%s&filename=details.xml".format(rootAddress,Helpers.urlEncode("Structure/%s/%s".format(utils.stem(jid.toString),jid.toString))),pbytes)
+		pushConversationToServer(local)
+	}
+	private def pushConversationToServer(conversation:Conversation):Conversation = {
+		val jid = conversation.jid
+		val bytes = serializer.fromConversation(conversation).toString.getBytes("UTF-8")
+		http.getClient.postBytes("%s/upload_nested.yaws?overwrite=true&path=%s&filename=details.xml".format(rootAddress,Helpers.urlEncode("Structure/%s/%s".format(utils.stem(jid.toString),jid.toString))),bytes)
 		detailsOf(jid)
 	}
 	private def notifyXmpp(newConversation:Conversation) = {
 		// need to write this, obviously
 	}
-	override def updateConversation(jid:Int,conversation:Conversation) = conversation
+	override def updateConversation(jid:Int,conversation:Conversation):Conversation = {
+		if (jid == conversation.jid) {
+			pushConversationToServer(conversation)
+		} else {
+			throw new Exception("trying to replace an existing conversation with a changed jid")
+		}
+	}
 	private def getNewJid:Int = http.getClient.get("https://"+config.host+":1188/primarykey.yaws").trim.toInt
 }

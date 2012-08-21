@@ -10,36 +10,77 @@ import java.util.Random
 import net.liftweb.util.Helpers._
 import scala.xml._
 
-class FakeXmpp extends Xmpp("no_username","no_password","localFakeXmpp","no_room") {
-	override def connectToXmpp:Unit = {}
-	override def disconnectFromXmpp:Unit = {}
-	override val resource:String = "no_resource"
-
-	override def notifyRoomOfMeTLStanza(s:MeTLStanza):Unit = Stopwatch.time("FakeXmpp.notifyRoomOfMeTLStanza", () => {
-		updateLocalMeTLStanza(new XMPPMeTLStanzaAnnouncer(s))
-	})
-	override def initializeXmpp:Unit = {}
-	override def register:Unit = {}
-	override def mucFor(roomName:String) = Empty
-	override def joinRoom(roomName:String):Box[MultiUserChat] = Empty
-	override def leaveRoom(room:MultiUserChat):Unit = {}
+class Payload(name:String,namespace:String,payload:String) extends PacketExtension {
+	override def getNamespace = namespace
+	override def getElementName = name
+	override def toXML = payload
 }
 
-class Xmpp(username:String,password:String,incomingHost:String, incomingRoomName:String, serverConfig:ServerConfiguration = ServerConfiguration.default) {
-	val host = incomingHost
-	val roomName = incomingRoomName
-	var room:Box[MultiUserChat] = Empty 
-	protected val resource:String = "metlxConnector_%s_%s".format(roomName,new java.util.Date().getTime.toString)
-	private var conn:Box[XMPPConnection] = Empty
-	private val config:ConnectionConfiguration ={
-		val port = 5222
-		val loadRosterAtLogin = false
-		val sendPresence = false
-		val acceptSelfSignedCerts = true
-		val allowReconnects = true 
-		val allowCompression = false
-		val debug = false
+case class XmppDataType[T](elementName:String,serialize:(T) => NodeSeq,deserialize:(NodeSeq) => T){
+	val name = elementName
+	def generatePacketExtension(input:T):PacketExtension = {
+		println("about to attempt to serializer: %s".format(input))
+		val payload = serialize(input).toString
+		val parts = payload.split(">")
+		val stitched = (parts.take(1)(0)+" xmlns='monash:metl' " :: parts.drop(1).toList).mkString(">")+">"
+		println("stitchedBackTogether: %s".format(stitched))
+		println("gen'd %s from %s".format(payload,input))
+		val pay = new Payload(name,"monash:metl",stitched)
+		println("payload: %s".format(pay.getNamespace))
+		pay
+	}
+	def comprehendResponse(input:Packet):T = {
+		println("comprehendResponse[%s](%s)".format(this,input))
+		val xml = scala.xml.XML.loadString(input.toXML)
+		println("determined xml: %s".format(xml))
+		val result = deserialize(xml)
+		println("responseComprehended: %s".format(result))
+		result
+	}
+} 
 
+abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String) {
+
+	val host = incomingHost
+	val username = incomingUsername
+	val resource = incomingResource
+
+	Packet.setDefaultXmlns("monash:metl")
+
+	def sendMessage(room:String,messageType:String,message:T):Unit = {			
+		println("sending message: %s to %s".format(message,room))
+		rooms.find(r => r._1 == room).map(r => {
+			println("in room - sending message to room")
+			subscribedTypes.find(st => st.name == messageType).map(st => {
+				val muc = r._2
+				val roomMessage = muc.createMessage
+				roomMessage.addExtension(st.generatePacketExtension(message))
+				println("constructed message: %s".format(roomMessage.getXmlns))
+				muc.sendMessage(roomMessage)
+			})
+		})
+	}
+	// override these to change settings on this connection
+	protected	val port = 5222
+	protected	val loadRosterAtLogin = false
+	protected	val sendPresence = false
+	protected	val acceptSelfSignedCerts = true
+	protected	val allowReconnects = true 
+	protected	val allowCompression = false
+	protected	lazy val debug = false
+	protected val shouldAttemptRegistrationOnAuthFailed = true
+	// override this to do something with the message you recieved
+	protected def onMessageRecieved(room:String,messageType:String, message:T) 
+	protected def onUntypedMessageRecieved(room:String,message:String)
+	// override this to add messageTypes
+	protected lazy val subscribedTypes:List[XmppDataType[T]] = List.empty[XmppDataType[T]]
+
+	lazy val relevantElementNames = subscribedTypes.map(st => st.name).toList
+	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
+	
+	private var conn:Box[XMPPConnection] = Empty
+
+	private val config:ConnectionConfiguration = {
 		val c = new ConnectionConfiguration(host,port)
 		c.setRosterLoadedAtLogin(loadRosterAtLogin)
 		c.setSendPresence(sendPresence)
@@ -49,10 +90,9 @@ class Xmpp(username:String,password:String,incomingHost:String, incomingRoomName
 		c.setDebuggerEnabled(debug)
 		c
 	}
-	val relevantElementNames = List("metlDataAnnouncer","ink","dirtyInk","image","dirtyImage","genericStanza","genericCanvasContent","submission","quiz","quizResponse","command")
+
 	protected def initializeXmpp:Unit = Stopwatch.time("Xmpp.initializeXmpp", () => {
 		connectToXmpp
-		room = joinRoom(roomName)
 		val filter = new AndFilter( new PacketTypeFilter(classOf[Message]), new MessageTypeFilter(relevantElementNames))
 		conn.map(c => c.addPacketListener(new RemoteSyncListener,filter))
 	})
@@ -66,7 +106,7 @@ class Xmpp(username:String,password:String,incomingHost:String, incomingRoomName
 			conn.map(c => c.login(username,password,resource))
 		}
 		catch {
-			case e:XMPPException if (e.getMessage.contains("not-authorized")) => {
+			case e:XMPPException if (shouldAttemptRegistrationOnAuthFailed && e.getMessage.contains("not-authorized")) => {
 				disconnectFromXmpp
 				conn = tryo(new XMPPConnection(config))
 				conn.map(c => {
@@ -100,103 +140,42 @@ class Xmpp(username:String,password:String,incomingHost:String, incomingRoomName
 		conn.map(c => {
 			val muc = new MultiUserChat(c,roomJid)
 			muc.join(resource)
+			rooms = rooms.updated(room,muc)
 			muc
-		})
-	})
-	def notifyRoomOfMeTLStanza(s:MeTLStanza):Unit = Stopwatch.time("Xmpp.notifyRoomOfMeTLStanza", () => {
-		room.map( r => {
-			val message = r.createMessage
-			val msa = new XMPPMeTLStanzaAnnouncer(s)
-			message.addExtension(msa)
-			r.sendMessage(message)
 		})
 	})
 	def leaveRoom(room:MultiUserChat):Unit = {
 		room.leave
+		rooms = rooms.filterNot(r => r._2 == room)
 	}
  	class MessageTypeFilter(predicates:List[String]) extends PacketFilter{
     def accept(message:Packet)= Stopwatch.time("Xmpp.MessageTypeFilter.accept", () => {
+			println("messages filtered on: "+predicates)
      	var smackMessage = message.asInstanceOf[Message]
       List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0
     })
   }
-
   class RemoteSyncListener extends PacketListener{
 		def processPacket(packet:Packet)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
 			List(packet.getExtensions.toArray:_*).map(e => {
 				val ext = e.asInstanceOf[PacketExtension]
+				println("packet recieved: "+packet)
 				ext.getElementName match {
 					case other:String if (relevantElementNames.contains(other)) => {
-						XMPPMeTLStanzaAnnouncer.fromXMLString(serverConfig,ext.toXML).map(updateLocalMeTLStanza _)
+						println(other+": "+ext.toXML)
+						println("looking for %s in subTypes %s".format(other,subscribedTypes.map(st => st.name)))
+						subscribedTypes.find(st => st.name.toString.trim == other.toString.trim).map(st => {
+							println("comprehending %s to %s as %s".format(packet,packet.getFrom,st))
+							onMessageRecieved(packet.getFrom,other,st.comprehendResponse(packet))
+						})
 					}
 					case other => {
-						println("Xmpp:QuestionAnnouncerListener:processPacket:getExtensions returned unknown extension: %s".format(other.toString))
+						println(other+"(untyped): "+ext.toXML)
+						onUntypedMessageRecieved(packet.getFrom,ext.toXML)	
 					}
 				}
 			})
 		})
   }
-	def updateLocalMeTLStanza(msa:XMPPMeTLStanzaAnnouncer) = Stopwatch.time("Xmpp.updateLocalMeTLStanza", () => {
-		msa.stanza match {
-			case m:MeTLCanvasContent => serverConfig.getMessageBus(m.slide).recieveStanzaFromRoom(m)
-		}
-	})
 }
 
-
-object XMPPMeTLStanzaAnnouncer {
-	private val serializer = new GenericXmlSerializer("xmpp")
-	def fromXMLString(server:ServerConfiguration,xString:String):Box[XMPPMeTLStanzaAnnouncer] = Stopwatch.time("XmppMeTLStanzaAnnouncer", () => tryo({
-		new XMPPMeTLStanzaAnnouncer(serializer.toMeTLStanza(scala.xml.XML.loadString(xString)))
-	}))
-	def fromStanza(s:MeTLStanza):Box[XMPPMeTLStanzaAnnouncer] = Stopwatch.time("XmppMeTLStanzaAnnouncer.fromStanza", () => tryo({
-		new XMPPMeTLStanzaAnnouncer(s)
-	}))
-}
-
-class XMPPMeTLStanzaAnnouncer(incomingStanza:MeTLStanza) extends PacketExtension{
-	val stanza = incomingStanza
-	override val getNamespace = "monash:metl"
-	override val getElementName = stanza match {
-		case i:MeTLInk => "ink"
-		case t:MeTLText => "text"
-		case i:MeTLImage => "image"
-		case di:MeTLDirtyInk => "dirtyInk"
-		case dt:MeTLDirtyText => "dirtyText"
-		case di:MeTLDirtyImage => "dirtyImage"
-		case c:MeTLCommand => "command"
-		case q:MeTLQuiz => "quiz"
-		case qr:MeTLQuizResponse => "quizResponse"
-		case s:MeTLSubmission => "submission"
-		case _ => "metl"
-	}
-	override val toXML:String = Stopwatch.time("XmppMeTLStanzaAnnouncer.toXml", () => (XMPPMeTLStanzaAnnouncer.serializer.fromMeTLStanza(stanza) \\ "message").headOption.map(m => m.asInstanceOf[Elem].child.toString).getOrElse(""))
-}
-
-case class InitializeXMPP(server:String,username:String,password:String,room:String)
-case object InitializeFakeXMPP
-
-case class MeTLStanzaSyncRequest(m:MeTLStanza)
-
-class XMPPSyncActor extends LiftActor {
-	private var xmpp:Box[Xmpp] = Empty
-	override def messageHandler = {
-		case MeTLStanzaSyncRequest(stanza) => Stopwatch.time("XmppSyncActor.MeTLStanzaSyncRequest", () => xmpp.map(x => x.notifyRoomOfMeTLStanza(stanza)))
-		case InitializeXMPP(server,username,password,room) => Stopwatch.time("XmppSyncActor.InitializeXmpp", () => {
-      xmpp match {
-				case Full(x) => x.disconnectFromXmpp
-				case _ => {}
-			}
-      xmpp = Full(new Xmpp(username,password,server,room))
-      xmpp.map(x => println("starting XMPPActor for %s@%s".format(x.roomName,x.host)))
-    })
-		case InitializeFakeXMPP => Stopwatch.time("XmppSyncActor.InitializeFakeXmpp", () => {
-			xmpp match {
-				case Full(x) => x.disconnectFromXmpp
-				case _ => {}
-			}
-			xmpp = Full(new FakeXmpp)
-		})
-		case other => println("XMPPSyncActor (%s) received unknown message: %s".format(xmpp.map(x => x.roomName).openOr("unknown room"),other))
-	}
-}
