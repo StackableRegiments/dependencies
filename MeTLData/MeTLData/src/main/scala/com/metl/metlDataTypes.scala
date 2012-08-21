@@ -84,6 +84,11 @@ case class Point(x:Double,y:Double,thickness:Double){
 object Point{
 	val empty = Point(0.0,0.0,0.0)
 }
+case class Presentation(override val server:ServerConfiguration,conversation:Conversation,stanzas:Map[Int,List[MeTLStanza]] = Map.empty[Int,List[MeTLStanza]],metaData:List[Tuple2[String,String]] = List.empty[Tuple2[String,String]]) extends MeTLXml(server)
+object Presentation{
+  def emtpy = Presentation(ServerConfiguration.empty,Conversation.empty)
+}
+
 case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions) extends MeTLXml(server)
 object Conversation{
 	def empty = Conversation(ServerConfiguration.empty,"",0L,List.empty[Slide],"","",0,"","",Permissions.default(ServerConfiguration.empty))
