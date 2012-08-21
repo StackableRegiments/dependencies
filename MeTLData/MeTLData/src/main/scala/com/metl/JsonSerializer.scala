@@ -95,20 +95,44 @@ class JsonSerializer(configName:String) extends Serializer{
       case jo:JObject if (isOfType(jo,"quiz")) => toMeTLQuiz(jo)
       case jo:JObject if (isOfType(jo,"quizResponse")) => toMeTLQuizResponse(jo)
       case jo:JObject if (isOfType(jo,"move")) => toMeTLMove(jo)
+      case jo:JObject if (isOfType(jo,"moveDelta")) => toMeTLMoveDelta(jo)
       case _ => MeTLStanza.empty
     }
   })
   override def toMeTLMove(i:JValue):MeTLMove = Stopwatch.time("JsonSerializer.toMeTLMove",() => {
     i match{
       case move:JObject => {
-	val mc = parseJObjForMeTLContent(move)
-	val cc = parseJObjForCanvasContent(move)
-	val inks = (i \ "inks").children.map(toMeTLInk _)
-	val texts = (i \ "texts").children.map(toMeTLText _)
-	val images = (i \ "images").children.map(toMeTLImage _)
-	MeTLMove(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"move",inks,texts,images)
+        val mc = parseJObjForMeTLContent(move)
+        val cc = parseJObjForCanvasContent(move)
+        val inks = (i \ "inks").children.map(toMeTLInk _)
+        val texts = (i \ "texts").children.map(toMeTLText _)
+        val images = (i \ "images").children.map(toMeTLImage _)
+        MeTLMove(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"move",inks,texts,images)
       }
       case _ => MeTLMove.empty
+    }
+  })
+  override def fromMeTLMoveDelta(input:MeTLMoveDelta):JValue = Stopwatch.time("JsonSerializer.fromMeTLMoveDelta",()=>{
+    toJsObj("moveDelta",List(
+      JField("inkIds",JArray(input.inkIds.map(JString).toList)),
+      JField("imageIds",JArray(input.imageIds.map(JString).toList)),
+      JField("textIds",JArray(input.textIds.map(JString).toList)),
+      JField("xDelta",JDouble(input.xDelta)),
+      JField("yDelta",JDouble(input.yDelta))
+    ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
+  })
+  override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",()=>{
+    i match{
+      case input:JObject => {
+	val mc = parseJObjForMeTLContent(input)
+	val cc = parseJObjForCanvasContent(input)
+	val inkIds = utils.getListOfStringsByName(input,"inkIds")
+	val textIds = utils.getListOfStringsByName(input,"textIds")
+	val imageIds = utils.getListOfStringsByName(input,"imageIds")
+        val xDelta = utils.getDoubleByName(input,"xDelta")
+        val yDelta = utils.getDoubleByName(input,"yDelta")
+	MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"moveDelta",inkIds,textIds,imageIds,xDelta,yDelta)
+      }
     }
   })
   override def fromMeTLMove(input:MeTLMove):JValue = Stopwatch.time("JsonSerializer.fromMeTLMove", ()=>{

@@ -8,6 +8,8 @@ abstract class Serializer {
   def toMeTLStanza(input:T):MeTLStanza = MeTLStanza.empty
   def toMeTLMove(input:T):MeTLMove = MeTLMove.empty
   def fromMeTLMove(input:MeTLMove):T = null.asInstanceOf[T]
+  def toMeTLMoveDelta(input:T):MeTLMoveDelta = MeTLMoveDelta.empty
+  def fromMeTLMoveDelta(input:MeTLMoveDelta):T = null.asInstanceOf[T]
   def toMeTLInk(input:T):MeTLInk = MeTLInk.empty
   def fromMeTLInk(input:MeTLInk):T = null.asInstanceOf[T]
   def toMeTLImage(input:T):MeTLImage = MeTLImage.empty
@@ -53,6 +55,7 @@ abstract class Serializer {
     case qr:MeTLQuizResponse => fromMeTLQuizResponse(qr)
     case s:MeTLSubmission => fromSubmission(s)
     case m:MeTLMove => fromMeTLMove(m)
+    case m:MeTLMoveDelta => fromMeTLMoveDelta(m)
     case _ => null.asInstanceOf[T]
   }
 }
