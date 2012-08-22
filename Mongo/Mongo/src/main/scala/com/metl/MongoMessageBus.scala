@@ -7,12 +7,13 @@ class MongoPersistingMessageBusProvider(configName:String,mongoHost:String,mongo
 }
 
 class MongoPersistingLoopbackMessageBus(jid:String,configName:String,mongoHost:String,mongoPort:Int,mongoDb:String) extends MessageBus(jid,configName){
-	override def sendStanzaToRoom(stanza:MeTLStanza) = {
+	private val mongo = new LocalMongoInterface(mongoHost,mongoPort,mongoDb)
+	override def sendStanzaToRoom(stanza:MeTLStanza) = Stopwatch.time("MongoPersistingLoopbackMessageBus.sendStanzaToRoom", () => {
 		storeStanzaInMongo(stanza)
 		recieveStanzaFromRoom(stanza)
-	}
-	private def storeStanzaInMongo(stanza:MeTLStanza):Unit = {
+	})
+	private def storeStanzaInMongo(stanza:MeTLStanza):Unit = Stopwatch.time("MongoPersistingLoopbackMessageBus.storeStanzaInMongo", () => {
 		serverConfig
-	}
+	})
 }
 
