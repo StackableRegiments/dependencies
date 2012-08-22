@@ -12,17 +12,25 @@ import scala.xml._
 import java.util.Date
 
 class XmppProvider(configName:String,hostname:String,username:String,password:String) extends MessageBusProvider(configName){
-	override def getMessageBus(jid:String) = new XmppMessageBus(jid,configName,hostname,username,password)
+	private lazy val busses = new SynchronizedWriteMap[String,XmppMessageBus](scala.collection.mutable.HashMap.empty[String,XmppMessageBus],true,(k:String) => createNewMessageBus(k))
+	private def createNewMessageBus(jid:String) = {
+		println("creating XmppMessageBus for %s".format(jid))
+		new XmppMessageBus(jid,configName,hostname,username,password)
+	}
+	override def getMessageBus(jid:String) = {
+		println("fetching XmppMessageBus for %s".format(jid))
+		busses.getOrElseUpdate(jid,createNewMessageBus(jid))
+	}
 }
 
 class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String) extends XmppConnection[MeTLStanza](u,p,r,h){
 	private lazy val serializer = new MeTL2011XmlSerializer(configName)
 	private lazy val config = ServerConfiguration.configForName(configName)
 
-	override lazy val debug = true
+//	override lazy val debug = true
 
 	override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
-		println("recieved message: %s".format(message))
+		println("recieved for (%s) message: %s".format(room,message))
 		config.getRoom(room) ! ServerToLocalMeTLStanza(message)
 	}
 	override def onUntypedMessageRecieved(room:String,message:String) = {
@@ -33,11 +41,8 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String) ex
 	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command").map(item => {
 		val ser = (i:MeTLStanza) => {
 			val xml = serializer.fromMeTLStanza(i) 
-			println("xml: %s".format(xml))
 			val messages = xml
-			println("messages: %s".format(messages))
 			val head = messages.headOption
-			println("head: %s".format(head))
 			head.map{
 				case g:Group => g.nodes.headOption.getOrElse(NodeSeq.Empty)
 				case e:Elem => e.child.headOption.getOrElse(NodeSeq.Empty)
@@ -50,6 +55,7 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String) ex
 
 class XmppMessageBus(jid:String,configName:String,hostname:String,username:String,password:String) extends MessageBus(jid,configName){
 	lazy val xmpp = new MeTL2011XmppConn(username,password,"metlxConnector_%s_%s".format(username, new Date().getTime.toString),hostname,configName)
+	xmpp.joinRoom(jid)
 	override def sendStanzaToRoom(stanza:MeTLStanza) = stanza match {
 		case i:MeTLInk => xmpp.sendMessage(jid,"ink",i)
 		case t:MeTLText => xmpp.sendMessage(jid,"textbox",t)

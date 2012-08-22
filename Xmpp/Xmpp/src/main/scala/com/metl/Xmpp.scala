@@ -19,22 +19,15 @@ class Payload(name:String,namespace:String,payload:String) extends PacketExtensi
 case class XmppDataType[T](elementName:String,serialize:(T) => NodeSeq,deserialize:(NodeSeq) => T){
 	val name = elementName
 	def generatePacketExtension(input:T):PacketExtension = {
-		println("about to attempt to serializer: %s".format(input))
 		val payload = serialize(input).toString
 		val parts = payload.split(">")
 		val stitched = (parts.take(1)(0)+" xmlns='monash:metl' " :: parts.drop(1).toList).mkString(">")+">"
-		println("stitchedBackTogether: %s".format(stitched))
-		println("gen'd %s from %s".format(payload,input))
 		val pay = new Payload(name,"monash:metl",stitched)
-		println("payload: %s".format(pay.getNamespace))
 		pay
 	}
 	def comprehendResponse(input:Packet):T = {
-		println("comprehendResponse[%s](%s)".format(this,input))
 		val xml = scala.xml.XML.loadString(input.toXML)
-		println("determined xml: %s".format(xml))
 		val result = deserialize(xml)
-		println("responseComprehended: %s".format(result))
 		result
 	}
 } 
@@ -47,19 +40,16 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 
 	Packet.setDefaultXmlns("monash:metl")
 
-	def sendMessage(room:String,messageType:String,message:T):Unit = {			
-		println("sending message: %s to %s".format(message,room))
+	def sendMessage(room:String,messageType:String,message:T):Unit = Stopwatch.time("XmppConnection.sendMessage", () => {			
 		rooms.find(r => r._1 == room).map(r => {
-			println("in room - sending message to room")
 			subscribedTypes.find(st => st.name == messageType).map(st => {
 				val muc = r._2
 				val roomMessage = muc.createMessage
 				roomMessage.addExtension(st.generatePacketExtension(message))
-				println("constructed message: %s".format(roomMessage.getXmlns))
 				muc.sendMessage(roomMessage)
 			})
 		})
-	}
+	})
 	// override these to change settings on this connection
 	protected	val port = 5222
 	protected	val loadRosterAtLogin = false
@@ -150,7 +140,6 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	}
  	class MessageTypeFilter(predicates:List[String]) extends PacketFilter{
     def accept(message:Packet)= Stopwatch.time("Xmpp.MessageTypeFilter.accept", () => {
-			println("messages filtered on: "+predicates)
      	var smackMessage = message.asInstanceOf[Message]
       List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0
     })
@@ -159,19 +148,15 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		def processPacket(packet:Packet)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
 			List(packet.getExtensions.toArray:_*).map(e => {
 				val ext = e.asInstanceOf[PacketExtension]
-				println("packet recieved: "+packet)
+				val room = packet.getFrom.split("@").head
 				ext.getElementName match {
 					case other:String if (relevantElementNames.contains(other)) => {
-						println(other+": "+ext.toXML)
-						println("looking for %s in subTypes %s".format(other,subscribedTypes.map(st => st.name)))
 						subscribedTypes.find(st => st.name.toString.trim == other.toString.trim).map(st => {
-							println("comprehending %s to %s as %s".format(packet,packet.getFrom,st))
-							onMessageRecieved(packet.getFrom,other,st.comprehendResponse(packet))
+							onMessageRecieved(room,other,st.comprehendResponse(packet))
 						})
 					}
 					case other => {
-						println(other+"(untyped): "+ext.toXML)
-						onUntypedMessageRecieved(packet.getFrom,ext.toXML)	
+						onUntypedMessageRecieved(room,ext.toXML)	
 					}
 				}
 			})
