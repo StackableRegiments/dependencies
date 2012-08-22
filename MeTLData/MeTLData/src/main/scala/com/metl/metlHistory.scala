@@ -47,6 +47,8 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
       case s:MeTLDirtyText => removeText(s.identity)
       case s:MeTLDirtyImage => removeImage(s.identity)
 
+      case s:MeTLMoveDelta => moveContent(s)
+
       case s:MeTLInk if s.isHighlighter => addHighlighter(s)
       case s:MeTLInk => addInk(s)
       case s:MeTLImage => addImage(s)
@@ -62,6 +64,21 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
       }
       case _ => this
     }
+  })
+
+  def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{ 
+    var x = s.xDelta;
+    var y = s.yDelta;
+    s.inkIds.map(id=>{
+      inks.filter(_.identity == id).map(i=>{
+        removeInk(i.identity)
+        addInk(MeTLInk(//Wish the damn copy constructor would work
+          i.server,i.author,i.timestamp,i.checksum,i.startingSum,
+          i.points.map(p => Point(p.x+x, p.y+y,p.thickness)).toList,
+               i.color,i.thickness,i.isHighlighter,i.target,i.privacy,i.slide,i.identity,i.scaleFactor))
+      })
+    })
+    this
   })
 
   def addHighlighter(s:MeTLInk) = Stopwatch.time("History.addHighlighter", () => {
