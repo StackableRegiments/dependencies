@@ -21,7 +21,6 @@ import net.liftweb.util.Helpers._
 import org.apache.commons.io.IOUtils
 import collection.JavaConversions._
 import xml._
-import com.metl.model.Globals._
 import net.liftweb.http.SHtml._
 import net.liftweb.http.js.JsCmds._
 import net.liftweb.mongodb.MongoDB

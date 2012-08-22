@@ -4,7 +4,7 @@ class LocalMongoAdaptor(name:String) extends ServerConfiguration(name,"localhost
 	private val mongoHost = "localhost"
 	private val mongoPort = 27017
 	private val mongoDB = "metlx"
-	private val messageBusProvider = new MongoPersistentMessageBusProvider(name,mongoHost,mongoPort,mongoDB)
+	private val messageBusProvider = new MongoPersistingMessageBusProvider(name,mongoHost,mongoPort,mongoDB)
 	private val history = new MongoHistory(name,mongoHost,mongoPort,mongoDB)
 	private val conversations = new MongoConversations(name,mongoHost,mongoPort,mongoDB)
 	val serializer = new MongoSerializer(name)
