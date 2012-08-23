@@ -27,7 +27,7 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String) ex
 	private lazy val serializer = new MeTL2011XmlSerializer(configName)
 	private lazy val config = ServerConfiguration.configForName(configName)
 
-//	override lazy val debug = true
+	override lazy val debug = true
 
 	override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
 		println("recieved for (%s) message: %s".format(room,message))
