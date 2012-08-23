@@ -69,6 +69,7 @@ object Privacy extends Enumeration{
   def parse(possiblePrivacy:String):Privacy = possiblePrivacy match {
     case s:String if s.toLowerCase == "public" => PUBLIC
     case s:String if s.toLowerCase == "private" => PRIVATE
+		case s:String if s.toLowerCase == "not_set" => NOT_SET
     case _ => NOT_SET
   }
 }
