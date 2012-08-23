@@ -146,20 +146,24 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
   }
   class RemoteSyncListener extends PacketListener{
 		def processPacket(packet:Packet)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
-			List(packet.getExtensions.toArray:_*).map(e => {
+			val room = packet.getFrom.split("@").head
+			if (List(packet.getExtensions.toArray:_*).map(e => {
 				val ext = e.asInstanceOf[PacketExtension]
-				val room = packet.getFrom.split("@").head
 				ext.getElementName match {
 					case other:String if (relevantElementNames.contains(other)) => {
 						subscribedTypes.find(st => st.name.toString.trim == other.toString.trim).map(st => {
 							onMessageRecieved(room,other,st.comprehendResponse(packet))
-						})
+							true
+						}).getOrElse(false)
 					}
 					case other => {
 						onUntypedMessageRecieved(room,ext.toXML)	
+						true
 					}
 				}
-			})
+			}).filter(a => a == true).length == 0){
+				onUntypedMessageRecieved(room,packet.toXML)
+			}
 		})
   }
 }
