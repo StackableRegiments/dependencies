@@ -12,7 +12,7 @@ class MongoSerializerHelper {
 	def int(name:String,obj:DBObject) = obj.get(name).asInstanceOf[Int]
 	def double(name:String,obj:DBObject) = obj.get(name).asInstanceOf[Double]
 	def bool(name:String,obj:DBObject) = obj.get(name).asInstanceOf[Boolean]
-	def points(name:String,obj:DBObject) = obj.get(name).asInstanceOf[BasicDBList]
+	def listOfObj(name:String,obj:DBObject) = obj.get(name).asInstanceOf[List[DBObject]]
 	def toDBType(input:Any):AnyRef = input match {
 		case l:BasicDBList => l
 		case d:DBObject => d
@@ -60,8 +60,10 @@ class MongoSerializer(configName:String) extends Serializer{
     input.get("type") == name
   })
 	private def constructObj(name:String,fields:List[(String,Any)]):DBObject = {
-		val obj = new BasicDBObject()
-		(("type",name) :: fields).foreach(i => obj.put(i._1,u.toDBType(i._2)))
+		putFields(new BasicDBObject(),("type",name) :: fields)
+	}
+	private def putFields(obj:DBObject,fields:List[(String,Any)]):DBObject = {
+		fields.foreach(i => obj.put(i._1,u.toDBType(i._2)))
 		obj.asInstanceOf[DBObject]
 	}
 	override def toMeTLStanza(input:DBObject):MeTLStanza = MeTLStanza.empty
@@ -70,7 +72,7 @@ class MongoSerializer(configName:String) extends Serializer{
 		val cc = parseObjForCanvasContent(input)
 		val checksum = u.double("checksum",input)
 		val startingSum = u.double("startingSum",input)
-		val points = toPointList(u.points("points",input))
+		val points = toPointList(u.listOfObj("points",input))
 		val color = toColor(u.obj("color",input))
 		val thickness = u.double("thickness",input)
 		val isHighlighter = u.bool("isHighlighter",input)
@@ -174,25 +176,99 @@ class MongoSerializer(configName:String) extends Serializer{
 	override def fromMeTLDirtyText(input:MeTLDirtyText):DBObject = Stopwatch.time("MongoSerializer.fromMeTLDirtyText", () => {
 		constructObj("dirtyText",parseMeTLContent(input) ::: parseCanvasContent(input))
 	})
-	override def toMeTLCommand(input:DBObject):MeTLCommand = MeTLCommand.empty
-	override def fromMeTLCommand(input:MeTLCommand):DBObject = new BasicDBObject().asInstanceOf[DBObject]
-	override def toSubmission(input:DBObject):MeTLSubmission = MeTLSubmission.empty
-	override def fromSubmission(input:MeTLSubmission):DBObject = new BasicDBObject().asInstanceOf[DBObject]
-	override def toMeTLQuiz(input:DBObject):MeTLQuiz = MeTLQuiz.empty
-	override def fromMeTLQuiz(input:MeTLQuiz):DBObject = new BasicDBObject().asInstanceOf[DBObject]
-	override def toMeTLQuizResponse(input:DBObject):MeTLQuizResponse = MeTLQuizResponse.empty
-	override def fromMeTLQuizResponse(input:MeTLQuizResponse):DBObject = new BasicDBObject().asInstanceOf[DBObject]
-	override def toConversation(input:DBObject):Conversation = Conversation.empty
-	override def fromConversation(input:Conversation):DBObject = new BasicDBObject().asInstanceOf[DBObject]
-	override def toSlide(input:DBObject):Slide = Slide.empty
-	override def fromSlide(input:Slide):DBObject = new BasicDBObject().asInstanceOf[DBObject]
-	override def toPermissions(input:DBObject):Permissions = Permissions.default(config)
-	override def fromPermissions(input:Permissions):DBObject = new BasicDBObject().asInstanceOf[DBObject]
-	override def toColor(input:AnyRef):Color = Color.empty
-	override def fromColor(input:Color):AnyRef = new BasicDBObject().asInstanceOf[DBObject]
-	override def toPoint(input:AnyRef):Point = Point.empty
-	override def fromPoint(input:Point):AnyRef = new BasicDBObject().asInstanceOf[DBObject]
-	override def toPointList(input:AnyRef):List[Point] = List.empty[Point]
-	override def fromPointList(input:List[Point]):AnyRef = new BasicDBObject().asInstanceOf[DBObject]
+	override def toMeTLCommand(input:DBObject):MeTLCommand = Stopwatch.time("MongoSerializer.toMeTLCommand", () => {
+		MeTLCommand.empty
+	})
+	override def fromMeTLCommand(input:MeTLCommand):DBObject = Stopwatch.time("MongoSerializer.fromMeTLCommand", () => {
+		constructObj("command",parseMeTLContent(input))
+	})
+	override def toSubmission(input:DBObject):MeTLSubmission = Stopwatch.time("MongoSerializer.toSubmission", () => {
+		MeTLSubmission.empty
+	})
+	override def fromSubmission(input:MeTLSubmission):DBObject = Stopwatch.time("MongoSerializer.", () => {
+		constructObj("submission",parseMeTLContent(input))
+	})
+	override def toMeTLQuiz(input:DBObject):MeTLQuiz = Stopwatch.time("MongoSerializer.toMeTLQuiz", () => {
+		MeTLQuiz.empty
+	})
+	override def fromMeTLQuiz(input:MeTLQuiz):DBObject = Stopwatch.time("MongoSerializer.", () => {
+		constructObj("quiz",parseMeTLContent(input))
+	})
+	override def toMeTLQuizResponse(input:DBObject):MeTLQuizResponse = Stopwatch.time("MongoSerializer.toMeTLQuizResponse", () => {
+		MeTLQuizResponse.empty
+	})
+	override def fromMeTLQuizResponse(input:MeTLQuizResponse):DBObject =  Stopwatch.time("MongoSerializer.", () => {
+		constructObj("quizResponse", parseMeTLContent(input))
+	})
+	override def toConversation(input:DBObject):Conversation = Stopwatch.time("MongoSerializer.toConversation", () => {
+		val author = u.string("author",input)
+		val lastAccessed = u.long("lastAccessed",input)
+		val slides = u.listOfObj("slides",input).map(i => toSlide(i)).toList
+		val subject = u.string("subject",input)
+		val tag = u.string("tag",input)
+		val jid = u.int("jid",input)
+		val title = u.string("title",input)
+		val created = u.string("created",input)
+		val permissions = toPermissions(u.obj("permissions",input))
+    Conversation(config,author,lastAccessed,slides,subject,tag,jid,title,created,permissions)
+	})
+	override def fromConversation(input:Conversation):DBObject = Stopwatch.time("MongoSerializer.", () => {
+		putFields(new BasicDBObject(), List(
+			("author",input.author),
+			("lastAccessed",input.lastAccessed),
+			("slides",input.slides.map(i => fromSlide(i)).toList),
+			("subject",input.subject),
+			("tag",input.tag),
+			("jid",input.jid),
+			("title",input.title),
+			("created",input.created),
+			("permissions",fromPermissions(input.permissions))	
+		))
+	})
+	override def toSlide(input:DBObject):Slide = Stopwatch.time("MongoSerializer.toSlide", () => {
+		val author = u.string("author",input)
+		val id = u.int("id",input)
+		val index = u.int("index",input)
+		Slide(config,author,id,index)
+	})
+	override def fromSlide(input:Slide):DBObject = Stopwatch.time("MongoSerializer.", () => {
+		putFields(new BasicDBObject(), List(("id",input.id),("author",input.author),("index",input.index)))
+	})
+	override def toPermissions(input:DBObject):Permissions = Stopwatch.time("MongoSerializer.toPermissions", () => {
+		val scp = u.bool("studentsCanPublish",input)
+		val scof = u.bool("studentsCanOpenFriends",input)
+		val uacs = u.bool("usersAreCompusorilySynced",input)
+		Permissions(config,scof,scp,uacs)
+	})
+	override def fromPermissions(input:Permissions):DBObject = Stopwatch.time("MongoSerializer.", () => {
+		putFields(new BasicDBObject(), List(("studentsCanPublish",input.studentsCanPublish),("studentsCanOpenFriends",input.studentsCanOpenFriends),("usersAreCompusorilySynced",input.usersAreCompulsorilySynced)))
+	})
+	override def toColor(input:AnyRef):Color = Stopwatch.time("MongoSerializer.toColor", () => {
+		val obj = input.asInstanceOf[DBObject]
+		val a = u.int("a",obj)
+		val r = u.int("r",obj)
+		val g = u.int("g",obj)
+		val b = u.int("b",obj)
+		Color(a,r,g,b)
+	})
+	override def fromColor(input:Color):AnyRef = Stopwatch.time("MongoSerializer.", () => {
+		putFields(new BasicDBObject(), List(("a",input.alpha),("r",input.red),("g",input.green),("b",input.blue)))
+	})
+	override def toPoint(input:AnyRef):Point = Stopwatch.time("MongoSerializer.toPoint", () => {
+		val obj = input.asInstanceOf[DBObject]
+		val x = u.double("x",obj)
+		val y = u.double("y",obj)
+		val thickness = u.double("p",obj)
+		Point(x,y,thickness)
+	})
+	override def fromPoint(input:Point):AnyRef = Stopwatch.time("MongoSerializer.", () => {
+		putFields(new BasicDBObject(), List(("x",input.x),("y",input.y),("p",input.thickness)))
+	})
+	override def toPointList(input:AnyRef):List[Point] = Stopwatch.time("MongoSerializer.toPointList", () => {
+		input.asInstanceOf[List[DBObject]].map(i => toPoint(i)).toList
+	})
+	override def fromPointList(input:List[Point]):AnyRef = Stopwatch.time("MongoSerializer.", () => {
+		input.map(i => fromPoint(i)).toList
+	})
 }
 

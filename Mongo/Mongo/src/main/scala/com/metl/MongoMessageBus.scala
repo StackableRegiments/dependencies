@@ -13,7 +13,8 @@ class MongoPersistingLoopbackMessageBus(jid:String,configName:String,mongoHost:S
 		recieveStanzaFromRoom(stanza)
 	})
 	private def storeStanzaInMongo(stanza:MeTLStanza):Unit = Stopwatch.time("MongoPersistingLoopbackMessageBus.storeStanzaInMongo", () => {
-		serverConfig
+//		serverConfig
+//		mongo.
 	})
 }
 
