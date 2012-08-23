@@ -1,48 +1,50 @@
 package com.metl.model
 
+class SerializationNotImplementedException extends Exception("Serializer has not implemented this method")
+
 abstract class Serializer {
   type T <: Object
   def fromRenderableHistory(input:History):List[T] = input.getRenderable.map(i => fromMeTLStanza(i)).toList
-  def fromHistory(input:History):T = null.asInstanceOf[T]
-  def toHistory(input:T):History = History.empty
-  def toMeTLStanza(input:T):MeTLStanza = MeTLStanza.empty
-  def toMeTLMove(input:T):MeTLMove = MeTLMove.empty
-  def fromMeTLMove(input:MeTLMove):T = null.asInstanceOf[T]
-  def toMeTLMoveDelta(input:T):MeTLMoveDelta = MeTLMoveDelta.empty
-  def fromMeTLMoveDelta(input:MeTLMoveDelta):T = null.asInstanceOf[T]
-  def toMeTLInk(input:T):MeTLInk = MeTLInk.empty
-  def fromMeTLInk(input:MeTLInk):T = null.asInstanceOf[T]
-  def toMeTLImage(input:T):MeTLImage = MeTLImage.empty
-  def fromMeTLImage(input:MeTLImage):T = null.asInstanceOf[T]
-  def toMeTLText(input:T):MeTLText = MeTLText.empty
-  def fromMeTLText(input:MeTLText):T = null.asInstanceOf[T]
-  def toMeTLDirtyInk(input:T):MeTLDirtyInk = MeTLDirtyInk.empty
-  def fromMeTLDirtyInk(input:MeTLDirtyInk):T = null.asInstanceOf[T]
-  def toMeTLDirtyImage(input:T):MeTLDirtyImage = MeTLDirtyImage.empty
-  def fromMeTLDirtyImage(input:MeTLDirtyImage):T = null.asInstanceOf[T]
-  def toMeTLDirtyText(input:T):MeTLDirtyText = MeTLDirtyText.empty
-  def fromMeTLDirtyText(input:MeTLDirtyText):T = null.asInstanceOf[T]
-  def toMeTLCommand(input:T):MeTLCommand = MeTLCommand.empty
-  def fromMeTLCommand(input:MeTLCommand):T = null.asInstanceOf[T]
-  def toSubmission(input:T):MeTLSubmission = MeTLSubmission.empty
-  def fromSubmission(input:MeTLSubmission):T = null.asInstanceOf[T]
-  def toMeTLQuiz(input:T):MeTLQuiz = MeTLQuiz.empty
-  def fromMeTLQuiz(input:MeTLQuiz):T = null.asInstanceOf[T]
-  def toMeTLQuizResponse(input:T):MeTLQuizResponse = MeTLQuizResponse.empty
-  def fromMeTLQuizResponse(input:MeTLQuizResponse):T = null.asInstanceOf[T]
-  def toConversation(input:T):Conversation = Conversation.empty
-  def fromConversation(input:Conversation):T = null.asInstanceOf[T]
-  def fromConversationList(input:List[Conversation]):T = null.asInstanceOf[T]
-  def toSlide(input:T):Slide = Slide.empty
-  def fromSlide(input:Slide):T = null.asInstanceOf[T]
-  def toPermissions(input:T):Permissions = Permissions.empty
-  def fromPermissions(input:Permissions):T = null.asInstanceOf[T]
-  def toPoint(input:AnyRef):Point = Point.empty
-  def fromPoint(input:Point):AnyRef = null.asInstanceOf[T]
-  def toPointList(input:AnyRef):List[Point] = List.empty[Point]
-  def fromPointList(input:List[Point]):AnyRef = null.asInstanceOf[T]
-  def toColor(input:AnyRef):Color = Color.empty
-  def fromColor(input:Color):AnyRef = null.asInstanceOf[T]
+  def fromHistory(input:History):T = throw new SerializationNotImplementedException
+  def toHistory(input:T):History = throw new SerializationNotImplementedException
+  def toMeTLStanza(input:T):MeTLStanza = throw new SerializationNotImplementedException
+  def toMeTLMove(input:T):MeTLMove = throw new SerializationNotImplementedException
+  def fromMeTLMove(input:MeTLMove):T =throw new SerializationNotImplementedException
+  def toMeTLMoveDelta(input:T):MeTLMoveDelta = throw new SerializationNotImplementedException
+  def fromMeTLMoveDelta(input:MeTLMoveDelta):T = throw new SerializationNotImplementedException
+  def toMeTLInk(input:T):MeTLInk = throw new SerializationNotImplementedException
+  def fromMeTLInk(input:MeTLInk):T = throw new SerializationNotImplementedException
+  def toMeTLImage(input:T):MeTLImage = throw new SerializationNotImplementedException
+  def fromMeTLImage(input:MeTLImage):T = throw new SerializationNotImplementedException
+  def toMeTLText(input:T):MeTLText = throw new SerializationNotImplementedException
+  def fromMeTLText(input:MeTLText):T = throw new SerializationNotImplementedException
+  def toMeTLDirtyInk(input:T):MeTLDirtyInk = throw new SerializationNotImplementedException
+  def fromMeTLDirtyInk(input:MeTLDirtyInk):T = throw new SerializationNotImplementedException
+  def toMeTLDirtyImage(input:T):MeTLDirtyImage = throw new SerializationNotImplementedException
+  def fromMeTLDirtyImage(input:MeTLDirtyImage):T = throw new SerializationNotImplementedException
+  def toMeTLDirtyText(input:T):MeTLDirtyText = throw new SerializationNotImplementedException
+  def fromMeTLDirtyText(input:MeTLDirtyText):T = throw new SerializationNotImplementedException
+  def toMeTLCommand(input:T):MeTLCommand = throw new SerializationNotImplementedException
+  def fromMeTLCommand(input:MeTLCommand):T = throw new SerializationNotImplementedException
+  def toSubmission(input:T):MeTLSubmission = throw new SerializationNotImplementedException
+  def fromSubmission(input:MeTLSubmission):T = throw new SerializationNotImplementedException
+  def toMeTLQuiz(input:T):MeTLQuiz = throw new SerializationNotImplementedException
+  def fromMeTLQuiz(input:MeTLQuiz):T = throw new SerializationNotImplementedException
+  def toMeTLQuizResponse(input:T):MeTLQuizResponse = throw new SerializationNotImplementedException
+  def fromMeTLQuizResponse(input:MeTLQuizResponse):T = throw new SerializationNotImplementedException
+  def toConversation(input:T):Conversation = throw new SerializationNotImplementedException
+  def fromConversation(input:Conversation):T = throw new SerializationNotImplementedException
+  def fromConversationList(input:List[Conversation]):T = throw new SerializationNotImplementedException
+  def toSlide(input:T):Slide = throw new SerializationNotImplementedException
+  def fromSlide(input:Slide):T = throw new SerializationNotImplementedException
+  def toPermissions(input:T):Permissions = throw new SerializationNotImplementedException
+  def fromPermissions(input:Permissions):T = throw new SerializationNotImplementedException
+  def toPoint(input:AnyRef):Point = throw new SerializationNotImplementedException
+  def fromPoint(input:Point):AnyRef = throw new SerializationNotImplementedException
+  def toPointList(input:AnyRef):List[Point] = throw new SerializationNotImplementedException
+  def fromPointList(input:List[Point]):AnyRef = throw new SerializationNotImplementedException
+  def toColor(input:AnyRef):Color = throw new SerializationNotImplementedException
+  def fromColor(input:Color):AnyRef = throw new SerializationNotImplementedException
   def fromMeTLStanza(input:MeTLStanza):T = input match {
     case i:MeTLInk => fromMeTLInk(i)
     case t:MeTLText => fromMeTLText(t)
@@ -56,7 +58,7 @@ abstract class Serializer {
     case s:MeTLSubmission => fromSubmission(s)
     case m:MeTLMove => fromMeTLMove(m)
     case m:MeTLMoveDelta => fromMeTLMoveDelta(m)
-    case _ => null.asInstanceOf[T]
+    case _ => throw new SerializationNotImplementedException
   }
 }
 
@@ -92,4 +94,10 @@ class PassthroughSerializer extends Serializer {
   override def fromSlide(input:Slide):Object = input.asInstanceOf[Object]
   override def toPermissions(input:Object):Permissions = input.asInstanceOf[Permissions]
   override def fromPermissions(input:Permissions):Object = input.asInstanceOf[Object]
+	override def toPoint(input:AnyRef):Point = input.asInstanceOf[Point]
+  override def fromPoint(input:Point):AnyRef = input.asInstanceOf[AnyRef]
+  override def toPointList(input:AnyRef):List[Point] = input.asInstanceOf[List[Point]]
+  override def fromPointList(input:List[Point]):AnyRef = input.asInstanceOf[AnyRef]
+  override def toColor(input:AnyRef):Color = input.asInstanceOf[Color]
+  override def fromColor(input:Color):AnyRef = input.asInstanceOf[AnyRef]
 }
