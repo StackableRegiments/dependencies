@@ -103,7 +103,9 @@ class GenericXmlSerializer(configName:String) extends Serializer{
     val yTranslate = utils.getDoubleByName(input,"yTranslate")
 		val xScale = utils.getDoubleByName(input,"xScale")
 		val yScale = utils.getDoubleByName(input,"yScale")
-		MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale)
+		val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
+		val isDeleted = utils.getBooleanByName(input,"isDeleted")
+		MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
 	})
 	override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", () => {
 		canvasContentToXml("moveDelta",input, List(
@@ -113,7 +115,9 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 			<xTranslate>{input.xTranslate}</xTranslate>,
 			<yTranslate>{input.yTranslate}</yTranslate>,
 			<xScale>{input.xScale}</xScale>,
-			<yScale>{input.yScale}</yScale>
+			<yScale>{input.yScale}</yScale>,
+			<newPrivacy>{input.newPrivacy}</newPrivacy>,
+			<isDeleted>{input.isDeleted}</isDeleted>
 		))
 	})
 	override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLImage", () => {
