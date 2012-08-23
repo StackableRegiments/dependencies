@@ -33,7 +33,20 @@ class MeTL2011XmlSerializer(configName:String) extends GenericXmlSerializer(conf
 		val y = utils.getDoubleByName(input,"y")
 		MeTLImage(config,m.author,m.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,c.target,c.privacy,c.slide,c.identity)
 	})
-
+	override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("MeTL2011XmlSerializer.toMeTLCommand", () => {
+		val m = utils.parseMeTLContent(input)
+		val body = input match {
+			case t:Text => t.toString.split(" ")
+			case e:Elem => utils.getStringByName(e,"body").split(" ")
+			case other => other.toString.split(" ")
+		}
+		val comm = body.head
+		val parameters = body.tail.toList
+		MeTLCommand(config,m.author,m.timestamp,comm,parameters) 
+	})
+	override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLCommand", () => {
+		Text((input.command :: input.commandParameters).mkString(" "))
+	})
 	override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MeTL2011XmlSerializer.toMeTLQuiz", () => {
 		val m = utils.parseMeTLContent(input)
 		val created = utils.getLongByName(input,"created")

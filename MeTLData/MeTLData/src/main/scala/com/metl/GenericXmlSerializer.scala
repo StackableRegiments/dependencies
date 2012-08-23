@@ -229,19 +229,15 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 	})
 	override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("GenericXmlSerializer.toMeTLCommand", () => {
 		val m = utils.parseMeTLContent(input)
-		val body = utils.getStringByName(input,"body").split(" ")
-		val comm = body(0)
-		val parameters = body.drop(1).toList
-		MeTLCommand(config,m.author,m.timestamp,comm,parameters) 
+		val comm = utils.getStringByName(input,"command")
+		val parameters = utils.getListOfStringsByNameWithin(input,"parameter","parameters")
+		MeTLCommand(config,m.author,m.timestamp,comm,parameters)
 	})
 	override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLCommand", () => {
-		Text((input.command :: input.commandParameters).mkString(" "))
-/*		
 		metlContentToXml("command",input,List(
 			<command>{input.command}</command>,
 			<parameters>{input.commandParameters.map(cp => <parameter>{cp}</parameter>)}</parameters>
 		))
-*/
 	})
 	override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission", () => {
 		val m = utils.parseMeTLContent(input)

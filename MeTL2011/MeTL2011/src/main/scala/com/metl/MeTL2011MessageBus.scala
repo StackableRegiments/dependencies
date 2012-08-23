@@ -36,7 +36,7 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String) ex
 	override def onUntypedMessageRecieved(room:String,message:String) = {
 		println("recieved untyped message: %s".format(message))
 		val parts = message.split(" ")
-		config.getRoom(room) ! ServerToLocalMeTLStanza(MeTLCommand(config,"unknown",0L,parts.take(1)(0),parts.drop(1).toList))
+		config.getRoom(room) ! ServerToLocalMeTLStanza(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList))
 	}
 	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command").map(item => {
 		val ser = (i:MeTLStanza) => {
