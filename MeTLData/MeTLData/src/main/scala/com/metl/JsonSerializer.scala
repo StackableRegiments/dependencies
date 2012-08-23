@@ -117,21 +117,25 @@ class JsonSerializer(configName:String) extends Serializer{
       JField("inkIds",JArray(input.inkIds.map(JString).toList)),
       JField("imageIds",JArray(input.imageIds.map(JString).toList)),
       JField("textIds",JArray(input.textIds.map(JString).toList)),
-      JField("xDelta",JDouble(input.xDelta)),
-      JField("yDelta",JDouble(input.yDelta))
+      JField("xTranslate",JDouble(input.xTranslate)),
+      JField("yTranslate",JDouble(input.yTranslate)),
+			JField("xScale",JDouble(input.xScale)),
+			JField("yScale",JDouble(input.yScale))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
   override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",()=>{
     i match{
       case input:JObject => {
-	val mc = parseJObjForMeTLContent(input)
-	val cc = parseJObjForCanvasContent(input)
-	val inkIds = utils.getListOfStringsByName(input,"inkIds")
-	val textIds = utils.getListOfStringsByName(input,"textIds")
-	val imageIds = utils.getListOfStringsByName(input,"imageIds")
-        val xDelta = utils.getDoubleByName(input,"xDelta")
-        val yDelta = utils.getDoubleByName(input,"yDelta")
-	MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"moveDelta",inkIds,textIds,imageIds,xDelta,yDelta)
+				val mc = parseJObjForMeTLContent(input)
+				val cc = parseJObjForCanvasContent(input)
+				val inkIds = utils.getListOfStringsByName(input,"inkIds")
+				val textIds = utils.getListOfStringsByName(input,"textIds")
+				val imageIds = utils.getListOfStringsByName(input,"imageIds")
+        val xTranslate = utils.getDoubleByName(input,"xDelta")
+        val yTranslate = utils.getDoubleByName(input,"yDelta")
+        val xScale = utils.getDoubleByName(input,"xDelta")
+        val yScale = utils.getDoubleByName(input,"yDelta")
+				MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale)
       }
     }
   })

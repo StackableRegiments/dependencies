@@ -67,8 +67,8 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
   })
 
   def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{ 
-    var x = s.xDelta;
-    var y = s.yDelta;
+    var x = s.xTranslate;
+    var y = s.yTranslate;
     s.inkIds.map(id=>{
       inks.filter(_.identity == id).map(i=>{
         removeInk(i.identity)

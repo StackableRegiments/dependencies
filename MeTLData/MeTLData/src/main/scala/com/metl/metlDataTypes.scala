@@ -160,9 +160,9 @@ object MeTLText{
   def empty = MeTLText(ServerConfiguration.empty,"",0L,"",0.0,0.0,0,0.0,0.0,"","","","",0.0,"","","",Privacy.NOT_SET,"",Color.default)
 }
 
-case class MeTLMoveDelta(override val server:ServerConfiguration, override val author:String,override val timestamp:Long,override val target:String, override val privacy:Privacy,override val slide:String,override val identity:String,inkIds:Seq[String],textIds:Seq[String],imageIds:Seq[String],xDelta:Double,yDelta:Double) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity)
+case class MeTLMoveDelta(override val server:ServerConfiguration, override val author:String,override val timestamp:Long,override val target:String, override val privacy:Privacy,override val slide:String,override val identity:String,inkIds:Seq[String],textIds:Seq[String],imageIds:Seq[String],xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity)
 case object MeTLMoveDelta{ 
-  def empty = MeTLMoveDelta(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,Nil,Nil,0.0,0.0)
+  def empty = MeTLMoveDelta(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,Nil,Nil,0.0,0.0,0.0,0.0)
 }
 
 case class MeTLMove(override val server:ServerConfiguration, override val author:String,override val timestamp:Long,override val target:String, override val privacy:Privacy,override val slide:String,override val identity:String,inks:Seq[MeTLInk],texts:Seq[MeTLText],images:Seq[MeTLImage]) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity)

@@ -13,6 +13,7 @@ object XmlUtils {
 	def getDoubleByName(content:NodeSeq,name:String):Double = tryo(getValueOfNode(content,name).toDouble).openOr(-1.0)
 	def getLongByName(content:NodeSeq,name:String):Long = tryo(getValueOfNode(content,name).toLong).openOr(-1L)
 	def getIntByName(content:NodeSeq,name:String):Int = tryo(getValueOfNode(content,name).toInt).openOr(-1)
+	def getListOfStringsByNameWithin(content:NodeSeq,name:String,containerName:String) = tryo(getXmlByName(content,containerName).map(i => getStringByName(i,name)).toList).openOr(List.empty[String])
 	def getValueOfNode(content:NodeSeq,nodeName:String):String = tryo((content \\ nodeName).text).openOr("")
 	def getXmlByName(content:NodeSeq,name:String):NodeSeq = tryo((content \\ name)).openOr(NodeSeq.Empty)
 	def getAttributeOfNode(content:NodeSeq,nodeName:String,attributeName:String):String = tryo((content \\ nodeName).seq(0).attribute(attributeName).getOrElse(NodeSeq.Empty).text).openOr("")
@@ -91,6 +92,29 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 	override def fromHistory(input:History):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromHistory", () => {
 		<history>{input.getAll.map(i => fromMeTLStanza(i))}</history>
 	})
+	override def toMeTLMoveDelta(input:NodeSeq):MeTLMoveDelta = Stopwatch.time("GenericXmlSerializer.toMeTLMoveDelta", () => {
+		val m = utils.parseMeTLContent(input)
+		val c = utils.parseCanvasContent(input)
+		val inkIds = utils.getListOfStringsByNameWithin(input,"identity","inkIds")
+		val textIds = utils.getListOfStringsByNameWithin(input,"identity","textIds")
+		val imageIds = utils.getListOfStringsByNameWithin(input,"identity","imageIds")
+    val xTranslate = utils.getDoubleByName(input,"xTranslate")
+    val yTranslate = utils.getDoubleByName(input,"yTranslate")
+		val xScale = utils.getDoubleByName(input,"xScale")
+		val yScale = utils.getDoubleByName(input,"yScale")
+	MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale)
+	})
+	override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", () => {
+		canvasContentToXml("moveDelta",input, List(
+			<inkIds>{input.inkIds.map(i => <identity>{i}</identity>)}</inkIds>,
+			<imageIds>{input.imageIds.map(i => <identity>{i}</identity>)}</imageIds>,
+			<textIds>{input.textIds.map(i => <identity>{i}</identity>)}</textIds>,
+			<xTranslate>{input.xTranslate}</xTranslate>,
+			<yTranslate>{input.yTranslate}</yTranslate>,
+			<xScale>{input.xScale}</xScale>,
+			<yScale>{input.yScale}</yScale>
+		))
+	})
 	override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLImage", () => {
 		val m = utils.parseMeTLContent(input)
 		val c = utils.parseCanvasContent(input)
@@ -110,7 +134,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 			<points>{PointConverter.toText(input.points)}</points>,
 			<color>{ColorConverter.toRGBAString(input.color)}</color>,
 			<thickness>{input.thickness}</thickness>,
-			<isHighlighter>{input.isHighlighter}</isHighlighter>
+			<highlight>{input.isHighlighter}</highlight>
 		))
 	})
 	override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("GenericXmlSerializer.toMeTLImage",() => {
