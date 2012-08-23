@@ -119,29 +119,29 @@ class JsonSerializer(configName:String) extends Serializer{
       JField("textIds",JArray(input.textIds.map(JString).toList)),
       JField("xTranslate",JDouble(input.xTranslate)),
       JField("yTranslate",JDouble(input.yTranslate)),
-			JField("xScale",JDouble(input.xScale)),
-			JField("yScale",JDouble(input.yScale)),
-			JField("newPrivacy",JString(input.newPrivacy.toString.toLowerCase)),
-			JField("isDeleted",JBool(input.isDeleted))
+      JField("xScale",JDouble(input.xScale)),
+      JField("yScale",JDouble(input.yScale)),
+      JField("newPrivacy",JString(input.newPrivacy.toString.toLowerCase)),
+      JField("isDeleted",JBool(input.isDeleted))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
   override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",()=>{
     i match{
       case input:JObject => {
-				val mc = parseJObjForMeTLContent(input)
-				val cc = parseJObjForCanvasContent(input)
-				val inkIds = utils.getListOfStringsByName(input,"inkIds")
-				val textIds = utils.getListOfStringsByName(input,"textIds")
-				val imageIds = utils.getListOfStringsByName(input,"imageIds")
+        val mc = parseJObjForMeTLContent(input)
+        val cc = parseJObjForCanvasContent(input)
+        val inkIds = utils.getListOfStringsByName(input,"inkIds")
+        val textIds = utils.getListOfStringsByName(input,"textIds")
+        val imageIds = utils.getListOfStringsByName(input,"imageIds")
         val xTranslate = utils.getDoubleByName(input,"xTranslate")
         val yTranslate = utils.getDoubleByName(input,"yTranslate")
         val xScale = utils.getDoubleByName(input,"xScale")
         val yScale = utils.getDoubleByName(input,"yScale")
-				val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
-				val isDeleted = utils.getBooleanByName(input,"isDeleted")
-				MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+        val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
+        val isDeleted = utils.getBooleanByName(input,"isDeleted")
+        MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
       }
-			case _ => MeTLMoveDelta.empty
+      case _ => MeTLMoveDelta.empty
     }
   })
   override def fromMeTLMove(input:MeTLMove):JValue = Stopwatch.time("JsonSerializer.fromMeTLMove", ()=>{

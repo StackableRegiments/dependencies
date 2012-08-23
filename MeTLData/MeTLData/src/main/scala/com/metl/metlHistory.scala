@@ -66,18 +66,35 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
     }
   })
 
-  def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{ 
-    var x = s.xTranslate;
-    var y = s.yTranslate;
-    s.inkIds.map(id=>{
-      inks.filter(_.identity == id).map(i=>{
-        removeInk(i.identity)
-        addInk(MeTLInk(//Wish the damn copy constructor would work
-          i.server,i.author,i.timestamp,i.checksum,i.startingSum,
-          i.points.map(p => Point(p.x+x, p.y+y,p.thickness)).toList,
-               i.color,i.thickness,i.isHighlighter,i.target,i.privacy,i.slide,i.identity,i.scaleFactor))
+  def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
+    if(s.newPrivacy != "not_set"){
+      s.inkIds.map(id=>{
+        inks.filter(_.identity == id).map(i=>{
+          removeInk(i.identity)
+          addInk(MeTLInk(
+            i.server,i.author,i.timestamp,i.checksum,i.startingSum,
+            i.points, i.color,i.thickness,i.isHighlighter,i.target,
+            s.newPrivacy,
+            i.slide,i.identity,i.scaleFactor))
+        })
       })
-    })
+    }
+    if(s.isDeleted){
+      s.inkIds.map(id=> removeInk(id))
+    }
+    if(s.xTranslate != 0 || s.yTranslate != 0){
+      var x = s.xTranslate;
+      var y = s.yTranslate;
+      s.inkIds.map(id=>{
+        inks.filter(_.identity == id).map(i=>{
+          removeInk(i.identity)
+          addInk(MeTLInk(
+            i.server,i.author,i.timestamp,i.checksum,i.startingSum,
+            i.points.map(p => Point(p.x+x, p.y+y,p.thickness)).toList,
+            i.color,i.thickness,i.isHighlighter,i.target,i.privacy,i.slide,i.identity,i.scaleFactor))
+        })
+      })
+    }
     this
   })
 
