@@ -37,7 +37,7 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 		remote
 	}
 	private def notifyXmpp(newConversation:Conversation) = {
-		config.getRoom("global") ! LocalToServerMeTLStanza(MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid)))
+		config.getRoom("global") ! LocalToServerMeTLStanza(MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid.toString)))
 	}
 	override def updateConversation(jid:Int,conversation:Conversation):Conversation = {
 		if (jid == conversation.jid) {
