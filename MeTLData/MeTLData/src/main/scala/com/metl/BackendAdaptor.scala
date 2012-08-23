@@ -23,6 +23,7 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	protected val roomsProvider:RoomProvider
 	def getRoomProvider:RoomProvider = roomsProvider
 	def getMessageBus(id:String):MessageBus
+	def getMessageBusForRoom(id:String,room:MeTLRoom):MessageBus
 	def getRoom(jid:String):MeTLRoom = roomsProvider.get(jid)
 	def getHistory(jid:String):History
 	def sendStanzaToRoom(jid:String,stanza:MeTLStanza):Unit
@@ -38,6 +39,7 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 	val serializer = new PassthroughSerializer
 	override val roomsProvider = EmptyRoomProvider
 	override def getMessageBus(id:String) = EmptyMessageBus
+	override def getMessageBusForRoom(id:String,room:MeTLRoom) = EmptyMessageBus
 	override def getHistory(jid:String) = History.empty
 	override def sendStanzaToRoom(jid:String,stanza:MeTLStanza) = {}
 	override def searchForConversation(query:String) = List.empty[Conversation]
@@ -52,6 +54,7 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 	val serializer = new GenericXmlSerializer("frontend")
 	override val roomsProvider = EmptyRoomProvider
 	override def getMessageBus(id:String) = EmptyMessageBus
+	override def getMessageBusForRoom(id:String,room:MeTLRoom) = EmptyMessageBus
 	override def getHistory(jid:String) = History.empty
 	override def sendStanzaToRoom(jid:String,stanza:MeTLStanza) = {}
 	override def searchForConversation(query:String) = List.empty[Conversation]

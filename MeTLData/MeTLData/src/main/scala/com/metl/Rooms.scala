@@ -56,7 +56,7 @@ case object Ping
 
 abstract class MeTLRoom(configName:String,location:String) extends LiftActor with ListenerManager {
 	lazy val config = ServerConfiguration.configForName(configName)
-	protected val messageBus = config.getMessageBus(location)
+	protected val messageBus = config.getMessageBusForRoom(location,this)
 	def getHistory:History
 	private val pollInterval = new TimeSpan(120000)
 	private var joinedUsers = List.empty[Tuple2[String,LiftActor]]
