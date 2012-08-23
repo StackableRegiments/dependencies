@@ -32,10 +32,12 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 		val jid = conversation.jid
 		val bytes = serializer.fromConversation(conversation).toString.getBytes("UTF-8")
 		http.getClient.postBytes("%s/upload_nested.yaws?overwrite=true&path=%s&filename=details.xml".format(rootAddress,Helpers.urlEncode("Structure/%s/%s".format(utils.stem(jid.toString),jid.toString))),bytes)
-		detailsOf(jid)
+		val remote = detailsOf(jid)
+		notifyXmpp(remote)
+		remote
 	}
 	private def notifyXmpp(newConversation:Conversation) = {
-		// need to write this, obviously
+		config.getRoom("global") ! LocalToServerMeTLStanza(MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid)))
 	}
 	override def updateConversation(jid:Int,conversation:Conversation):Conversation = {
 		if (jid == conversation.jid) {
