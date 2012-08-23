@@ -131,10 +131,10 @@ class JsonSerializer(configName:String) extends Serializer{
 				val inkIds = utils.getListOfStringsByName(input,"inkIds")
 				val textIds = utils.getListOfStringsByName(input,"textIds")
 				val imageIds = utils.getListOfStringsByName(input,"imageIds")
-        val xTranslate = utils.getDoubleByName(input,"xDelta")
-        val yTranslate = utils.getDoubleByName(input,"yDelta")
-        val xScale = utils.getDoubleByName(input,"xDelta")
-        val yScale = utils.getDoubleByName(input,"yDelta")
+        val xTranslate = utils.getDoubleByName(input,"xTranslate")
+        val yTranslate = utils.getDoubleByName(input,"yTranslate")
+        val xScale = utils.getDoubleByName(input,"xScale")
+        val yScale = utils.getDoubleByName(input,"yScale")
 				MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale)
       }
     }

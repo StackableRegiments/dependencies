@@ -70,6 +70,8 @@ class PassthroughSerializer extends Serializer {
   override def fromMeTLImage(input:MeTLImage):Object = input.asInstanceOf[Object]
   override def toMeTLText(input:Object):MeTLText = input.asInstanceOf[MeTLText]
   override def fromMeTLText(input:MeTLText):Object = input.asInstanceOf[Object]
+	override def toMeTLMoveDelta(input:Object):MeTLMoveDelta = input.asInstanceOf[MeTLMoveDelta]
+	override def fromMeTLMoveDelta(input:MeTLMoveDelta):Object = input.asInstanceOf[Object]
   override def toMeTLDirtyInk(input:Object):MeTLDirtyInk = input.asInstanceOf[MeTLDirtyInk]
   override def fromMeTLDirtyInk(input:MeTLDirtyInk):Object = input.asInstanceOf[Object]
   override def toMeTLDirtyImage(input:Object):MeTLDirtyImage = input.asInstanceOf[MeTLDirtyImage]

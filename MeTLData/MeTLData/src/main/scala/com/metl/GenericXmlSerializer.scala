@@ -58,6 +58,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 			case i:NodeSeq if ((i \ "dirtyInk").length > 0) => toMeTLDirtyInk(i)
 			case i:NodeSeq if ((i \ "dirtyText").length > 0) => toMeTLDirtyText(i)
 			case i:NodeSeq if ((i \ "dirtyImage").length > 0) => toMeTLDirtyImage(i)
+			case i:NodeSeq if ((i \ "moveDelta").length > 0) => toMeTLMoveDelta(i)
 			case i:NodeSeq if ((i \ "quiz").length > 0) => toMeTLQuiz(i)
 			case i:NodeSeq if ((i \ "quizResponse").length > 0) => toMeTLQuizResponse(i)
 			case i:NodeSeq if ((i \ "screenshotSubmission").length > 0) => toSubmission(i)
@@ -102,7 +103,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
     val yTranslate = utils.getDoubleByName(input,"yTranslate")
 		val xScale = utils.getDoubleByName(input,"xScale")
 		val yScale = utils.getDoubleByName(input,"yScale")
-	MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale)
+		MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale)
 	})
 	override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", () => {
 		canvasContentToXml("moveDelta",input, List(
