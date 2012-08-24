@@ -11,9 +11,9 @@ import net.liftweb.util.Helpers._
 import scala.xml._
 import java.util.Date
 
-class XmppProvider(configName:String,hostname:String,username:String,password:String) extends OneBusPerRoomMessageBusProvider(configName){
-	override def createNewMessageBus(jid:String,room:Option[MeTLRoom]) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
-		new XmppMessageBus(jid,configName,hostname,username,password,room)
+class XmppProvider(configName:String,hostname:String,username:String,password:String) extends OneBusPerRoomMessageBusProvider{
+	override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
+		new XmppMessageBus(configName,hostname,username,password,d,this)
 	})
 }
 
@@ -47,7 +47,8 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 	})
 }
 
-class XmppMessageBus(jid:String,configName:String,hostname:String,username:String,password:String,room:Option[MeTLRoom]) extends MessageBus(jid,configName,room){
+class XmppMessageBus(configName:String,hostname:String,username:String,password:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
+	val jid = d.location
 	lazy val xmpp = new MeTL2011XmppConn(username,password,"metlxConnector_%s_%s".format(username, new Date().getTime.toString),hostname,configName,this)
 	xmpp.joinRoom(jid)
 	override def sendStanzaToRoom(stanza:MeTLStanza) = stanza match {

@@ -3,10 +3,25 @@ package com.metl.model
 import net.liftweb.util._
 import org.apache.commons.io.IOUtils
 
-class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:SimpleAuthedHttpProvider) extends ConversationRetriever(configName) {
+class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:SimpleAuthedHttpProvider,onConversationDetailsUpdated:(Conversation) => Unit) extends ConversationRetriever(configName) {
 	lazy val utils = new MeTL2011Utils(configName)
 	lazy val serializer = new MeTL2011XmlSerializer(configName)
 	lazy val rootAddress = "https://%s:1188".format(config.host)
+	val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _)
+	val mb = config.getMessageBus(mbDef)
+
+	def receiveConversationDetailsUpdated(m:MeTLStanza) = {
+		m match {
+			case c:MeTLCommand if c.command == "/UPDATE_CONVERSATION_DETAILS" && c.commandParameters.length == 1 => {
+				try{
+					onConversationDetailsUpdated(detailsOf(c.commandParameters(0).toInt))
+				} catch {
+					case e:Throwable => println("exception while attempting to update conversation details")
+				}
+			}
+			case _ => {}
+		}
+	}
 
 	override def search(query:String):List[Conversation] = Stopwatch.time("Conversations.search", () => {
 		(scala.xml.XML.loadString(http.getClient.get(searchBaseUrl + "search?query=" + Helpers.urlEncode(query))) \\ "conversation").map(c => serializer.toConversation(c)).toList
@@ -37,7 +52,7 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 		remote
 	}
 	private def notifyXmpp(newConversation:Conversation) = {
-		config.getRoom("global") ! LocalToServerMeTLStanza(MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid.toString)))
+		mb.sendStanzaToRoom(MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid.toString)))
 	}
 	override def updateConversation(jid:Int,conversation:Conversation):Conversation = {
 		if (jid == conversation.jid) {
