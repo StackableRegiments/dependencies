@@ -11,20 +11,10 @@ import net.liftweb.util.Helpers._
 import scala.xml._
 import java.util.Date
 
-class XmppProvider(configName:String,hostname:String,username:String,password:String) extends MessageBusProvider(configName){
-	private lazy val busses = new SynchronizedWriteMap[String,XmppMessageBus](scala.collection.mutable.HashMap.empty[String,XmppMessageBus],true,(k:String) => createNewMessageBus(k,Full(config.getRoom(k))))
-	private def createNewMessageBus(jid:String,room:Box[MeTLRoom]) = {
-		println("creating XmppMessageBus for %s".format(jid))
+class XmppProvider(configName:String,hostname:String,username:String,password:String) extends OneBusPerRoomMessageBusProvider(configName){
+	override def createNewMessageBus(jid:String,room:Option[MeTLRoom]) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
 		new XmppMessageBus(jid,configName,hostname,username,password,room)
-	}
-	override def getMessageBus(jid:String) = {
-		println("fetching XmppMessageBus for %s".format(jid))
-		busses.getOrElseUpdate(jid,createNewMessageBus(jid,Some(config.getRoom(jid))))
-	}
-	override def getMessageBusForRoom(jid:String,room:MeTLRoom) = {
-		println("fetching XmppMessageBus for %s".format(jid))
-		busses.getOrElseUpdate(jid,createNewMessageBus(jid,Some(room)))
-	}
+	})
 }
 
 class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLStanza](u,p,r,h){
@@ -73,4 +63,8 @@ class XmppMessageBus(jid:String,configName:String,hostname:String,username:Strin
 		case c:MeTLCommand => xmpp.sendMessage(jid,"command",c)
 		case _ => {}
 	}	
+	override def release = {
+		xmpp.disconnectFromXmpp
+		super.release
+	}
 }

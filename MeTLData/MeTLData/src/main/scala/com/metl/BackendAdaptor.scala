@@ -24,6 +24,8 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	def getRoomProvider:RoomProvider = roomsProvider
 	def getMessageBus(id:String):MessageBus
 	def getMessageBusForRoom(id:String,room:MeTLRoom):MessageBus
+	def releaseMessageBus(id:String):Unit
+	def releaseMessageBusForRoom(id:String,room:MeTLRoom):Unit
 	def getRoom(jid:String):MeTLRoom = roomsProvider.get(jid)
 	def getHistory(jid:String):History
 	def sendStanzaToRoom(jid:String,stanza:MeTLStanza):Unit
@@ -40,6 +42,8 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 	override val roomsProvider = EmptyRoomProvider
 	override def getMessageBus(id:String) = EmptyMessageBus
 	override def getMessageBusForRoom(id:String,room:MeTLRoom) = EmptyMessageBus
+	override def releaseMessageBus(id:String) = {} 
+	override def releaseMessageBusForRoom(id:String,room:MeTLRoom) = {}
 	override def getHistory(jid:String) = History.empty
 	override def sendStanzaToRoom(jid:String,stanza:MeTLStanza) = {}
 	override def searchForConversation(query:String) = List.empty[Conversation]
@@ -55,6 +59,8 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 	override val roomsProvider = EmptyRoomProvider
 	override def getMessageBus(id:String) = EmptyMessageBus
 	override def getMessageBusForRoom(id:String,room:MeTLRoom) = EmptyMessageBus
+	override def releaseMessageBus(id:String) = {} 
+	override def releaseMessageBusForRoom(id:String,room:MeTLRoom) = {} 
 	override def getHistory(jid:String) = History.empty
 	override def sendStanzaToRoom(jid:String,stanza:MeTLStanza) = {}
 	override def searchForConversation(query:String) = List.empty[Conversation]

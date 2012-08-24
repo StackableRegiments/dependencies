@@ -28,8 +28,17 @@ class HistoryCachingRoomProvider(configName:String) extends RoomProvider {
 	private lazy val metlRooms = new SynchronizedWriteMap[String,MeTLRoom](scala.collection.mutable.HashMap.empty[String,MeTLRoom],true,(k:String) => createNewMeTLRoom(k))
 	override def exists(room:String):Boolean = Stopwatch.time("Rooms.exists", () => metlRooms.keys.exists(k => k == room))
 	override def get(room:String) = Stopwatch.time("Rooms.get", () => metlRooms.getOrElseUpdate(room, createNewMeTLRoom(room)))
-	private def createNewMeTLRoom(room:String) = Stopwatch.time("Rooms.createNewMeTLRoom(%s)".format(room), () => new HistoryCachingRoom(configName,room))
-	override def removeMeTLRoom(room:String) = Stopwatch.time("Rooms.removeMeTLRoom(%s)".format(room), () => metlRooms.remove(room))
+	private def createNewMeTLRoom(room:String) = Stopwatch.time("Rooms.createNewMeTLRoom(%s)".format(room), () => {
+		val r = new HistoryCachingRoom(configName,room)
+		r.localSetup
+		r
+	})
+	override def removeMeTLRoom(room:String) = Stopwatch.time("Rooms.removeMeTLRoom(%s)".format(room), () => {
+		if (exists(room)){
+			metlRooms(room).localShutdown
+			metlRooms.remove(room)
+		}
+	})
 	override def addLocalMeTLStanza(s:MeTLStanza) = Stopwatch.time("Rooms.addLocalMeTLStanza", () => {
 		s match {
 			case c:MeTLCanvasContent => {
@@ -64,7 +73,12 @@ abstract class MeTLRoom(configName:String,location:String) extends LiftActor wit
 	private var lastInterest:Long = new Date().getTime
 	private var interestTimeout:Long = 60000
 	private def heartbeat = ActorPing.schedule(this,Ping,pollInterval)
-	heartbeat
+	def localSetup = {
+		heartbeat
+	}
+	def localShutdown = {
+		messageBus.release
+	}
 	override def lowPriority = {
 		case j:JoinRoom => Stopwatch.time("MeTLRoom.lowPriority.JoinRoom", () => addConnection(j)) 
 		case l:LeaveRoom => Stopwatch.time("MeTLRoom.lowPriority.LeaveRoom", () => removeConnection(l))
