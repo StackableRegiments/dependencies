@@ -39,7 +39,6 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 		val (elemName,xmlString) = parseTag(parser,"","")	
 		println("parseExtension: (%s,%s)".format(elemName,xmlString))
 		new Payload(elemName,XmppUtils.ns,xmlString)
-//"""<test><testgroupa><testItem1><parta>1</parta><partb>2</partb></testItem1></testgroupa></test>""")
 	}
 	private def parseTag(parser:XmlPullParser,elementName:String,progress:String,depth:Int = 0):Tuple2[String,String] = {
 		var m = "xml d("+depth.toString+"): "
@@ -77,7 +76,7 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 				(elementName,progress,depth)
 			}
 		}
-		println(m)
+	//	println(m)
 		if (d < 1) {
 			(n,p)
 		} else {

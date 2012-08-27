@@ -32,7 +32,7 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 		val parts = message.split(" ")
 		bus.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList))
 	}
-	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command").map(item => {
+	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command","moveDelta").map(item => {
 		val ser = (i:MeTLStanza) => {
 			val xml = serializer.fromMeTLStanza(i) 
 			val messages = xml
@@ -62,6 +62,7 @@ class XmppMessageBus(configName:String,hostname:String,username:String,password:
 		case qr:MeTLQuizResponse => xmpp.sendMessage(jid,"quizResponse",qr)
 		case s:MeTLSubmission => xmpp.sendMessage(jid,"submission",s)
 		case c:MeTLCommand => xmpp.sendMessage(jid,"command",c)
+		case d:MeTLMoveDelta => xmpp.sendMessage(jid,"moveDelta",d)
 		case _ => {}
 	}	
 	override def release = {
