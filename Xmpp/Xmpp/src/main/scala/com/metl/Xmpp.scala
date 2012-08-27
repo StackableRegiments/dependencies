@@ -8,6 +8,8 @@ import net.liftweb.actor._
 import net.liftweb.common._
 import java.util.Random
 import net.liftweb.util.Helpers._
+import org.xmlpull.v1.XmlPullParser
+import org.jivesoftware.smack.provider._
 import scala.xml._
 
 class Payload(name:String,namespace:String,payload:String) extends PacketExtension {
@@ -22,7 +24,7 @@ case class XmppDataType[T](elementName:String,serialize:(T) => NodeSeq,deseriali
 		val payload = serialize(input).toString
 		val parts = payload.split(">")
 		val stitched = (parts.take(1)(0)+" xmlns='monash:metl' " :: parts.drop(1).toList).mkString(">")+">"
-		val pay = new Payload(name,"monash:metl",stitched)
+		val pay = new Payload(name,XmppUtils.ns,stitched)
 		pay
 	}
 	def comprehendResponse(input:Packet):T = {
@@ -32,13 +34,77 @@ case class XmppDataType[T](elementName:String,serialize:(T) => NodeSeq,deseriali
 	}
 } 
 
+class MeTLExtensionProvider extends PacketExtensionProvider {
+	override def parseExtension(parser:XmlPullParser):PacketExtension = {
+		val (elemName,xmlString) = parseTag(parser,"","")	
+		println("parseExtension: (%s,%s)".format(elemName,xmlString))
+		new Payload(elemName,XmppUtils.ns,xmlString)
+//"""<test><testgroupa><testItem1><parta>1</parta><partb>2</partb></testItem1></testgroupa></test>""")
+	}
+	private def parseTag(parser:XmlPullParser,elementName:String,progress:String,depth:Int = 0):Tuple2[String,String] = {
+		var m = "xml d("+depth.toString+"): "
+		val (n,p,d) = parser.getEventType match {
+			case XmlPullParser.END_DOCUMENT => {
+				m += "end_doc"
+				(elementName,progress,depth - 1)
+			}
+			case XmlPullParser.START_DOCUMENT => {
+				m += "start_doc"
+				(elementName,progress,depth + 1)
+			}
+			case XmlPullParser.START_TAG => {
+				m += "start_tag"
+				val name = parser.getName
+				val newProgress = progress+"<"+name+">"
+				val en = elementName match {
+					case "" => name 
+					case _ => elementName
+				}
+				(en,newProgress,depth + 1)
+			}
+			case XmlPullParser.END_TAG => {
+				m += "end_tag"
+				val newProgress = progress+"</"+parser.getName+">"
+				(elementName,newProgress,depth - 1)
+			}	
+			case XmlPullParser.TEXT => {
+				m += "text"
+				val newProgress = progress+parser.getText
+				(elementName,newProgress,depth)
+			}
+			case _ => {
+				m += "unknown"
+				(elementName,progress,depth)
+			}
+		}
+		println(m)
+		if (d < 1) {
+			(n,p)
+		} else {
+			parser.next
+			parseTag(parser,n,p,d)
+		}
+	}
+}
+
+object XmppUtils {
+	private val providerManager = org.jivesoftware.smack.provider.ProviderManager.getInstance
+	private val packetExtensionProvider = new MeTLExtensionProvider
+	val ns = "monash:metl"
+	def possiblyAddExtensionProvider(elementName:String) = {
+		if (providerManager.getExtensionProvider(elementName,ns) != packetExtensionProvider){
+			providerManager.addExtensionProvider(elementName,ns,packetExtensionProvider)
+		}
+	}
+}
+
 abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String) {
 
 	val host = incomingHost
 	val username = incomingUsername
 	val resource = incomingResource
+	Packet.setDefaultXmlns(XmppUtils.ns)
 
-	Packet.setDefaultXmlns("monash:metl")
 
 	def sendMessage(room:String,messageType:String,message:T):Unit = Stopwatch.time("XmppConnection.sendMessage", () => {			
 		rooms.find(r => r._1 == room).map(r => {
@@ -46,6 +112,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 				val muc = r._2
 				val roomMessage = muc.createMessage
 				roomMessage.addExtension(st.generatePacketExtension(message))
+				println("XMPP-OUT: "+roomMessage.toXML)
 				muc.sendMessage(roomMessage)
 			})
 		})
@@ -69,7 +136,6 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
 	
 	private var conn:Box[XMPPConnection] = Empty
-
 	private val config:ConnectionConfiguration = {
 		val c = new ConnectionConfiguration(host,port)
 		c.setRosterLoadedAtLogin(loadRosterAtLogin)
@@ -80,8 +146,8 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		c.setDebuggerEnabled(debug)
 		c
 	}
-
 	protected def initializeXmpp:Unit = Stopwatch.time("Xmpp.initializeXmpp", () => {
+		relevantElementNames.foreach(ren => XmppUtils.possiblyAddExtensionProvider(ren))
 		connectToXmpp
 		val filter = new AndFilter( new PacketTypeFilter(classOf[Message]), new MessageTypeFilter(relevantElementNames))
 		conn.map(c => c.addPacketListener(new RemoteSyncListener,filter))
@@ -146,22 +212,26 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
   }
   class RemoteSyncListener extends PacketListener{
 		def processPacket(packet:Packet)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
+			println("XMPP-IN: "+packet.toXML)
 			val room = packet.getFrom.split("@").head
 			if (List(packet.getExtensions.toArray:_*).map(e => {
 				val ext = e.asInstanceOf[PacketExtension]
 				ext.getElementName match {
 					case other:String if (relevantElementNames.contains(other)) => {
+						println("XMPP-IN-EXT: "+ext.toXML)
 						subscribedTypes.find(st => st.name.toString.trim == other.toString.trim).map(st => {
 							onMessageRecieved(room,other,st.comprehendResponse(packet))
 							true
 						}).getOrElse(false)
 					}
 					case other => {
+						println("XMPP-IN-?_EXT: "+ext.toXML)
 						onUntypedMessageRecieved(room,ext.toXML)	
 						true
 					}
 				}
 			}).filter(a => a == true).length == 0){
+				println("XMPP-IN-NO_EXT: "+packet.toXML)
 				onUntypedMessageRecieved(room,packet.toXML)
 			}
 		})
