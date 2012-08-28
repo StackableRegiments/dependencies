@@ -95,6 +95,22 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
         })
       })
     }
+    if(s.xScale != 0 || s.yScale != 0){
+      s.inkIds.map(id=>{
+        inks.filter(_.identity == id).map(i=>{
+          var xPos = i.points.map(_.x).min
+          var yPos = i.points.map(_.y).min
+          removeInk(i.identity)
+          addInk(MeTLInk(
+            i.server,i.author,i.timestamp,i.checksum,i.startingSum,
+            i.points.map(p => Point(
+              xPos + ((p.x - xPos) * s.xScale),
+              yPos + ((p.y - yPos) * s.yScale),
+              p.thickness)),
+            i.color,i.thickness,i.isHighlighter,i.target,i.privacy,i.slide,i.identity,i.scaleFactor))
+        })
+      })
+    }
     this
   })
 
