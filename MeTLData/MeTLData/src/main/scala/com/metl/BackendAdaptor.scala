@@ -33,6 +33,7 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
 	def getImage(jid:String,identity:String):MeTLImage
 	def getResource(url:String):Array[Byte]
+	def postResource(userProposedId:String,data:Array[Byte]):String
 }
 
 object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
@@ -50,6 +51,7 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
 	override def getImage(jid:String,identity:String) = MeTLImage.empty
 	override def getResource(url:String) = Array.empty[Byte]
+	override def postResource(userProposedId:String,data:Array[Byte]):String = ""
 }
 
 object FrontendSerializationAdaptor extends ServerConfiguration("frontend","frontend"){
@@ -67,4 +69,5 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
 	override def getImage(jid:String,identity:String) = MeTLImage.empty
 	override def getResource(url:String) = Array.empty[Byte]
+	override def postResource(userProposedId:String,data:Array[Byte]):String = ""
 }
