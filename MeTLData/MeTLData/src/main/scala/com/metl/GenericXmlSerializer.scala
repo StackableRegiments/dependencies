@@ -14,7 +14,7 @@ object XmlUtils {
 	def getLongByName(content:NodeSeq,name:String):Long = tryo(getValueOfNode(content,name).toLong).openOr(-1L)
 	def getIntByName(content:NodeSeq,name:String):Int = tryo(getValueOfNode(content,name).toInt).openOr(-1)
 	def getListOfStringsByNameWithin(content:NodeSeq,name:String,containerName:String) = tryo((getXmlByName(content,containerName) \\ name).map(i => i.head.text).toList).openOr(List.empty[String])
-	def getValueOfNode(content:NodeSeq,nodeName:String):String = tryo((content \\ nodeName).text).openOr("")
+	def getValueOfNode(content:NodeSeq,nodeName:String):String = tryo((content \\ nodeName).head.text).openOr("")
 	def getXmlByName(content:NodeSeq,name:String):NodeSeq = tryo((content \\ name)).openOr(NodeSeq.Empty)
 	def getAttributeOfNode(content:NodeSeq,nodeName:String,attributeName:String):String = tryo((content \\ nodeName).seq(0).attribute(attributeName).getOrElse(NodeSeq.Empty).text).openOr("")
 	def parseCanvasContent(i:NodeSeq):ParsedCanvasContent = {
