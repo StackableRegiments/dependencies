@@ -41,18 +41,18 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 		new Payload(elemName,XmppUtils.ns,xmlString)
 	}
 	private def parseTag(parser:XmlPullParser,elementName:String,progress:String,depth:Int = 0):Tuple2[String,String] = {
-		var m = "xml d("+depth.toString+"): "
+//		var m = "xml d("+depth.toString+"): "
 		val (n,p,d) = parser.getEventType match {
 			case XmlPullParser.END_DOCUMENT => {
-				m += "end_doc"
+//				m += "end_doc"
 				(elementName,progress,depth - 1)
 			}
 			case XmlPullParser.START_DOCUMENT => {
-				m += "start_doc"
+//				m += "start_doc"
 				(elementName,progress,depth + 1)
 			}
 			case XmlPullParser.START_TAG => {
-				m += "start_tag"
+//				m += "start_tag"
 				val name = parser.getName
 				val newProgress = progress+"<"+name+">"
 				val en = elementName match {
@@ -62,17 +62,17 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 				(en,newProgress,depth + 1)
 			}
 			case XmlPullParser.END_TAG => {
-				m += "end_tag"
+//				m += "end_tag"
 				val newProgress = progress+"</"+parser.getName+">"
 				(elementName,newProgress,depth - 1)
 			}	
 			case XmlPullParser.TEXT => {
-				m += "text"
+//				m += "text"
 				val newProgress = progress+parser.getText
 				(elementName,newProgress,depth)
 			}
 			case _ => {
-				m += "unknown"
+//				m += "unknown"
 				(elementName,progress,depth)
 			}
 		}
