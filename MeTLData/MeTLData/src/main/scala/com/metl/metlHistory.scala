@@ -67,50 +67,54 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
   })
 
   def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
-    if(s.newPrivacy != "not_set"){
-      s.inkIds.map(id=>{
-        inks.filter(_.identity == id).map(i=>{
-          removeInk(i.identity)
-          addInk(MeTLInk(
-            i.server,i.author,i.timestamp,i.checksum,i.startingSum,
-            i.points, i.color,i.thickness,i.isHighlighter,i.target,
-            s.newPrivacy,
-            i.slide,i.identity,i.scaleFactor))
-        })
-      })
-    }
-    if(s.isDeleted){
-      s.inkIds.map(id=> removeInk(id))
-    }
-    if(s.xTranslate != 0 || s.yTranslate != 0){
-      var x = s.xTranslate;
-      var y = s.yTranslate;
-      s.inkIds.map(id=>{
-        inks.filter(_.identity == id).map(i=>{
-          removeInk(i.identity)
-          addInk(MeTLInk(
-            i.server,i.author,i.timestamp,i.checksum,i.startingSum,
-            i.points.map(p => Point(p.x+x, p.y+y,p.thickness)).toList,
-            i.color,i.thickness,i.isHighlighter,i.target,i.privacy,i.slide,i.identity,i.scaleFactor))
-        })
-      })
-    }
-    if(s.xScale != 0 || s.yScale != 0){
-      s.inkIds.map(id=>{
-        inks.filter(_.identity == id).map(i=>{
-          var xPos = i.points.map(_.x).min
-          var yPos = i.points.map(_.y).min
-          removeInk(i.identity)
-          addInk(MeTLInk(
-            i.server,i.author,i.timestamp,i.checksum,i.startingSum,
-            i.points.map(p => Point(
-              xPos + ((p.x - xPos) * s.xScale),
-              yPos + ((p.y - yPos) * s.yScale),
-              p.thickness)),
-            i.color,i.thickness,i.isHighlighter,i.target,i.privacy,i.slide,i.identity,i.scaleFactor))
-        })
-      })
-    }
+		s.inkIds.foreach(id => {
+			inks.filter(_.identity == id).map(i => {
+				removeInk(i.identity)
+				if (!s.isDeleted) {
+					val newPoints = (s.yTranslate,s.xTranslate,s.yScale,s.xScale) match {
+						case (0,0,1.0,1.0) => i.points
+						case (y,x,1.0,1.0) => i.points.map(p => Point(p.x+x,p.y+y,p.thickness))
+						case (0,0,y,x) => i.points.map(p => Point((((p.x - i.left) * x) + i.left),(((p.y - i.top) * y) + i.top),p.thickness)) 
+						case (yO,xO,yS,xS) => i.points.map(p => Point((((p.x - i.left) * xS) + i.left + xO),(((p.y - i.top) * yS) + i.top + yO),p.thickness))
+					}
+					val newPrivacy = s.newPrivacy match {
+						case Privacy.NOT_SET => i.privacy
+						case Privacy.PUBLIC => Privacy.PUBLIC
+						case Privacy.PRIVATE => Privacy.PRIVATE
+						case _ => i.privacy
+					}
+					addInk(MeTLInk(i.server,i.author,i.timestamp,i.checksum,i.startingSum,newPoints,i.color,i.thickness,i.isHighlighter,i.target,newPrivacy,i.slide,i.identity,i.scaleFactor))
+				}
+			})
+		})
+		s.textIds.foreach(id => {
+			texts.filter(_.identity == id).map(i => {
+				removeText(i.identity)
+				if (!s.isDeleted) {
+					val newPrivacy = s.newPrivacy match {
+						case Privacy.NOT_SET => i.privacy
+						case Privacy.PUBLIC => Privacy.PUBLIC
+						case Privacy.PRIVATE => Privacy.PRIVATE
+						case _ => i.privacy
+					}
+					addText(MeTLText(i.server,i.author,i.timestamp,i.text,i.height * s.yScale,i.width * s.xScale,i.caret,i.x + s.xTranslate,i.y + s.yTranslate,i.tag,i.style,i.family,i.weight,i.size,i.decoration,i.identity,i.target,newPrivacy,i.slide,i.color))
+				}
+			})
+		})
+		s.imageIds.foreach(id => {
+			images.filter(_.identity == id).map(i => {
+				removeImage(i.identity)
+				if (!s.isDeleted) {
+					val newPrivacy = s.newPrivacy match {
+						case Privacy.NOT_SET => i.privacy
+						case Privacy.PUBLIC => Privacy.PUBLIC
+						case Privacy.PRIVATE => Privacy.PRIVATE
+						case _ => i.privacy
+					}
+					addImage(MeTLImage(i.server,i.author,i.timestamp,i.tag,i.source,i.imageBytes,i.pngBytes,i.width * s.xScale,i.height * s.yScale, i.x + s.xTranslate, i.y + s.yTranslate, i.target,newPrivacy,i.slide,i.identity,i.scaleFactor))	
+				}
+			})
+		})
     this
   })
 
