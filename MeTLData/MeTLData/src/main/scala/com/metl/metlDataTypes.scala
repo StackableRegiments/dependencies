@@ -95,7 +95,7 @@ object Conversation{
   def empty = Conversation(ServerConfiguration.empty,"",0L,List.empty[Slide],"","",0,"","",Permissions.default(ServerConfiguration.empty))
 }
 
-case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int) extends MeTLXml(server)
+case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE") extends MeTLXml(server)
 object Slide{
   def empty = Slide(ServerConfiguration.empty,"",0,0)
 }

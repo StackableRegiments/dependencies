@@ -25,7 +25,12 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	def searchForConversation(query:String):List[Conversation]
 	def detailsOfConversation(jid:String):Conversation
 	def createConversation(title:String,author:String):Conversation
-	def updateConversation(jid:String,updatedConversation:Conversation):Conversation
+	def deleteConversation(jid:String):Conversation
+	def renameConversation(jid:String,newTitle:String):Conversation
+	def changePermissions(jid:String,newPermissions:Permissions):Conversation
+	def updateSubjectOfConversation(jid:String,newSubject:String):Conversation
+	def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation
+	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
 	def getImage(jid:String,identity:String):MeTLImage
 	def getResource(url:String):Array[Byte]
 }
@@ -37,7 +42,12 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 	override def searchForConversation(query:String) = List.empty[Conversation]
 	override def detailsOfConversation(jid:String) = Conversation.empty
 	override def createConversation(title:String,author:String) = Conversation.empty
-	override def updateConversation(jid:String,updatedConversation:Conversation) = Conversation.empty
+	override def deleteConversation(jid:String):Conversation = Conversation.empty
+	override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty
+	override def changePermissions(jid:String,newPermissions:Permissions):Conversation = Conversation.empty
+	override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
+	override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
+	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
 	override def getImage(jid:String,identity:String) = MeTLImage.empty
 	override def getResource(url:String) = Array.empty[Byte]
 }
@@ -49,7 +59,12 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 	override def searchForConversation(query:String) = List.empty[Conversation]
 	override def detailsOfConversation(jid:String) = Conversation.empty
 	override def createConversation(title:String,author:String) = Conversation.empty
-	override def updateConversation(jid:String,updatedConversation:Conversation) = Conversation.empty
+	override def deleteConversation(jid:String):Conversation = Conversation.empty
+	override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty
+	override def changePermissions(jid:String,newPermissions:Permissions):Conversation = Conversation.empty
+	override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
+	override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
+	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
 	override def getImage(jid:String,identity:String) = MeTLImage.empty
 	override def getResource(url:String) = Array.empty[Byte]
 }

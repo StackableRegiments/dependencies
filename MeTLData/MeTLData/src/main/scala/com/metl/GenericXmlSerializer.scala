@@ -339,13 +339,21 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 		val author = utils.getStringByName(input,"author")
 		val id = utils.getIntByName(input,"id")
 		val index = utils.getIntByName(input,"index")
-		Slide(config,author,id,index)
+		val defHeight = utils.getIntByName(input,"defaultHeight")
+		val defWidth = utils.getIntByName(input,"defaultWidth")
+		val exposed = utils.getBooleanByName(input,"exposed")
+		val slideType = utils.getStringByName(input,"type")
+		Slide(config,author,id,index,defHeight,defWidth,exposed,slideType)
 	})
 	override def fromSlide(input:Slide):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSlide",() => {
 		metlXmlToXml("slide",List(
 			<id>{input.id}</id>,
 			<author>{input.author}</author>,
-			<index>{input.index}</index>
+			<index>{input.index}</index>,
+			<defaultHeight>{input.defaultHeight}</defaultHeight>,
+			<defaultWidth>{input.defaultWidth}</defaultWidth>,
+			<exposed>{input.exposed}</exposed>,
+			<type>{input.slideType}</type>
 		))
 	})
 	override def toPermissions(input:NodeSeq):Permissions = Stopwatch.time("GenericXmlSerializer.toPermissions", () => {

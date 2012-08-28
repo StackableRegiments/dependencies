@@ -13,7 +13,12 @@ abstract class ConversationRetriever(configName:String) {
 	def conversationFor(slide:Int):Int
 	def detailsOf(jid:Int):Conversation 
 	def createConversation(title:String,author:String):Conversation
-	def updateConversation(jid:Int,conversation:Conversation):Conversation
+	def deleteConversation(jid:String):Conversation
+	def renameConversation(jid:String,newTitle:String):Conversation
+	def changePermissions(jid:String,newPermissions:Permissions):Conversation
+	def updateSubjectOfConversation(jid:String,newSubject:String):Conversation
+	def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation
+	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
 }
 
 object EmptyConversations extends ConversationRetriever("empty"){
@@ -21,5 +26,10 @@ object EmptyConversations extends ConversationRetriever("empty"){
 	override def conversationFor(slide:Int):Int = 0
 	override def detailsOf(jid:Int) = Conversation.empty
 	override def createConversation(title:String,author:String):Conversation = Conversation.empty
-	override def updateConversation(jid:Int,conversation:Conversation) = conversation
+	override def deleteConversation(jid:String):Conversation = Conversation.empty	
+	override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty
+	override def changePermissions(jid:String,newPermissions:Permissions):Conversation = Conversation.empty
+	override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
+	override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
+	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
 }

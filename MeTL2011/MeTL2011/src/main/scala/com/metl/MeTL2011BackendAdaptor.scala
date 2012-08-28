@@ -11,7 +11,12 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) exten
 	override def searchForConversation(query:String) = conversations.search(query)
 	override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
 	override def createConversation(title:String,author:String) = conversations.createConversation(title,author)
-	override def updateConversation(jid:String,updatedConversation:Conversation) = conversations.updateConversation(jid.toInt,updatedConversation)
+	override def deleteConversation(jid:String):Conversation = conversations.deleteConversation(jid)
+	override def renameConversation(jid:String,newTitle:String):Conversation = conversations.renameConversation(jid,newTitle)
+	override def changePermissions(jid:String,newPermissions:Permissions):Conversation = conversations.changePermissions(jid,newPermissions)
+	override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = conversations.updateSubjectOfConversation(jid,newSubject)
+	override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = conversations.addSlideAtIndexOfConversation(jid,index)
+	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = conversations.reorderSlidesOfConversation(jid,newSlides)
 	override def getImage(jid:String,identity:String) = history.getMeTLHistory(jid).getImageByIdentity(identity).getOrElse(MeTLImage.empty)
 	override def getResource(url:String) = http.getClient.getAsBytes(url)
 }
@@ -27,7 +32,12 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:Stri
 	override def searchForConversation(query:String) = conversations.search(query)
 	override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
 	override def createConversation(title:String,author:String) = Conversation.empty
-	override def updateConversation(jid:String,updatedConversation:Conversation) = updatedConversation
+	override def deleteConversation(jid:String):Conversation = Conversation.empty
+	override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty
+	override def changePermissions(jid:String,newPermissions:Permissions):Conversation = Conversation.empty
+	override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
+	override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
+	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
 	override def getImage(jid:String,identity:String) = history.getMeTLHistory(jid).getImageByIdentity(identity).getOrElse(MeTLImage.empty)
 	override def getResource(url:String) = http.getClient.getAsBytes(url)
 }
