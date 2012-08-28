@@ -13,7 +13,7 @@ import java.util.Date
 
 class XmppProvider(configName:String,hostname:String,username:String,password:String) extends OneBusPerRoomMessageBusProvider{
 	override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
-		new XmppMessageBus(configName,hostname,username,password,d,this)
+		new XmppMessageBus(configName,hostname,username + new java.util.Date().getTime.toString,password,d,this)
 	})
 }
 

@@ -3,7 +3,7 @@ package com.metl.model
 class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
 	private val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
 	private val history = new MeTL2011History(name,http)
-	private val messageBusProvider = new XmppProvider(name,hostname,"metlXUsername","fred")
+	private val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred")
 	private val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
 	val serializer = new MeTL2011XmlSerializer(name)
 	private val resourceProvider = new MeTL2011Resources(name,http)
