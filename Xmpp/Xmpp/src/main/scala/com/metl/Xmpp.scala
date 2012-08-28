@@ -206,7 +206,9 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
  	class MessageTypeFilter(predicates:List[String]) extends PacketFilter{
     def accept(message:Packet)= Stopwatch.time("Xmpp.MessageTypeFilter.accept", () => {
      	var smackMessage = message.asInstanceOf[Message]
-      List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0
+			// added the getBody filter to ensure that messages that are commands (which is apparently necessary because they won't show up as extensions) are allowed through
+      //List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0
+      List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0 || smackMessage.getBody().length > 0
     })
   }
   class RemoteSyncListener extends PacketListener{
@@ -230,8 +232,9 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 					}
 				}
 			}).filter(a => a == true).length == 0){
-				println("XMPP-IN-NO_EXT: "+packet.toXML)
-				onUntypedMessageRecieved(room,packet.toXML)
+				val msg = packet.asInstanceOf[Message]
+				println("XMPP-IN-NO_EXT: "+msg.getBody)
+				onUntypedMessageRecieved(room,msg.getBody)
 			}
 		})
   }

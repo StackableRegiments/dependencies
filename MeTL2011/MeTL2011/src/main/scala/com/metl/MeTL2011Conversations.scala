@@ -12,10 +12,11 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 	println("created MeTL2011 Conversation Provider with MessageBus: %s (%s)".format(mb,mbDef))
 	
 	def receiveConversationDetailsUpdated(m:MeTLStanza) = {
-		println("message on the global thread received")
+		println("message on the global thread received: %s".format(m))
 		m match {
 			case c:MeTLCommand if c.command == "/UPDATE_CONVERSATION_DETAILS" && c.commandParameters.length == 1 => {
 				try{
+					println("metlCommand comprehended on the global thread: %s".format(c))
 					onConversationDetailsUpdated(detailsOf(c.commandParameters(0).toInt))
 				} catch {
 					case e:Throwable => println("exception while attempting to update conversation details")

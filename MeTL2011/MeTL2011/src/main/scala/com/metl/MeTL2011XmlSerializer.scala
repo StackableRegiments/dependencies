@@ -45,7 +45,7 @@ class MeTL2011XmlSerializer(configName:String) extends GenericXmlSerializer(conf
 		MeTLCommand(config,m.author,m.timestamp,comm,parameters) 
 	})
 	override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLCommand", () => {
-		Text((input.command :: input.commandParameters).mkString(" "))
+		<body>{Text((input.command :: input.commandParameters).mkString(" "))}</body>
 	})
 	override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MeTL2011XmlSerializer.toMeTLQuiz", () => {
 		val m = utils.parseMeTLContent(input)
