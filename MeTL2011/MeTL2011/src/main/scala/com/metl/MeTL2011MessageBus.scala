@@ -65,7 +65,7 @@ class XmppMessageBus(configName:String,hostname:String,username:String,password:
 		case q:MeTLQuiz => xmpp.sendMessage(jid,"quiz",q)
 		case qr:MeTLQuizResponse => xmpp.sendMessage(jid,"quizResponse",qr)
 		case s:MeTLSubmission => xmpp.sendMessage(jid,"submission",s)
-		case c:MeTLCommand => xmpp.sendMessage(jid,"command",c)
+		case c:MeTLCommand => xmpp.sendSimpleMessage(jid,(c.command :: c.commandParameters).mkString(" "))
 		case d:MeTLMoveDelta => xmpp.sendMessage(jid,"moveDelta",d)
 		case _ => {}
 	}	

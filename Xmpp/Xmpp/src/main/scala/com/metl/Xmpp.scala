@@ -41,18 +41,14 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 		new Payload(elemName,XmppUtils.ns,xmlString)
 	}
 	private def parseTag(parser:XmlPullParser,elementName:String,progress:String,depth:Int = 0):Tuple2[String,String] = {
-//		var m = "xml d("+depth.toString+"): "
 		val (n,p,d) = parser.getEventType match {
 			case XmlPullParser.END_DOCUMENT => {
-//				m += "end_doc"
 				(elementName,progress,depth - 1)
 			}
 			case XmlPullParser.START_DOCUMENT => {
-//				m += "start_doc"
 				(elementName,progress,depth + 1)
 			}
 			case XmlPullParser.START_TAG => {
-//				m += "start_tag"
 				val name = parser.getName
 				val newProgress = progress+"<"+name+">"
 				val en = elementName match {
@@ -62,21 +58,17 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 				(en,newProgress,depth + 1)
 			}
 			case XmlPullParser.END_TAG => {
-//				m += "end_tag"
 				val newProgress = progress+"</"+parser.getName+">"
 				(elementName,newProgress,depth - 1)
 			}	
 			case XmlPullParser.TEXT => {
-//				m += "text"
 				val newProgress = progress+parser.getText
 				(elementName,newProgress,depth)
 			}
 			case _ => {
-//				m += "unknown"
 				(elementName,progress,depth)
 			}
 		}
-	//	println(m)
 		if (d < 1) {
 			(n,p)
 		} else {
@@ -114,6 +106,15 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 				println("XMPP-OUT: "+roomMessage.toXML)
 				muc.sendMessage(roomMessage)
 			})
+		})
+	})
+	def sendSimpleMessage(room:String,message:String):Unit = Stopwatch.time("XmppConnection.sendSimpleMessage", () => {
+		rooms.find(r => r._1 == room).map(r => {
+			val muc = r._2
+			val roomMessage = muc.createMessage
+			roomMessage.setBody(message)
+			println("XMPP-SIMPLE-OUT: "+roomMessage.toXML)
+			muc.sendMessage(roomMessage)
 		})
 	})
 	// override these to change settings on this connection
