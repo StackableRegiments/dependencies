@@ -3,14 +3,16 @@ package com.metl.model
 import net.liftweb.util._
 import org.apache.commons.io.IOUtils
 
-class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:SimpleAuthedHttpProvider,onConversationDetailsUpdated:(Conversation) => Unit) extends ConversationRetriever(configName) {
+class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:SimpleAuthedHttpProvider,messageBusProvider:MessageBusProvider,onConversationDetailsUpdated:(Conversation) => Unit) extends ConversationRetriever(configName) {
 	lazy val utils = new MeTL2011Utils(configName)
 	lazy val serializer = new MeTL2011XmlSerializer(configName)
 	lazy val rootAddress = "https://%s:1188".format(config.host)
 	val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _)
-	val mb = config.getMessageBus(mbDef)
-
+	val mb = messageBusProvider.getMessageBus(mbDef)
+	println("created MeTL2011 Conversation Provider with MessageBus: %s (%s)".format(mb,mbDef))
+	
 	def receiveConversationDetailsUpdated(m:MeTLStanza) = {
+		println("message on the global thread received")
 		m match {
 			case c:MeTLCommand if c.command == "/UPDATE_CONVERSATION_DETAILS" && c.commandParameters.length == 1 => {
 				try{
@@ -36,7 +38,7 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 	override def detailsOf(jid:Int):Conversation = Stopwatch.time("Conversations.detailsOf",() => {
 		(scala.xml.XML.loadString(http.getClient.get("https://"+config.host+":1188/Structure/"+utils.stem(jid.toString)+"/"+jid.toString+"/details.xml")) \\ "conversation").headOption.map(c => serializer.toConversation(c)).getOrElse(Conversation.empty)
 	})
-	override def createConversation(title:String):Conversation = {
+	override def createConversation(title:String,author:String):Conversation = {
 		val currentUser = "RogerTest"
 		val jid = getNewJid
 		val now = new java.util.Date()

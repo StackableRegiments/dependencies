@@ -32,8 +32,9 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 		val parts = message.split(" ")
 		bus.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList))
 	}
-	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command","moveDelta").map(item => {
+	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command","moveDelta","body").map(item => {
 		val ser = (i:MeTLStanza) => {
+			println("attempting serialization: %s".format(i))
 			val xml = serializer.fromMeTLStanza(i) 
 			val messages = xml
 			val head = messages.headOption
@@ -42,7 +43,10 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 				case e:Elem => e.child.headOption.getOrElse(NodeSeq.Empty)
 			}.getOrElse(NodeSeq.Empty)
 		}
-		val deser = (s:NodeSeq) => serializer.toMeTLStanza(s)
+		val deser = (s:NodeSeq) => {
+			println("attempting deserialization: %s".format(s))
+			serializer.toMeTLStanza(s)
+		}
 		XmppDataType[MeTLStanza](item,ser,deser)
 	})
 }

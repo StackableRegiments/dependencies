@@ -24,7 +24,7 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	def getHistory(jid:String):History
 	def searchForConversation(query:String):List[Conversation]
 	def detailsOfConversation(jid:String):Conversation
-	def createConversation(title:String):Conversation
+	def createConversation(title:String,author:String):Conversation
 	def updateConversation(jid:String,updatedConversation:Conversation):Conversation
 	def getImage(jid:String,identity:String):MeTLImage
 	def getResource(url:String):Array[Byte]
@@ -36,7 +36,7 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 	override def getHistory(jid:String) = History.empty
 	override def searchForConversation(query:String) = List.empty[Conversation]
 	override def detailsOfConversation(jid:String) = Conversation.empty
-	override def createConversation(title:String) = Conversation.empty
+	override def createConversation(title:String,author:String) = Conversation.empty
 	override def updateConversation(jid:String,updatedConversation:Conversation) = Conversation.empty
 	override def getImage(jid:String,identity:String) = MeTLImage.empty
 	override def getResource(url:String) = Array.empty[Byte]
@@ -48,7 +48,7 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 	override def getHistory(jid:String) = History.empty
 	override def searchForConversation(query:String) = List.empty[Conversation]
 	override def detailsOfConversation(jid:String) = Conversation.empty
-	override def createConversation(title:String) = Conversation.empty
+	override def createConversation(title:String,author:String) = Conversation.empty
 	override def updateConversation(jid:String,updatedConversation:Conversation) = Conversation.empty
 	override def getImage(jid:String,identity:String) = MeTLImage.empty
 	override def getResource(url:String) = Array.empty[Byte]
