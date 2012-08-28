@@ -7,6 +7,7 @@ import org.apache.commons.io.IOUtils
 import scala.xml.NodeSeq
 import java.io.ByteArrayInputStream
 import java.util.Date
+import Privacy._
 
 case class History(jid:String,scaleFactor:Double = 1.0) {
   private var lastModifiedTime:Long = 0L
@@ -67,6 +68,12 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
   })
 
   def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
+		def possiblyUpdatePrivacy(p:Privacy) = s.newPrivacy match {
+			case Privacy.NOT_SET => p
+			case Privacy.PUBLIC => Privacy.PUBLIC
+			case Privacy.PRIVATE => Privacy.PRIVATE
+			case _ => p
+		}
 		s.inkIds.foreach(id => {
 			inks.filter(_.identity == id).map(i => {
 				removeInk(i.identity)
@@ -77,13 +84,7 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
 						case (0,0,y,x) => i.points.map(p => Point((((p.x - i.left) * x) + i.left),(((p.y - i.top) * y) + i.top),p.thickness)) 
 						case (yO,xO,yS,xS) => i.points.map(p => Point((((p.x - i.left) * xS) + i.left + xO),(((p.y - i.top) * yS) + i.top + yO),p.thickness))
 					}
-					val newPrivacy = s.newPrivacy match {
-						case Privacy.NOT_SET => i.privacy
-						case Privacy.PUBLIC => Privacy.PUBLIC
-						case Privacy.PRIVATE => Privacy.PRIVATE
-						case _ => i.privacy
-					}
-					addInk(MeTLInk(i.server,i.author,i.timestamp,i.checksum,i.startingSum,newPoints,i.color,i.thickness,i.isHighlighter,i.target,newPrivacy,i.slide,i.identity,i.scaleFactor))
+					addInk(MeTLInk(i.server,i.author,i.timestamp,i.checksum,i.startingSum,newPoints,i.color,i.thickness,i.isHighlighter,i.target,possiblyUpdatePrivacy(i.privacy),i.slide,i.identity,i.scaleFactor))
 				}
 			})
 		})
@@ -91,13 +92,7 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
 			texts.filter(_.identity == id).map(i => {
 				removeText(i.identity)
 				if (!s.isDeleted) {
-					val newPrivacy = s.newPrivacy match {
-						case Privacy.NOT_SET => i.privacy
-						case Privacy.PUBLIC => Privacy.PUBLIC
-						case Privacy.PRIVATE => Privacy.PRIVATE
-						case _ => i.privacy
-					}
-					addText(MeTLText(i.server,i.author,i.timestamp,i.text,i.height * s.yScale,i.width * s.xScale,i.caret,i.x + s.xTranslate,i.y + s.yTranslate,i.tag,i.style,i.family,i.weight,i.size,i.decoration,i.identity,i.target,newPrivacy,i.slide,i.color))
+					addText(MeTLText(i.server,i.author,i.timestamp,i.text,i.height * s.yScale,i.width * s.xScale,i.caret,i.x + s.xTranslate,i.y + s.yTranslate,i.tag,i.style,i.family,i.weight,i.size,i.decoration,i.identity,i.target,possiblyUpdatePrivacy(i.privacy),i.slide,i.color))
 				}
 			})
 		})
@@ -105,13 +100,7 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
 			images.filter(_.identity == id).map(i => {
 				removeImage(i.identity)
 				if (!s.isDeleted) {
-					val newPrivacy = s.newPrivacy match {
-						case Privacy.NOT_SET => i.privacy
-						case Privacy.PUBLIC => Privacy.PUBLIC
-						case Privacy.PRIVATE => Privacy.PRIVATE
-						case _ => i.privacy
-					}
-					addImage(MeTLImage(i.server,i.author,i.timestamp,i.tag,i.source,i.imageBytes,i.pngBytes,i.width * s.xScale,i.height * s.yScale, i.x + s.xTranslate, i.y + s.yTranslate, i.target,newPrivacy,i.slide,i.identity,i.scaleFactor))	
+					addImage(MeTLImage(i.server,i.author,i.timestamp,i.tag,i.source,i.imageBytes,i.pngBytes,i.width * s.xScale,i.height * s.yScale, i.x + s.xTranslate, i.y + s.yTranslate, i.target,possiblyUpdatePrivacy(i.privacy),i.slide,i.identity,i.scaleFactor))	
 				}
 			})
 		})
