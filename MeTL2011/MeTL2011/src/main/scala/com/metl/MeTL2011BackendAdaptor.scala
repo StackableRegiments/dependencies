@@ -6,6 +6,7 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) exten
 	private val messageBusProvider = new XmppProvider(name,hostname,"metlXUsername","fred")
 	private val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
 	val serializer = new MeTL2011XmlSerializer(name)
+	private val resourceProvider = new MeTL2011Resources(name,http)
 	override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
 	override def getHistory(jid:String) = history.getMeTLHistory(jid)
 	override def searchForConversation(query:String) = conversations.search(query)
@@ -19,6 +20,7 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) exten
 	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = conversations.reorderSlidesOfConversation(jid,newSlides)
 	override def getImage(jid:String,identity:String) = history.getMeTLHistory(jid).getImageByIdentity(identity).getOrElse(MeTLImage.empty)
 	override def getResource(url:String) = http.getClient.getAsBytes(url)
+	override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = resourceProvider.postResource(jid,userProposedId,data)
 }
 
 class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
@@ -40,4 +42,5 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:Stri
 	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
 	override def getImage(jid:String,identity:String) = history.getMeTLHistory(jid).getImageByIdentity(identity).getOrElse(MeTLImage.empty)
 	override def getResource(url:String) = http.getClient.getAsBytes(url)
+	override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = "not yet implemented"
 }
