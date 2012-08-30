@@ -24,10 +24,10 @@ object casStateDevelopmentData {
 }
 
 
-object CASAuthenticator {
+object CASAuthentication {
 	def attachCASAuthenticator(mod:CASAuthenticator):Unit = {
 		LiftRules.dispatch.prepend {
-			case req if !mod.casState.authenticated && !mod.checkReqForCASCookies(req) => () => {
+			case req if !mod.checkWhetherAlreadyLoggedIn && !mod.checkReqForCASCookies(req) => () => {
 				println("failed to determine whether currentUser is already logged in: %s".format(mod.casState))
 				Full(mod.CASRedirect) 
 			}
@@ -37,10 +37,12 @@ object CASAuthenticator {
 
 class InSessionCASState extends SessionVar[CASStateData](CASStateDataForbidden)
 
-class CASAuthenticator(realm:String,onSuccess:(CASStateData) => Unit) {
+class CASAuthenticator(realm:String,alreadyLoggedIn:() => Boolean,onSuccess:(CASStateData) => Unit) {
 	println("starting up CAS Authenticator for realm: %s".format(realm))
 	val casState = new InSessionCASState
 	def getCasState = casState.is
+
+	val checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => alreadyLoggedIn())
 
   val monashCasUrl = "https://my.monash.edu.au/authentication/cas"
   def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", () => {
