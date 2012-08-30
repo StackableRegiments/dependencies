@@ -1,10 +1,11 @@
-package com.metl.model
+package com.metl.cas
 import net.liftweb.http._
 import net.liftweb.common._
 import scala.collection.immutable.List
 import net.liftweb.http.provider.HTTPCookie
 import java.net.URLEncoder
 import org.apache.commons.io.IOUtils
+import com.metl.model._
 
 case class CASStateData(authenticated:Boolean,username:String,eligibleGroups:Seq[(String,String)],informationGroups:Seq[(String,String)])
 object CASStateDataForbidden extends CASStateData(false,"forbidden",List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]]) {}
@@ -27,8 +28,7 @@ object casStateDevelopmentData {
 object CASAuthentication {
 	def attachCASAuthenticator(mod:CASAuthenticator):Unit = {
 		LiftRules.dispatch.prepend {
-			case req if !mod.checkWhetherAlreadyLoggedIn && !mod.checkReqForCASCookies(req) => () => {
-				println("failed to determine whether currentUser is already logged in: %s".format(mod.casState))
+			case req if ((!mod.checkWhetherAlreadyLoggedIn) && (!mod.checkReqForCASCookies(req))) => () => {
 				Full(mod.CASRedirect) 
 			}
 		}
@@ -42,7 +42,7 @@ class CASAuthenticator(realm:String,alreadyLoggedIn:() => Boolean,onSuccess:(CAS
 	val casState = new InSessionCASState
 	def getCasState = casState.is
 
-	val checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => alreadyLoggedIn())
+	def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => getCasState.authenticated || alreadyLoggedIn())
 
   val monashCasUrl = "https://my.monash.edu.au/authentication/cas"
   def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", () => {
