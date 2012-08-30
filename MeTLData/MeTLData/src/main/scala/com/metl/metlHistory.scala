@@ -68,23 +68,11 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
   })
 
   def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
-		def possiblyUpdatePrivacy(p:Privacy) = s.newPrivacy match {
-			case Privacy.NOT_SET => p
-			case Privacy.PUBLIC => Privacy.PUBLIC
-			case Privacy.PRIVATE => Privacy.PRIVATE
-			case _ => p
-		}
 		s.inkIds.foreach(id => {
 			inks.filter(_.identity == id).map(i => {
 				removeInk(i.identity)
 				if (!s.isDeleted) {
-					val newPoints = (s.yTranslate,s.xTranslate,s.yScale,s.xScale) match {
-						case (0,0,1.0,1.0) => i.points
-						case (y,x,1.0,1.0) => i.points.map(p => Point(p.x+x,p.y+y,p.thickness))
-						case (0,0,y,x) => i.points.map(p => Point((((p.x - i.left) * x) + i.left),(((p.y - i.top) * y) + i.top),p.thickness)) 
-						case (yO,xO,yS,xS) => i.points.map(p => Point((((p.x - i.left) * xS) + i.left + xO),(((p.y - i.top) * yS) + i.top + yO),p.thickness))
-					}
-					addInk(MeTLInk(i.server,i.author,i.timestamp,i.checksum,i.startingSum,newPoints,i.color,i.thickness,i.isHighlighter,i.target,possiblyUpdatePrivacy(i.privacy),i.slide,i.identity,i.scaleFactor))
+					addInk(i.alterPrivacy(s.newPrivacy).adjustVisual(s.xTranslate,s.yTranslate,s.xScale,s.yScale))
 				}
 			})
 		})
@@ -92,7 +80,7 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
 			texts.filter(_.identity == id).map(i => {
 				removeText(i.identity)
 				if (!s.isDeleted) {
-					addText(MeTLText(i.server,i.author,i.timestamp,i.text,i.height * s.yScale,i.width * s.xScale,i.caret,i.x + s.xTranslate,i.y + s.yTranslate,i.tag,i.style,i.family,i.weight,i.size,i.decoration,i.identity,i.target,possiblyUpdatePrivacy(i.privacy),i.slide,i.color))
+					addText(i.alterPrivacy(s.newPrivacy).adjustVisual(s.xTranslate,s.yTranslate,s.xScale,s.yScale))
 				}
 			})
 		})
@@ -100,7 +88,7 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
 			images.filter(_.identity == id).map(i => {
 				removeImage(i.identity)
 				if (!s.isDeleted) {
-					addImage(MeTLImage(i.server,i.author,i.timestamp,i.tag,i.source,i.imageBytes,i.pngBytes,i.width * s.xScale,i.height * s.yScale, i.x + s.xTranslate, i.y + s.yTranslate, i.target,possiblyUpdatePrivacy(i.privacy),i.slide,i.identity,i.scaleFactor))	
+					addImage(i.alterPrivacy(s.newPrivacy).adjustVisual(s.xTranslate,s.yTranslate,s.xScale,s.yScale))
 				}
 			})
 		})
