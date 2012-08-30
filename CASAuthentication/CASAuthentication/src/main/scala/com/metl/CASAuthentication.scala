@@ -7,9 +7,7 @@ import java.net.URLEncoder
 import org.apache.commons.io.IOUtils
 
 case class CASStateData(authenticated:Boolean,username:String,eligibleGroups:Seq[(String,String)],informationGroups:Seq[(String,String)])
-object CASStateData {
-	val forbidden = CASStateData(false,"forbidden",List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]])
-}
+object CASStateDataForbidden extends CASStateData(false,"forbidden",List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]]) {}
 
 object casStateDevelopmentData {
   lazy val all = List(
@@ -29,28 +27,38 @@ object casStateDevelopmentData {
 object CASAuthenticator {
 	def attachCASAuthenticator(mod:CASAuthenticator):Unit = {
 		LiftRules.dispatch.prepend {
-			case req if !mod.casState.authenticated && !mod.checkReqForCASCookies(req) => () => Full(mod.CASRedirect) 
+			case req if !mod.casState.authenticated && !mod.checkReqForCASCookies(req) => () => {
+				println("failed to determine whether currentUser is already logged in: %s".format(mod.casState))
+				Full(mod.CASRedirect) 
+			}
 		}
 	}	
 }
 
+class InSessionCASState extends SessionVar[CASStateData](CASStateDataForbidden)
+
 class CASAuthenticator(realm:String,onSuccess:(CASStateData) => Unit) {
-
-	object casState extends SessionVar[CASStateData](CASStateData.forbidden)
-
+	println("starting up CAS Authenticator for realm: %s".format(realm))
+	val casState = new InSessionCASState
 	def getCasState = casState.is
 
   val monashCasUrl = "https://my.monash.edu.au/authentication/cas"
-  def checkReqForCASCookies(req:Req):Boolean = {
+  def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", () => {
+		println("verifyingCasCookie: %s".format(req))
 		val result = verifyCASTicket(req)
+		println("req verified: result = %s".format(result))
 		if (result.authenticated){
+			println("authenticated - adding to internalCASState")
+			casState(result)
+			println("authenticated - firing external handler")
 			onSuccess(result)
 			true
 		} else {
+			println("not authenticated - redirecting")
 			false
 		}
-	}
-  private def ticketlessUrl(originalRequest : Req):String = {
+	})
+  private def ticketlessUrl(originalRequest : Req):String = Stopwatch.time("CASAuthenticator.ticketlessUrl", () => {
 		val url = originalRequest.request.serverName
 		val port = originalRequest.request.serverPort
 		val path = originalRequest.path.wholePath.mkString("/")
@@ -69,8 +77,8 @@ class CASAuthenticator(realm:String,onSuccess:(CASStateData) => Unit) {
      case 0 => "%s://%s:%s/".format(originalRequest.request.scheme, url,port)
      case _ => "%s://%s:%s/%s%s".format(originalRequest.request.scheme, url,port, path, newParams)
    }
-  }
-  private def verifyCASTicket(req:Req) : CASStateData = {
+  })
+  private def verifyCASTicket(req:Req) : CASStateData = Stopwatch.time("CASAuthenticator.verifyCASTicket", () => {
       req.param("ticket") match {
       case Full(ticket) =>
       {
@@ -83,18 +91,25 @@ class CASAuthenticator(realm:String,onSuccess:(CASStateData) => Unit) {
 					info <- LDAP.info(List(user.text)).get(user.text)
 				) yield CASStateData(true,user.text,groups,info)
 				state match{
-					case List(state@CASStateData(true,fetchedUsername,_,_))=> state
-					case _ => CASStateData.forbidden
+					case List(newState@CASStateData(true,fetchedUsername,_,_))=> {
+						println("found list of states")
+						newState
+					}
+					case other => {
+						println("found other: %s".format(other))
+						CASStateDataForbidden
+					}
 				}
       }
-      case Empty => CASStateData.forbidden
-      case _ => CASStateData.forbidden
+      case Empty => CASStateDataForbidden
+      case _ => CASStateDataForbidden
     }
-  }
+  })
   val redirectUrl = monashCasUrl + "/login/?service=%s" 
-  def CASRedirect = {
+  def CASRedirect = Stopwatch.time("CASAuthenticator.CASRedirect", () => {
 		val req = S.request.openTheBox
 		val url = redirectUrl.format(URLEncoder.encode(ticketlessUrl(req),"utf-8"))
+		println("CAS redirecting to %s".format(url))
 		new RedirectResponse(url, req)
-  }
+  })
 }
