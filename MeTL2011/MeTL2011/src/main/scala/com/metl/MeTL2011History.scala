@@ -30,7 +30,7 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 				}
 			}
 		}
-		val messages = Stopwatch.time("MeTL2011History.getMeTLHistory.unzipAndParse", () => parseMessages(zipStream).toList.sortBy(s => s.timestamp))
+		val messages = Stopwatch.time("MeTL2011History.getMeTLHistory.unzipAndParse", () => parseMessages(zipStream).toList)
 		zipStream.close
 		Stopwatch.time("MeTL2011History.getMeTLHistory.makeHistory", () => makeHistory(jid.toString,messages))
 	})

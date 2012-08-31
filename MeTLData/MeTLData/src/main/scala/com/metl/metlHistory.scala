@@ -39,6 +39,12 @@ case class History(jid:String,scaleFactor:Double = 1.0) {
     getQuizzes ::: getQuizResponses ::: getSubmissions ::: getCommands ::: getRenderable
   })
 
+	def merge(other:History):History = Stopwatch.time("History.merge", () => {
+		val newHistory = History(jid,scaleFactor)
+		(getAll ::: other.getAll).sortBy(i => i.timestamp).map(i => newHistory.addStanza(i))
+		newHistory
+	})	
+
   def getImageBySource(source:String) = Stopwatch.time("History.getImageBySource", () => getImages.find(i => i.source.map(s => s == source).openOr(false)))
   def getImageByIdentity(identity:String) = Stopwatch.time("History.getImageByIdentity", () => getImages.find(i => i.identity == identity))
 
