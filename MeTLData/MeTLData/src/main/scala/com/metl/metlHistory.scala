@@ -243,7 +243,7 @@ abstract class HistoryRetriever(serverName:String) {
   lazy val server = ServerConfiguration.configForName(serverName)
   def getMeTLHistory(jid:String):History
   def makeHistory(jid:String,stanzas:List[MeTLStanza]):History = Stopwatch.time("History.makeHistory", () => {
-    stanzas.foldLeft(new History(jid))((h,item) => h.addStanza(item))
+    stanzas.sortBy(s => s.timestamp).foldLeft(new History(jid))((h,item) => h.addStanza(item))
   })
 }
 
