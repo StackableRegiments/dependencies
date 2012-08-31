@@ -214,7 +214,7 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,identity,newInkIds,newTextIds,newImageIds,0.0,0.0,1.0,1.0,Privacy.NOT_SET,true)
 	})
 	def replaceIds(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.replaceIds", () => {
-		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,identity,newInkIds,newTextIds,newImageIds,xTranslate,yTranslate,xScale,yScale,Privacy.NOT_SET,false)
+		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,identity,newInkIds,newTextIds,newImageIds,xTranslate,yTranslate,xScale,yScale,Privacy.NOT_SET,isDeleted)
 	})
 	def generateChanges(publicHistory:History,privateHistory:History):Tuple2[List[MeTLStanza],List[MeTLStanza]] = Stopwatch.time("MeTLMoveDelta.generateChanges", () => {
 		val privateInks = privateHistory.getInks.filter(i => inkIds.contains(i.identity))
