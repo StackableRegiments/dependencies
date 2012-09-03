@@ -1,5 +1,8 @@
 package com.metl.model
 
+import com.metl.data._
+import com.metl.utils._
+
 import net.liftweb.actor._
 import net.liftweb.common._
 

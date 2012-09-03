@@ -1,5 +1,8 @@
 package com.metl.snippet
 
+import com.metl.data._
+import com.metl.utils._
+
 import com.metl.model._
 import com.metl.snippet.Utils._
 import scala.xml._

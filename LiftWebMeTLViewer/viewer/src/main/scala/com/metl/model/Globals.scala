@@ -1,5 +1,10 @@
 package com.metl.model
 
+import com.metl.data._
+import com.metl.metl2011._
+import com.metl.utils._
+import com.metl.cas._
+
 import scala.xml._
 import _root_.net.liftweb.util._
 import Helpers._
@@ -9,7 +14,6 @@ import _root_.net.liftweb.http.rest._
 import _root_.net.liftweb.http.provider._
 import _root_.net.liftweb.sitemap._
 import _root_.net.liftweb.sitemap.Loc._
-import com.metl.cas._
 
 case class WebMeTLServerConfiguration(name:String,serverConfig:ServerConfiguration,quizResponseActor:QuizResponseActor,logActor:LogActor){
 	val host = serverConfig.host

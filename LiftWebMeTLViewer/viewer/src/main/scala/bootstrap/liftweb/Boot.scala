@@ -1,5 +1,7 @@
 package bootstrap.liftweb
 
+import com.metl.data._
+
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.common._
 import _root_.net.liftweb.http._

@@ -1,4 +1,8 @@
 package com.metl.model
+
+import com.metl.data._
+import com.metl.utils._
+
 import net.liftweb._
 import http._
 import common._

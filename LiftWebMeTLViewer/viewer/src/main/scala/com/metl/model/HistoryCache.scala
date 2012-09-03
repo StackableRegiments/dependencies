@@ -1,12 +1,15 @@
 package com.metl.model
 
+import com.metl.utils._
+import com.metl.data._
+import com.metl.renderer.SlideRenderer
+
 import net.liftweb.util.Helpers._
 import java.util.Date
 import net.liftweb.actor.LiftActor
 import scala.collection.mutable.{HashMap, SynchronizedMap}
 import net.liftweb.util.ActorPing
 import org.apache.commons.codec.digest.DigestUtils
-import com.metl.renderer.SlideRenderer
 
 case object RefreshHistory
 case class UpdateHistoryWithQuizResponse(quizResponse:MeTLQuizResponse)
