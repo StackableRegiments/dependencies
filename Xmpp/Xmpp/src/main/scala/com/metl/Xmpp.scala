@@ -1,4 +1,6 @@
-package com.metl.model
+package com.metl.xmpp
+
+import com.metl.utils._
 
 import org.jivesoftware.smack._
 import org.jivesoftware.smack.filter._
