@@ -9,7 +9,6 @@ import java.text.SimpleDateFormat
 object HttpResponder {
 
 	private val snapshotExpiry = 10 seconds
-	private val quizImageExpiry = 30 seconds
 
 	private def requestEtag = S.request match {
 		case Full(req) => req.header("If-None-Match")
@@ -29,15 +28,6 @@ object HttpResponder {
 		requestEtag match {
 			case Full(etag) if (etag == binary.checksum) => InMemoryResponse(Array.empty[Byte], List(), Nil, 304)
 			case _ => InMemoryResponse(binary.data, List("Content-Type" -> "image/jpg") ::: makeCacheHeaders(binary,snapshotExpiry), Nil, 200)
-		}
-	}
-
-	def quizImage(server:String,jid:String,id:String) ={
-		val serverConfig = ServerConfiguration.configForName(server)
-		val binary = HistoryCache.getQuizImage(jid,serverConfig,id)
-		requestEtag match {
-			case Full(etag) if (etag == binary.checksum) => InMemoryResponse(Array.empty[Byte], List(), Nil, 304)
-			case _ => InMemoryResponse(binary.data, List("Content-Type" -> "image/jpg") ::: makeCacheHeaders(binary,quizImageExpiry), Nil, 200)
 		}
 	}
 }

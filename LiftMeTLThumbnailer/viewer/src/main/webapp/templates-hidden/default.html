@@ -32,118 +32,15 @@
 .lift_notice {
 }
 
-#header {
-	background-color: darkblue;
-	color: white;
-	top: 0;
-	right: 0;
-	width: 100%;
-	height: 100px;
-}
-#header * {
-	color: inherit;
-}
-
-#header #navigation {
-	float: left;
-}
-
-#header #currentUser {
-	float: right;
-	padding: 0.5em;
-}
-
-#header #title {
-	text-align: center;
-}
-
-#header #title > h1 {
-	display: inline;
-}
-
-#navigation a {
-	background-size: 75px 75px;
-	display: inline-block;
-	width: 75px;
-	height: 100px;
-}
-#navigation a > span {
-	display: block;
-	padding-top: 75px;
-	text-align: center;
-}
-#navLinkContainer {
-	display: inline-block;
-}
-
-#navHome {
-	background: url("/static/home.png") no-repeat;
-}
-.navLinkAnchor.slidesLink {
-	background: url("/static/transparency.png") no-repeat;
-}
-.navLinkAnchor.quizLink {
-	background: url("/static/quiz.png") no-repeat;
-}
-.navLinkAnchor.quizzesLink {
-	background: url("/static/quiz.png") no-repeat;
-}
-
-.navigationPrevious, .navigationNext {
-	background-color: white;
-	position: absolute;
-	top: 100px;
-	width: 128px;
-	bottom: 0;
-}
-.navigationPrevious {
-	left: 0;
-}
-.navigationNext {
-	right: 0;
-}
-.navigationPrevious > a, .navigationNext > a {
-	display: block;
-	position: absolute;
-	top: 50%;
-	margin-top: -64px;
-	width: 128px;
-	height: 128px;
-}
-.navigationPrevious > a {
-	background: url("/static/left.png") no-repeat;
-}
-.navigationNext > a {
-	background: url("/static/right.png") no-repeat;
-}
-
-.navigationPrevious > a > span, .navigationNext > a > span {
-	display: block;
-	margin: 0 auto;
-	padding-top: 128px;
-	text-align: center;
-}
-
 /* ]]> */
 	</style>
 </head>
-
 <body>
-
 	<div id="header">
-		<div id="currentUser"><lift:GlobalsSnippet.currentUser/></div>
-		<div id="navigation">
-			<a id="navHome" href="/"><span>Home</span></a>
-			<div id="navLinkContainer"/>
-		</div>
 		<div id="title">
-			<h1 id="titleText">MeTL Viewer</h1>
+			<h1 id="titleText">MeTL Thumbnailer</h1>
 		</div>
 	</div>
-
-	<div id="content" >
-	</div>
-
+	<div id="content" />
 </body>
-
 </html>

@@ -50,15 +50,7 @@ class Boot {
     // Build SiteMap
     def sitemap() = SiteMap(
       Menu("Home") / "index",
-	  Menu("Conversation") / "conversation",
-	  Menu("Slide") / "slide",
-		Menu("SlidePrev") / "slidePrev",
-		Menu("SlideNext") / "slideNext",
-		Menu("SlideNavigation") / "slideNavigation",
-		Menu("SlideTitle") / "slideTitle",
-	  Menu("Quiz") / "quiz",
-	  Menu("Quizzes") / "quizzes",
-      // Menu with special Link
+	  // Menu with special Link
       Menu(Loc("Static", Link(List("static"), true, "/static/index"), 
 	       "Static Content")))
 
@@ -72,18 +64,7 @@ class Boot {
 //			val height = S.param("height").openOr("")
 			Full(HttpResponder.snapshot(server,slide,"small"))
 		}
-	}
-
-	LiftRules.dispatch.append {
 		case Req(server :: "slide" :: jid :: size :: Nil,_,_) => () => Full(HttpResponder.snapshot(server,jid,size))
-		case Req(server :: "quizImage" :: jid :: id :: Nil,_,_) => () => Full(HttpResponder.quizImage(server,jid,id))
-		case Req(server :: "quizResponse" :: conversation :: quiz :: response :: Nil,_,_)
-			if (List(server,conversation,quiz,response).filter(_.length == 0).isEmpty) => () => {
-				val slide = S.param("slide").openOr("")
-				Full(QuizResponder.handleResponse(server,conversation,slide,quiz,response))
-			}
-
-		// /reifier/quizResponse/5572400/5572402/634660275205258331/A
 	}
 
     /*

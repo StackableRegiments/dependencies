@@ -59,10 +59,6 @@ class CachedHistory(id:CachedHistoryIdentifier) extends LiftActor {
 		lastRequested = new Date().getTime
 		CachedBinary(snapshot(size), lastRequested)
 	}
-	def getQuizImage(id:String):CachedBinary = {
-		lastRequested = new Date().getTime
-		CachedBinary(history.getQuizzes.find(q => q.id == id).map(q => q.imageBytes.openOr(Array.empty[Byte])).getOrElse(Array.empty[Byte]), lastRequested)
-	}
 }
 
 case class CachedHistoryIdentifier(jid:String,server:ServerConfiguration)
@@ -84,14 +80,5 @@ object HistoryCache {
 	}
 	def getSnapshot(jid:String,server:ServerConfiguration,size:SnapshotSize.Value) = {
 		Stopwatch.time("HistoryCache fetching snapshot: %s@%s size %s".format(jid,server.name,size),()=> histories(CachedHistoryIdentifier(jid,server)).getSnapshot(size))
-	}
-	def getQuizImage(jid:String,server:ServerConfiguration,id:String) = {
-		Stopwatch.time("HistoryCache fetching quizImage: %s@%s %s".format(jid,server.name,id),()=> histories(CachedHistoryIdentifier(jid,server)).getQuizImage(id))
-	}
-
-	def addQuizResponseToHistory(jid:String,server:ServerConfiguration,quizResponse:MeTLQuizResponse) = {
-		val id = CachedHistoryIdentifier(jid,server)
-		if (histories.contains(id))
-			histories(id) ! UpdateHistoryWithQuizResponse(quizResponse)
 	}
 }
