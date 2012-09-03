@@ -1,4 +1,6 @@
-package com.metl.model
+package com.metl.data
+
+import com.metl.utils._
 
 class SerializationNotImplementedException extends Exception("Serializer has not implemented this method")
 

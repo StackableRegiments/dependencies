@@ -1,4 +1,6 @@
-package com.metl.model
+package com.metl.data
+
+import com.metl.utils._
 
 // the feedback name should be bound to a particular onReceive function, so that we can use that feedbackName to match particular behaviours (given that the anonymous functions won't work that way for us)
 class MessageBusDefinition(val location:String, val feedbackName:String, val onReceive:(MeTLStanza) => Unit = (s:MeTLStanza) => {}){

@@ -1,4 +1,6 @@
-package com.metl.model
+package com.metl.data
+
+import com.metl.utils._
 
 abstract class HttpProvider{
 	def getClient:CleanHttpClient	

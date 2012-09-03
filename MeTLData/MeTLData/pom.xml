@@ -110,12 +110,6 @@
       <artifactId>lift-mapper_2.9.0-1</artifactId>
       <version>2.4</version>
     </dependency>
-    <dependency>
-      <groupId>org.apache.httpcomponents</groupId>
-      <artifactId>httpclient</artifactId>
-      <version>4.1</version>
-    </dependency>
-	
   </dependencies>
 
   <build>

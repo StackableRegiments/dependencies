@@ -1,4 +1,6 @@
-package com.metl.model
+package com.metl.data
+
+import com.metl.utils._
 
 import net.liftweb.util.Helpers._
 import net.liftweb.common._
