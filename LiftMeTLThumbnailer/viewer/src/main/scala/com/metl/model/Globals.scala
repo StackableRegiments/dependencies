@@ -1,5 +1,9 @@
 package com.metl.model
 
+import com.metl.data._
+import com.metl.utils._
+import com.metl.metl2011._
+
 import scala.xml._
 import _root_.net.liftweb.util._
 import Helpers._

@@ -1,5 +1,8 @@
 package com.metl.model
 
+import com.metl.data._
+import com.metl.utils._
+
 import net.liftweb.util.Helpers._
 import java.util.Date
 import net.liftweb.actor.LiftActor
