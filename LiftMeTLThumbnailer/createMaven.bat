@@ -1,0 +1,1 @@
+mvn archetype:generate -DarchetypeGroupId=net.liftweb -DarchetypeArtifactId=lift-archetype-basic-2.9.1 -DarchetypeVersion=2.4 -DarchetypeRepository=http://scala-tools.org/repo-releases -DremoteRepositories=http://scala-tools.org/repo-releases -DgroupId=com.metl -DartifactId=viewer -Dversion=1.0
