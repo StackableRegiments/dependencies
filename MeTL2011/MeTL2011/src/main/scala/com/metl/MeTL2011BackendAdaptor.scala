@@ -1,4 +1,7 @@
-package com.metl.model
+package com.metl.metl2011
+
+import com.metl.data._
+import com.metl.utils._
 
 class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
 	private val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")

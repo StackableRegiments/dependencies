@@ -1,4 +1,7 @@
-package com.metl.model
+package com.metl.metl2011
+
+import com.metl.data._
+import com.metl.utils._
 
 import scala.xml._
 import net.liftweb.common._

@@ -1,11 +1,9 @@
-package com.metl.model
+package com.metl.metl2011
 
-import org.jivesoftware.smack._
-import org.jivesoftware.smack.filter._
-import org.jivesoftware.smack.packet._
-import org.jivesoftware.smackx.muc._
-import net.liftweb.actor._
-import net.liftweb.common._
+import com.metl.data._
+import com.metl.utils._
+import com.metl.xmpp._
+
 import java.util.Random
 import net.liftweb.util.Helpers._
 import scala.xml._
