@@ -1,4 +1,4 @@
-package com.metl.model
+package com.metl.utils
 
 import java.io._
 import org.apache.http._

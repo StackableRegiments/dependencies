@@ -1,4 +1,4 @@
-package com.metl.model
+package com.metl.utils
 
 import java.security._
 import java.security.spec._
@@ -9,7 +9,6 @@ import java.io._
 
 import java.math._
 
-//import org.apache.commons.io._
 import net.liftweb.common._
 
 import scala.xml._
