@@ -131,7 +131,17 @@
 		</dependency> 
   </dependencies>
 
-  <build>
+  <build>		
+		<!-- start import maven svn wagon -->
+		<extensions>
+			<extension>
+				<groupId>com.google.code.maven-svn-wagon</groupId>
+				<artifactId>maven-svn-wagon</artifactId>
+				<version>1.4</version>
+			</extension>
+		</extensions>
+		<!-- end import maven svn wagon -->
+
     <sourceDirectory>src/main/scala</sourceDirectory>
     <testSourceDirectory>src/test/scala</testSourceDirectory>
     <plugins>
