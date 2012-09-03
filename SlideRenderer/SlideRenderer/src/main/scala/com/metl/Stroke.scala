@@ -1,9 +1,11 @@
 package com.metl.renderer
 
+import com.metl.data._
+import com.metl.utils._
+
 import java.awt.Shape
 import java.awt.geom._
 import net.liftweb.util.Helpers._
-import com.metl.model._
 
 case class Vector2(x:Double,y:Double) {
 	def +(v:Vector2) = new Vector2(x+v.x,y+v.y)

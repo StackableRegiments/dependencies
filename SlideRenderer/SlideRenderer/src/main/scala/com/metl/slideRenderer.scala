@@ -1,5 +1,8 @@
 package com.metl.renderer
 
+import com.metl.data._
+import com.metl.utils._
+
 import java.awt.{Color=>AWTColor,List=>AWTList,_}
 import java.awt.image._
 import java.awt.font._
@@ -9,7 +12,6 @@ import javax.imageio.ImageIO
 import java.io.ByteArrayInputStream
 import com.bric.geom.BasicVectorizer
 import net.liftweb.util.Helpers._
-import com.metl.model._
 
 object SlideRenderer {
 
