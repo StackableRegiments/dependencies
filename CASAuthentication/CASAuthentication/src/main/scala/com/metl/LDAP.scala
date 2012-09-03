@@ -1,6 +1,7 @@
-package com.metl.model
+package com.metl.ldap
 
-import Http._
+import com.metl.utils._
+
 import org.apache.commons.io._
 import javax.naming._
 import javax.naming.directory._

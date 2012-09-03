@@ -1,11 +1,14 @@
 package com.metl.cas
+
+import com.metl.utils._
+import com.metl.ldap._
+
 import net.liftweb.http._
 import net.liftweb.common._
 import scala.collection.immutable.List
 import net.liftweb.http.provider.HTTPCookie
 import java.net.URLEncoder
 import org.apache.commons.io.IOUtils
-import com.metl.model._
 
 case class CASStateData(authenticated:Boolean,username:String,eligibleGroups:Seq[(String,String)],informationGroups:Seq[(String,String)])
 object CASStateDataForbidden extends CASStateData(false,"forbidden",List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]]) {}
