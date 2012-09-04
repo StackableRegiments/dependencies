@@ -7,14 +7,15 @@ import net.liftweb.util.Helpers.TimeSpan
 import net.liftweb.actor.LiftActor
 
 case object Refresh
-class PeriodicallyRefreshingVar[T](acceptedStaleTime:TimeSpan, action:()=>Box[T]) extends LiftActor{
-	private var lastResult:Box[T] = Empty
-	doGet
+class PeriodicallyRefreshingVar[T](acceptedStaleTime:TimeSpan, valueCreationFunc:()=>T) extends LiftActor{
+	private var lastResult:T = valueCreationFunc()
+	scheduleRecheck
+	private def scheduleRecheck:Unit = ActorPing.schedule(this,Refresh,acceptedStaleTime:TimeSpan)
 	private def doGet:Unit = {
-		lastResult = action()
-		ActorPing.schedule(this,Refresh,acceptedStaleTime:TimeSpan)
+		lastResult = valueCreationFunc()
+		scheduleRecheck	
 	}
-	def get:Box[T] = lastResult
+	def get:T = lastResult
 	override def messageHandler = {
 		case Refresh => doGet
 		case _ => {}
