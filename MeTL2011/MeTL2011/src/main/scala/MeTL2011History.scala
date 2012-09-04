@@ -13,7 +13,6 @@ import java.util.Date
 
 class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetriever(serverName) {
 	val utils = new MeTL2011Utils(serverName)
-	val serializer = new MeTL2011XmlSerializer(serverName)
 	private def publicHistoryUrl(jid:String) = "https://%s:1749/%s/%s/all.zip".format(server.host,utils.stem(jid.toString),jid)		
 	def getMeTLHistory(jid:String):History = Stopwatch.time("MeTL2011History.getMeTLHistory", () => {
 		val url = publicHistoryUrl(jid)
@@ -38,6 +37,7 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 		Stopwatch.time("MeTL2011History.getMeTLHistory.makeHistory", () => makeHistory(jid.toString,messages))
 	})
 	def dailyXmlToListOfStanzas(input:NodeSeq):List[MeTLStanza] = Stopwatch.time("History.dailyXmlToListOfStanzas", () => {
+		val serializer = new MeTL2011XmlSerializer(serverName,true)
 		(input \\ "message").map(i => serializer.toMeTLStanza(i)).toList
 	})
 }

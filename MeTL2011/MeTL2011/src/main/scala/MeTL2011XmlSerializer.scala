@@ -11,8 +11,10 @@ import Privacy._
 import javax.imageio._
 import java.io.{ByteArrayInputStream,ByteArrayOutputStream}
 
-class MeTL2011XmlSerializer(configName:String) extends GenericXmlSerializer(configName){
-
+class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transcodePng:Boolean = false) extends GenericXmlSerializer(configName){
+	
+	private val imageCache = new SynchronizedWriteMap[String,Array[Byte]](scala.collection.mutable.HashMap.empty[String,Array[Byte]],true,(k:String) => config.getResource(k))
+	private def getCachedImage(url:String) = Stopwatch.time("MeTL2011XmlSerializer.getCachedImage", () => imageCache.getOrElseUpdate(url,config.getResource(url)))
 	private val metlUtils = new MeTL2011Utils(configName)
 	override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("MeTL2011XmlSerializer.toMeTLImage",() => {
 		val m = utils.parseMeTLContent(input)
@@ -22,14 +24,23 @@ class MeTL2011XmlSerializer(configName:String) extends GenericXmlSerializer(conf
 			case s:String if (s.length > 0 && s != "unknown url" && s != "none") => metlUtils.reabsolutizeUri(s,"Resource") 
 			case _ => Empty
 		}
-		val imageBytes = source.map(u => config.getResource(u))
-		val pngBytes = imageBytes.map(b => {
-			val inMs = new ByteArrayInputStream(b)
-			val anyFormat = ImageIO.read(inMs)
-			val out = new ByteArrayOutputStream
-			ImageIO.write(anyFormat,"png",out)
-			out.toByteArray
+		val imageBytes = source.map(u => {
+			if (cacheImages)
+				getCachedImage(u)
+			else
+				config.getResource(u)
 		})
+		val pngBytes = {
+			if (transcodePng)
+				imageBytes.map(b => {
+					val inMs = new ByteArrayInputStream(b)
+					val anyFormat = ImageIO.read(inMs)
+					val out = new ByteArrayOutputStream
+					ImageIO.write(anyFormat,"png",out)
+					out.toByteArray
+				})
+			else Empty
+		}
 		val width = utils.getDoubleByName(input,"width")
 		val height = utils.getDoubleByName(input,"height")
 		val x = utils.getDoubleByName(input,"x")
@@ -62,7 +73,12 @@ class MeTL2011XmlSerializer(configName:String) extends GenericXmlSerializer(conf
 			case s:String if (s.length > 0 && s != "unknown url" && s != "none") => metlUtils.reabsolutizeUri(s,"Resource")
 			case _ => Empty
 		}
-		val quizImage = url.map(u => config.getResource(u))
+		val quizImage = url.map(u => {
+			if (cacheImages)
+				getCachedImage(u)
+			else 
+				config.getResource(u)
+		})
 		val isDeleted = utils.getBooleanByName(input,"isDeleted")
 		val options = utils.getXmlByName(input,"quizOption").map(qo => toQuizOption(qo)).toList
 		MeTLQuiz(config,m.author,m.timestamp,created,question,id,url,quizImage,isDeleted,options)	
