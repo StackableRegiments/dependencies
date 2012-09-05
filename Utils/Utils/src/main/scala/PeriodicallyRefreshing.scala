@@ -31,4 +31,16 @@ class ChangeNotifyingSessionVar[T](dflt: =>T) extends SessionVar[T](dflt){
     def subscribe(handler:T=>Unit)= onChange = handler :: onChange
     def unsubscribe(handler:T=>Unit)= onChange = onChange.filterNot(_ == handler)
 }
-
+/*
+class PeriodicallyExpiringMap[A,B](frequency:TimeSpan) extends LiftActor{
+	private def scheduleRecheck:Unit = ActorPing.schedule(this,Refresh,frequency:TimeSpan)
+	def apply(k:A) = {
+	}
+	private def checkForExpiry = {
+	}
+	override def messageHandler = {
+		case Refresh => checkForExpiry
+		case _ => {}
+	}
+}
+*/
