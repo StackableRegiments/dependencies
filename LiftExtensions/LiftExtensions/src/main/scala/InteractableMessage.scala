@@ -92,6 +92,76 @@ case class InteractableMessage(scope:InteractableMessage=>NodeSeq,incomingTitle:
   override val content = scope(this)
 	override val contentNode = ajaxForm(content)
 }
+
+case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,defaultValue:String,onChanged:(String)=>Boolean, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+	var newText = defaultValue
+	<div>
+		<div>{body}</div>
+		<div>
+			<span>
+				{text(newText,(input:String) => newText = input)}
+			</span>
+			<span>
+				{a(()=>{
+					if (onChanged(newText)){
+						i.done
+					} else {
+						customError.map(ce => ce())
+					}
+					Noop
+				},Text("Submit")) }
+			</span>
+		</div>
+	</div>
+},Full(messageTitle))
+
+case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:String,buttons:Map[String,()=>Boolean], customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+	<div>
+		<div>{body}</div>
+		<div>
+			{
+				buttons.toList.map(bd => {
+					val buttonName = bd._1
+					val buttonAction = bd._2
+					<div>	
+						{a(()=>{
+							if (buttonAction()){
+								i.done
+							} else {
+								customError.map(ce => ce())
+								Noop
+							}
+						},Text(buttonName))}
+					</div>
+				})
+			}
+		</div>
+	</div>	
+},Full(messageTitle))
+
+case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,radioOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+	var chosenOption = defaultOption.map(dOpt => (dOpt,radioOptions(dOpt))).openOr(radioOptions.toList(0))
+	<div>
+		<div>{body}</div>
+		<div>
+			{
+				radio(radioOptions.toList.map(optTuple => optTuple._1),Full(chosenOption._1),(chosen:String) => chosenOption = (chosen,radioOptions(chosen))).toForm
+			}		
+			<div>
+				{a(()=>{
+					if (chosenOption._2()){
+						i.done
+					} else {
+						customError.map(ce => ce())
+						Noop
+					}
+					Noop
+				},Text("Submit")) }
+			</div>
+		</div>
+	</div>	
+},Full(messageTitle))
+
 case class SpamMessage(content:NodeSeq,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
 	override val contentNode = a(() => done,content)
 }
