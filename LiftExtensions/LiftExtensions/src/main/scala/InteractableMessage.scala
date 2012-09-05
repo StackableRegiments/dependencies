@@ -88,10 +88,10 @@ case object Clear extends ClientMessage("clearSingleton",Empty,(cm)=>{},NodeSeq.
 	override val content = NodeSeq.Empty
 	override def renderMessage = NodeSeq.Empty
 }
-case class InteractableMessage(scope:InteractableMessage=>NodeSeq,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=false,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
+case class InteractableMessage(scope:InteractableMessage=>NodeSeq,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
   override val content = scope(this)
 	override val contentNode = ajaxForm(content)
 }
-case class SpamMessage(content:NodeSeq,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=false,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
+case class SpamMessage(content:NodeSeq,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
 	override val contentNode = a(() => done,content)
 }

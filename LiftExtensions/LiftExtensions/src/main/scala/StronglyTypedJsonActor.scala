@@ -45,7 +45,7 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 		}
 		private def matchesRequirements(funcArgs:JValue):Boolean = {
 			args.length match {
-				case 0 => funcArgs == Nil
+				case 0 => funcArgs == JNull || funcArgs == Nil
 				case 1 => funcArgs match {
 					case u:JArray => false
 					case u:JValue => true
