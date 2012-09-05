@@ -2,6 +2,7 @@ package com.metl.model
 
 import com.metl.data._
 import com.metl.utils._
+import com.metl.liftExtensions._
 
 import net.liftweb.util.Helpers._
 import java.util.Date
@@ -13,10 +14,6 @@ import com.metl.renderer.SlideRenderer
 
 case object RefreshHistory
 case class UpdateHistoryWithQuizResponse(quizResponse:MeTLQuizResponse)
-
-case class CachedBinary(data:Array[Byte],createTime:Long) {
-	lazy val checksum = DigestUtils.shaHex(data)
-}
 
 class CachedHistory(id:CachedHistoryIdentifier) extends LiftActor {
 	val jid = id.jid
