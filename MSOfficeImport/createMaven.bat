@@ -1,0 +1,1 @@
+mvn archetype:generate -DarchetypeGroupId=net.liftweb -DarchetypeRepository=http://scala-tools.org/repo-releases -DremoteRepositories=http://scala-tools.org/repo-releases -DgroupId=com.metl -DartifactId=metlCompanionServer -Dversion=1.0
