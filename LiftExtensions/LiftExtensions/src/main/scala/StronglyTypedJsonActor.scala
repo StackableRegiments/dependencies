@@ -80,7 +80,6 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 	val strongFuncs = Map(functionDefinitions.map(fd => (fd.name,ClientSideFunction(fd.name,fd.args,fd.serverSideFunc,fd.returnResultFunction))):_*)
   val functions = NodeSeq.fromSeq(strongFuncs.values.map(_.jsCreationFunc).toList)
 	override def fixedRender = {
-		println("setting up functions: %s".format(functions))
 		Stopwatch.time("StronglyTypedJsonActor.fixedRender", () => functions)
 	}
 	override def receiveJson = {

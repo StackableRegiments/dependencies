@@ -95,6 +95,7 @@ case class InteractableMessage(scope:InteractableMessage=>NodeSeq,incomingTitle:
 
 case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,defaultValue:String,onChanged:(String)=>Boolean, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
 	var newText = defaultValue
+	var answerProvided = false
 	<div>
 		<div>{body}</div>
 		<div>
@@ -103,7 +104,8 @@ case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,def
 			</span>
 			<span>
 				{a(()=>{
-					if (onChanged(newText)){
+					if (!answerProvided && onChanged(newText)){
+						answerProvided = true
 						i.done
 					} else {
 						customError.map(ce => ce())
@@ -115,7 +117,8 @@ case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,def
 	</div>
 },Full(messageTitle))
 
-case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:String,buttons:Map[String,()=>Boolean], customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:String,buttons:Map[String,()=>Boolean], customError:Box[()=>Unit] = Empty, vertical:Boolean = true) extends InteractableMessage((i)=>{
+	var answerProvided = false
 	<div>
 		<div>{body}</div>
 		<div>
@@ -123,16 +126,20 @@ case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:Stri
 				buttons.toList.map(bd => {
 					val buttonName = bd._1
 					val buttonAction = bd._2
-					<div>	
-						{a(()=>{
-							if (buttonAction()){
+					val internalButton = a(()=>{
+							if (!answerProvided && buttonAction()){
+								answerProvided = true
 								i.done
 							} else {
 								customError.map(ce => ce())
 								Noop
 							}
-						},Text(buttonName))}
-					</div>
+						},Text(buttonName))
+					if (vertical){ 
+						<div>{internalButton}</div>
+					} else {
+						<span>{internalButton}</span>
+					}
 				})
 			}
 		</div>
@@ -140,6 +147,7 @@ case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:Stri
 },Full(messageTitle))
 
 case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,radioOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+	var answerProvided = false
 	var chosenOption = defaultOption.map(dOpt => (dOpt,radioOptions(dOpt))).openOr(radioOptions.toList(0))
 	<div>
 		<div>{body}</div>
@@ -149,7 +157,33 @@ case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,
 			}		
 			<div>
 				{a(()=>{
-					if (chosenOption._2()){
+					if (!answerProvided && chosenOption._2()){
+						answerProvided = true
+						i.done
+					} else {
+						customError.map(ce => ce())
+						Noop
+					}
+					Noop
+				},Text("Submit")) }
+			</div>
+		</div>
+	</div>	
+},Full(messageTitle))
+
+case class SimpleDropdownInteractableMessage(messageTitle:String,body:String,dropdownOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty,customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+	var answerProvided = false
+	var chosenOption = defaultOption.map(dOpt => (dOpt,dropdownOptions(dOpt))).openOr(dropdownOptions.toList(0))
+	<div>
+		<div>{body}</div>
+		<div>
+			{
+				select(dropdownOptions.toList.map(optTuple => (optTuple._1,optTuple._1)),Full(chosenOption._1),(chosen:String) => chosenOption = (chosen,dropdownOptions(chosen)))
+			}		
+			<div>
+				{a(()=>{
+					if (!answerProvided && chosenOption._2()){
+						answerProvided = true
 						i.done
 					} else {
 						customError.map(ce => ce())
