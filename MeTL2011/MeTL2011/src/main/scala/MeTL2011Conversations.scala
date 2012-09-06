@@ -58,6 +58,7 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 		val conv = detailsOf(jid.toInt)
 		val now = new java.util.Date()
 		val local = Conversation(config,conv.author,now.getTime,conv.slides,conv.subject,conv.tag,conv.jid,newTitle,conv.created,conv.permissions)
+		println("renamed conversation: %s -> %s".format(conv,local))
 		pushConversationToServer(local)
 	}
 	override def changePermissions(jid:String,newPermissions:Permissions):Conversation = {
@@ -97,8 +98,11 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
 	private def pushConversationToServer(conversation:Conversation):Conversation = {
 		val jid = conversation.jid
 		val bytes = serializer.fromConversation(conversation).toString.getBytes("UTF-8")
-		http.getClient.postBytes("%s/upload_nested.yaws?overwrite=true&path=%s&filename=details.xml".format(rootAddress,Helpers.urlEncode("Structure/%s/%s".format(utils.stem(jid.toString),jid.toString))),bytes)
+		val url = "%s/upload_nested.yaws?overwrite=true&path=%s&filename=details.xml".format(rootAddress,Helpers.urlEncode("Structure/%s/%s".format(utils.stem(jid.toString),jid.toString)))
+		println("pushing conversation: %s".format(conversation))
+		http.getClient.postBytes(url,bytes)
 		val remote = detailsOf(jid)
+		println("verifying upload: %s".format(remote))
 		notifyXmpp(remote)
 		remote
 	}

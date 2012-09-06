@@ -94,24 +94,22 @@ case class InteractableMessage(scope:InteractableMessage=>NodeSeq,incomingTitle:
 }
 
 case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,defaultValue:String,onChanged:(String)=>Boolean, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
-	var newText = defaultValue
 	var answerProvided = false
 	<div>
 		<div>{body}</div>
 		<div>
 			<span>
-				{text(newText,(input:String) => newText = input)}
-			</span>
-			<span>
-				{a(()=>{
-					if (!answerProvided && onChanged(newText)){
+				{text(defaultValue,(input:String) => {
+					if (!answerProvided && onChanged(input)){
 						answerProvided = true
 						i.done
 					} else {
 						customError.map(ce => ce())
 					}
-					Noop
-				},Text("Submit")) }
+				})}
+			</span>
+			<span>
+				{submit("Submit", ()=>Noop)}
 			</span>
 		</div>
 	</div>
@@ -148,24 +146,21 @@ case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:Stri
 
 case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,radioOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
 	var answerProvided = false
-	var chosenOption = defaultOption.map(dOpt => (dOpt,radioOptions(dOpt))).openOr(radioOptions.toList(0))
 	<div>
 		<div>{body}</div>
 		<div>
 			{
-				radio(radioOptions.toList.map(optTuple => optTuple._1),Full(chosenOption._1),(chosen:String) => chosenOption = (chosen,radioOptions(chosen))).toForm
-			}		
-			<div>
-				{a(()=>{
-					if (!answerProvided && chosenOption._2()){
+				radio(radioOptions.toList.map(optTuple => optTuple._1),defaultOption,(chosen:String) => {
+					if (!answerProvided && radioOptions(chosen)()){
 						answerProvided = true
 						i.done
 					} else {
 						customError.map(ce => ce())
-						Noop
 					}
-					Noop
-				},Text("Submit")) }
+				}).toForm
+			}		
+			<div>
+				{submit("Submit", ()=> Noop) }
 			</div>
 		</div>
 	</div>	
@@ -173,24 +168,21 @@ case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,
 
 case class SimpleDropdownInteractableMessage(messageTitle:String,body:String,dropdownOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty,customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
 	var answerProvided = false
-	var chosenOption = defaultOption.map(dOpt => (dOpt,dropdownOptions(dOpt))).openOr(dropdownOptions.toList(0))
 	<div>
 		<div>{body}</div>
 		<div>
 			{
-				select(dropdownOptions.toList.map(optTuple => (optTuple._1,optTuple._1)),Full(chosenOption._1),(chosen:String) => chosenOption = (chosen,dropdownOptions(chosen)))
-			}		
-			<div>
-				{a(()=>{
-					if (!answerProvided && chosenOption._2()){
+				select(dropdownOptions.toList.map(optTuple => (optTuple._1,optTuple._1)),defaultOption,(chosen:String) => {
+					if (!answerProvided && dropdownOptions(chosen)()){
 						answerProvided = true
 						i.done
 					} else {
 						customError.map(ce => ce())
-						Noop
 					}
-					Noop
-				},Text("Submit")) }
+				})
+			}		
+			<div>
+				{submit("Submit",()=> Noop) }
 			</div>
 		</div>
 	</div>	
