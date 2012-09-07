@@ -39,7 +39,7 @@ object SlideRenderer {
 		else size
 	}
 
-	 def toAwtColor(c:Color,overrideAlpha:Int = -1):AWTColor = {
+	def toAwtColor(c:Color,overrideAlpha:Int = -1):AWTColor = {
 		if (overrideAlpha < 0)
 			new AWTColor(c.red,c.green,c.blue,c.alpha)
 		else
@@ -55,55 +55,69 @@ object SlideRenderer {
 		}).openOr(emptyImage)
 	})
 	private def renderImage(metlImage:MeTLImage,g:Graphics2D):Unit = Stopwatch.time("SlideRenderer.renderImage", () => {
-		metlImage match {
-			case m:MeTLImage => {
-				val image:Image = getImageFor(metlImage)
-				val (finalHeight,finalWidth) = (metlImage.height,metlImage.width) match {
-					case (h:Double,w:Double) if (h.isNaN || w.isNaN) => {
-						val imageObserver = new Canvas(g.getDeviceConfiguration)
-						val internalHeight = h match {
-							case d:Double if (d.isNaN) => {
-								val observedHeight = image.getHeight(imageObserver)
-								//println("observed height: %s".format(observedHeight))
-								observedHeight * metlImage.scaleFactor
+		try {
+			metlImage match {
+				case m:MeTLImage => {
+					val image:Image = getImageFor(metlImage)
+					val (finalHeight,finalWidth) = (metlImage.height,metlImage.width) match {
+						case (h:Double,w:Double) if (h.isNaN || w.isNaN) => {
+							val imageObserver = new Canvas(g.getDeviceConfiguration)
+							val internalHeight = h match {
+								case d:Double if (d.isNaN) => {
+									val observedHeight = image.getHeight(imageObserver)
+									//println("observed height: %s".format(observedHeight))
+									observedHeight * metlImage.scaleFactorY
+								}
+								case d:Double => d
+								case _ => 0.0
 							}
-							case d:Double => d
-							case _ => 0.0
-						}
-						val internalWidth = w match {
-							case d:Double if (d.isNaN) => {
-								val observedWidth = image.getWidth(imageObserver)
-								//println("observed width: %s".format(observedWidth))
-								observedWidth * metlImage.scaleFactor
+							val internalWidth = w match {
+								case d:Double if (d.isNaN) => {
+									val observedWidth = image.getWidth(imageObserver)
+									//println("observed width: %s".format(observedWidth))
+									observedWidth * metlImage.scaleFactorX
+								}
+								case d:Double => d
+								case _ => 0.0
 							}
-							case d:Double => d
-							case _ => 0.0
+							(internalHeight,internalWidth)
 						}
-						(internalHeight,internalWidth)
+						case (h:Double,d:Double) => (h,d)
+						case _ => (0.0,0.0)	
 					}
-					case (h:Double,d:Double) => (h,d)
-					case _ => (0.0,0.0)	
+					//println("rendered image: %s with height (%s) and width (%S)".format(m,finalHeight,finalWidth))
+					image match {
+						case i:Image if (finalHeight == 0.0 || finalWidth == 0.0) => {}
+						case i:Image => g.drawImage(image,m.left.toInt,m.top.toInt,finalWidth.toInt,finalHeight.toInt,null)
+						case _ => {}
+					}
 				}
-				//println("rendered image: %s with height (%s) and width (%S)".format(m,finalHeight,finalWidth))
-				image match {
-					case i:Image if (finalHeight == 0.0 || finalWidth == 0.0) => {}
-					case i:Image => g.drawImage(image,m.left.toInt,m.top.toInt,finalWidth.toInt,finalHeight.toInt,null)
-					case _ => {}
-				}
+				case _ => {}
 			}
-			case _ => {}
+		} catch {
+			case e:Throwable => {
+				e.printStackTrace
+				println("failed to render image: %s with exception %s".format(metlImage, e.getMessage))
+			}
 		}
 	})
 
 	private def renderInk(metlInk:MeTLInk,g:Graphics2D) = Stopwatch.time("SlideRenderer.renderInk", () => {
-		val HIGHLIGHTER_ALPHA  = 55
-		val PRESSURE = 0.22
-		val color = metlInk.isHighlighter match {
-			case true => toAwtColor(metlInk.color, HIGHLIGHTER_ALPHA)
-			case false => toAwtColor(metlInk.color)
+		try {
+			val HIGHLIGHTER_ALPHA  = 55
+			val PRESSURE = 0.22
+			val color = metlInk.isHighlighter match {
+				case true => toAwtColor(metlInk.color, HIGHLIGHTER_ALPHA)
+				case false => toAwtColor(metlInk.color)
+			}
+			g.setPaint(color)
+			g.fill(new Stroke(metlInk.points,metlInk.thickness))
+		} catch {
+			case e:Throwable => {
+				e.printStackTrace
+				println("failed to render ink: %s with exception %s".format(metlInk, e.getMessage))
+			}
 		}
-		g.setPaint(color)
-		g.fill(new Stroke(metlInk.points,metlInk.thickness))
 	})
 
 	case class PreparedTextLine(text:String,layout:TextLayout,x:Float,y:Float,width:Float,height:Float,color:Color)
@@ -185,10 +199,17 @@ object SlideRenderer {
 	})
 
 	private def renderText(lines:List[PreparedTextLine],g:Graphics2D) = Stopwatch.time("SlideRenderer.renderText", () => {
-		lines.foreach(line => {
-			g.setPaint(toAwtColor(line.color))
-			line.layout.draw(g,line.x,line.y)
-		})
+		try {
+			lines.foreach(line => {
+				g.setPaint(toAwtColor(line.color))
+				line.layout.draw(g,line.x,line.y)
+			})
+		} catch {
+			case e:Throwable => {
+				e.printStackTrace
+				println("failed to render text: %s with exception %s".format(lines, e.getMessage))
+			}
+		}
 	})
 
 	private val ratioConst = 0.75
@@ -203,45 +224,50 @@ object SlideRenderer {
 				val tempG = tempImage.createGraphics.asInstanceOf[Graphics2D]
 				val nativeScalePreparedTextLines = h.getTexts.map(t => measureText(t,tempG))
 
-				val (right,bottom) = nativeScalePreparedTextLines.foldLeft((h.getRight,h.getBottom))((acc,item) => {
+				val (left,right,top,bottom) = nativeScalePreparedTextLines.foldLeft((h.getLeft,h.getRight,h.getTop,h.getBottom))((acc,item) => {
 					item.foldLeft(acc)((internalAcc,internalItem) => {
-						val newRight = Math.max(internalAcc._1,internalItem.x+internalItem.width)
-						val newBottom = Math.max(internalAcc._2,internalItem.y+internalItem.height)
-						(newRight,newBottom)
+						val newLeft = Math.min(internalAcc._1,internalItem.x)
+						val newRight = Math.max(internalAcc._2,internalItem.x+internalItem.width)
+						val newTop = Math.min(internalAcc._3,internalItem.y)
+						val newBottom = Math.max(internalAcc._4,internalItem.y+internalItem.height)
+						(newLeft,newRight,newTop,newBottom)
 					})
 				})
-
-				val historyRatio = tryo(bottom/right).openOr(ratioConst)
-
-				//println("---")
-				//println("requested: W:%s,H:%s".format(width,height))
-				//println("history ratio: %s (bottom:%s,right:%s)".format(historyRatio,bottom,right))	
+				println("")
+				val contentWidth = (right - left)
+				val contentHeight = (bottom - top)
+				val contentXOffset = left * -1
+				val contentYOffset = top * -1
+				val historyRatio = tryo(contentHeight/contentWidth).openOr(ratioConst)
+				
+				println("---")
+				println("requested: W:%s,H:%s".format(width,height))
+				println("history: %s (left:%s,right:%s,top:%s,bottom:%s)".format(h,h.getLeft,h.getRight,h.getTop,h.getBottom))
+				println("history ratio: %s (width:%s,height:%s) <- (left:%s,right:%s,top:%s,bottom:%s)".format(historyRatio,contentWidth,contentHeight,left,right,top,bottom))	
 
 				val (renderWidth,renderHeight,scaleFactor) = (historyRatio >= ratioConst) match {
 					case true => {
 						val initialWidth = Math.max(1.0,width)
 						var initialHeight = initialWidth*historyRatio
 						val (renderWidth,renderHeight) = 
-							//(initialWidth*(height/initialHeight),height)
 							(initialHeight > height) match {
 								case true => (initialWidth*(height/initialHeight),height)
 								case false => (initialWidth,initialHeight)
 							}
-						(renderWidth,renderHeight,renderWidth/right)
+						(renderWidth,renderHeight,renderWidth/contentWidth)
 					}
 					case false => {
 						val initialHeight = Math.max(1.0,height)
 						var initialWidth = initialHeight/historyRatio
 						val (renderWidth,renderHeight) = 
-							//(width,initialHeight*(width/initialWidth))
 								(initialWidth > width) match {
 								case true => (width,initialHeight*(width/initialWidth))
 								case false => (initialWidth,initialHeight)
 							}
-						(renderWidth,renderHeight,renderHeight/bottom)
+						(renderWidth,renderHeight,renderHeight/contentHeight)
 					}
 				}
-				//println("render: F:%s (RW:%s,RH:%s)".format(scaleFactor,renderWidth,renderHeight))
+				println("render: F:%s (RW:%s,RH:%s)".format(scaleFactor,renderWidth,renderHeight))
 
 				val unscaledImage = new BufferedImage(width.toInt,height.toInt,BufferedImage.TYPE_3BYTE_BGR)
 				val g = unscaledImage.createGraphics.asInstanceOf[Graphics2D]
@@ -249,11 +275,13 @@ object SlideRenderer {
 				g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 				g.setPaint(AWTColor.white)
 				g.fill(new Rectangle(0,0,width.toInt,height.toInt))
-
-				val scaledHistory = (scaleFactor != h.getScaleFactor) match {
-					case true => h.scale(scaleFactor)
+				val scaleApplier = scaleFactor
+				val scaledHistory = (scaleFactor != h.xScale || scaleFactor != h.yScale || h.xOffset != 0 || h.yOffset != 0) match {
+					//case true => h.adjustToVisual(contentXOffset,contentYOffset,1.0,1.0).scale(scaleApplier)
+					case true => h.adjustToVisual(contentXOffset,contentYOffset,scaleApplier,scaleApplier)
 					case false => h
 				}
+				println("scaledHistory: %s (l:%s,r:%s,t:%s,b:%s)".format(scaledHistory,scaledHistory.getLeft,scaledHistory.getRight,scaledHistory.getTop,scaledHistory.getBottom))
 
 				//g.transform(AffineTransform.getTranslateInstance((width-renderWidth)/2,(height-renderHeight)/2))
 
@@ -262,7 +290,7 @@ object SlideRenderer {
 				scaledHistory.getTexts.foreach(t => renderText(measureText(t,g),g))
 				scaledHistory.getInks.foreach(renderInk(_,g))
 
-				//println("---")
+				println("---")
 				imageToByteArray(unscaledImage)
 			}
 
