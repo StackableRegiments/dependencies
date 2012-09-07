@@ -12,6 +12,7 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) exten
 	private val resourceProvider = new MeTL2011Resources(name,http)
 	override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
 	override def getHistory(jid:String) = history.getMeTLHistory(jid)
+	override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
 	override def searchForConversation(query:String) = conversations.search(query)
 	override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
 	override def createConversation(title:String,author:String) = conversations.createConversation(title,author)
@@ -34,6 +35,7 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:Stri
 	val serializer = new MeTL2011XmlSerializer(name)
 	override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
 	override def getHistory(jid:String) = history.getMeTLHistory(jid)
+	override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
 	override def searchForConversation(query:String) = conversations.search(query)
 	override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
 	override def createConversation(title:String,author:String) = Conversation.empty

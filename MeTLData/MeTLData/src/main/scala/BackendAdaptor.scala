@@ -24,6 +24,7 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	val host = incomingHost
 	def getMessageBus(d:MessageBusDefinition):MessageBus
 	def getHistory(jid:String):History
+	def getConversationForSlide(slideJid:String):String
 	def searchForConversation(query:String):List[Conversation]
 	def detailsOfConversation(jid:String):Conversation
 	def createConversation(title:String,author:String):Conversation
@@ -42,6 +43,7 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 	val serializer = new PassthroughSerializer
 	override def getMessageBus(d:MessageBusDefinition) = EmptyMessageBus
 	override def getHistory(jid:String) = History.empty
+	override def getConversationForSlide(slideJid:String):String = "" 
 	override def searchForConversation(query:String) = List.empty[Conversation]
 	override def detailsOfConversation(jid:String) = Conversation.empty
 	override def createConversation(title:String,author:String) = Conversation.empty
@@ -60,6 +62,7 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 	val serializer = new GenericXmlSerializer("frontend")
 	override def getMessageBus(d:MessageBusDefinition) = EmptyMessageBus
 	override def getHistory(jid:String) = History.empty
+	override def getConversationForSlide(slideJid:String):String = "" 
 	override def searchForConversation(query:String) = List.empty[Conversation]
 	override def detailsOfConversation(jid:String) = Conversation.empty
 	override def createConversation(title:String,author:String) = Conversation.empty
