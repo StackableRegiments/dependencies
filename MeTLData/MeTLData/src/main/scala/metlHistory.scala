@@ -38,6 +38,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getRenderable = Stopwatch.time("History.getRenderable", () => {
     getImages ::: getTexts ::: getHighlighters ::: getInks
   })
+	
   def getAll = Stopwatch.time("History.getAll", () => {
     getQuizzes ::: getQuizResponses ::: getSubmissions ::: getCommands ::: getRenderable
   })
@@ -261,6 +262,23 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     quizzes.foreach(s => newHistory.addQuiz(s))
     quizResponses.foreach(s => newHistory.addQuizResponse(s))
     submissions.foreach(s => newHistory.addSubmission(s))
+    commands.foreach(s => newHistory.addCommand(s))
+    newHistory
+	})
+	def getUserSpecificHistory(user:String, isTeacher:Boolean = false) = Stopwatch.time("History.getUserSpecificHistory(%s)".format(user), () => {
+		val possiblyAdd = (s:MeTLStanza, action:() => Unit) => {
+			if (isTeacher || s.author.toLowerCase == user){
+				action()
+			}
+		}
+		val newHistory = History(jid,xScale,yScale,xOffset,yOffset)
+		highlighters.foreach(s => possiblyAdd(s,() => newHistory.addHighlighter(s)))
+    inks.foreach(s => possiblyAdd(s,() => newHistory.addInk(s)))
+    images.foreach(s => possiblyAdd(s,() => newHistory.addImage(s)))
+    texts.foreach(s => possiblyAdd(s,() => newHistory.addText(s)))
+    quizzes.foreach(s => newHistory.addQuiz(s))
+    quizResponses.foreach(s => possiblyAdd(s,() => newHistory.addQuizResponse(s)))
+    submissions.foreach(s => possiblyAdd(s,() => newHistory.addSubmission(s)))
     commands.foreach(s => newHistory.addCommand(s))
     newHistory
 	})
