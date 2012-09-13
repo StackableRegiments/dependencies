@@ -34,47 +34,78 @@ object JNum{
 case class ClientSideFunctionDefinition(name:String,args:List[String],serverSideFunc:List[Any]=>JValue,returnResultFunction:Box[String])
 abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 	protected val functionDefinitions:List[ClientSideFunctionDefinition]
+	private def createResponse(name:String,requestId:Option[String],success:Boolean,result:Option[JValue] = Empty):JsCmd = {
+		Call("serverResponse",JObject(List(JField("command",JString(name)),JField("success",JBool(success))) ::: requestId.map(r => List(JField("commandId",JString(r)))).getOrElse(List.empty[JField]) ::: result.map(r => List(JField("response",r))).getOrElse(List.empty[JField])))
+	}
+	case object ClientSideFunctionNotFound extends ClientSideFunction("no function",List.empty[String],(l) => JNull,Empty)
 	case class ClientSideFunction(name:String,args:List[String],serverSideFunc:List[Any]=>JValue,returnResultFunction:Box[String]){
-		private def deconstructArgs(funcArgs:JValue):List[Any] = funcArgs match {
-			case JArray(listOfFields) => listOfFields
-			case JString(s) => List(s)
-			case JNum(d) => List(d)
-			case JNull => List.empty[String]
-			case obj:JValue => List(obj)
-			case _ => List.empty[String]
+		private def deconstruct(input:JValue):Any = {
+			input match {
+				case j:JObject => j
+				case JString(s) => s
+				case JInt(i) => i
+				case JNum(n) => n
+				case JArray(l) => l.map(deconstruct(_))
+				case j:JValue => j
+				case other => other.toString
+			}
+		}
+		private def deconstructArgs(funcArgs:JValue):Tuple2[Option[String],List[Any]] = {
+			funcArgs match {
+				case JArray(l) if (l.length > 1) => (l.headOption.map(s => deconstruct(s).toString),l.tail.map(deconstruct(_)))
+				case JArray(l) => (l.headOption.map(s => deconstruct(s).toString),List.empty[Any])
+				case JString(s) => (Some(s),List.empty[Any])
+				case JNum(d) => (Some(d.toString),List.empty[String])
+				case JNull => (None,List.empty[String])
+				case obj:JValue => (None,List(obj))
+				case _ => (None,List.empty[String])
+			}
 		}
 		private def matchesRequirements(funcArgs:JValue):Boolean = {
 			args.length match {
-				case 0 => funcArgs == JNull || funcArgs == Nil
-				case 1 => funcArgs match {
-					case u:JArray => false
+				case 0 => funcArgs match {
+					case JArray(u) => u.length == 1
 					case u:JValue => true
 					case _ => false
 				}
-				case other => funcArgs match {	
-					case u:JArray => u.arr.length == other
+				case other => funcArgs match {
+					case JArray(u) => u.length == other + 1
 					case _ => false
 				}
 			}
 		}
-		private val jsonifiedArgs:JsExp = args match {
-			case Nil => JNull
-			case List(arg) => JsRaw(arg)
-			case l:List[String] if (l.length > 1) => JsRaw("[%s]".format(l.mkString(",")))
-			case _ => JNull
+		private val jsonifiedArgs:JsExp = {
+			val requestIdentifier = "new Date().getTime().toString()"
+			val constructList = (l:List[String]) => JsRaw("[%s]".format(l.mkString(",")))
+			args match {
+				case Nil => JsRaw(requestIdentifier)
+				case List(arg) => constructList(List(requestIdentifier,arg))
+				case l:List[String] if (l.length > 1) => constructList(requestIdentifier :: l)
+				case _ => JNull
+			}
 		}
 		val jsCreationFunc = Script(Function(name,args,jsonSend(name,jsonifiedArgs)))
-		def matchingFunc(input:Any):JsCmd = input match {
+		def matchingFunc(input:Any):Tuple3[Boolean,Option[String],Option[JValue]] = input match {
 			case funcArgs:JValue if matchesRequirements(funcArgs) => {
-				val output = Stopwatch.time("MeTLActor.ClientSideFunction.%s.serverSideFunc".format(name),() => {
-					serverSideFunc(deconstructArgs(funcArgs))
-				})
-				returnResultFunction.map(rrf => {
-					partialUpdate(Call(rrf,output))
-				})
-				Noop.asInstanceOf[JsCmd]
+				val (reqId,deconstructedArgs) = deconstructArgs(funcArgs)
+				try {
+					val output = Stopwatch.time("MeTLActor.ClientSideFunction.%s.serverSideFunc".format(name),() => {
+						println("deconstructedArgs: %s".format(deconstructedArgs))
+						serverSideFunc(deconstructedArgs)
+					})
+					returnResultFunction.map(rrf => {
+						partialUpdate(Call(rrf,output))
+					})
+					(true,reqId,None)
+				} catch {
+					case e:Throwable => 
+						(false,reqId,Some(JString(e.getMessage)))
+					case other => 
+						(false,reqId,Some(JString(other.toString)))
+				}
 			}
-			case _ => Noop 
+			case other:JValue => (false,Some(input.toString),Some(JObject(List(JField("error",JString("request didn't match function requirements")),JField("providedParams",other)))))
+			case other => (false,Some(input.toString),Some(JObject(List(JField("error",JString("request didn't match function requirements")),JField("unknownParams",JString(other.toString))))))
 		}
 	}
 	val strongFuncs = Map(functionDefinitions.map(fd => (fd.name,ClientSideFunction(fd.name,fd.args,fd.serverSideFunc,fd.returnResultFunction))):_*)
@@ -83,7 +114,11 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 		Stopwatch.time("StronglyTypedJsonActor.fixedRender", () => functions)
 	}
 	override def receiveJson = {
-		case ClientUpdate(commandName,commandParams) => strongFuncs(commandName).matchingFunc(commandParams)
-    case other => println("receiveJson: %s".format(other))
+		case ClientUpdate(commandName,commandParams) => {
+			val c = strongFuncs.getOrElse(commandName,ClientSideFunctionNotFound)
+			val (success,requestIdentifier,optionalMessage) = c.matchingFunc(commandParams)
+			createResponse(c.name,requestIdentifier,success,optionalMessage)
+		}
+    case other => createResponse("unknown",None,false,Some(JString(other.toString)))
   }
 }
