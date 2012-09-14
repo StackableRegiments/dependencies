@@ -132,7 +132,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 		val thickness = utils.getDoubleByName(input,"thickness")
 		val isHighlighter = utils.getBooleanByName(input,"highlight")
 		val identity = startingSum.toString
-		MeTLInk(config,m.author,m.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,c.target,c.privacy,c.slide,identity)
+		MeTLInk(config,m.author,m.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,c.target,c.privacy,c.slide,c.identity)
 	})
 	override def fromMeTLInk(input:MeTLInk):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLInk",() => {
 		canvasContentToXml("ink",input,List(
