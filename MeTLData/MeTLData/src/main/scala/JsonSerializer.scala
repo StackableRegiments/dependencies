@@ -164,7 +164,7 @@ class JsonSerializer(configName:String) extends Serializer{
         val color = toColor(utils.getColorByName(input,"color"))
         val thickness = utils.getDoubleByName(input,"thickness")
         val isHighlighter = utils.getBooleanByName(input,"isHighlighter")
-        MeTLInk(config,mc.author,mc.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,cc.target,cc.privacy,cc.slide,startingSum.toString)
+        MeTLInk(config,mc.author,mc.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,cc.target,cc.privacy,cc.slide,cc.identity)
       }
       case _ => MeTLInk.empty
     }
