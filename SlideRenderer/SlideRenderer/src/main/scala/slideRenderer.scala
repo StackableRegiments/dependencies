@@ -213,8 +213,15 @@ object SlideRenderer {
 	})
 
 	private val ratioConst = 0.75
+	
+	private def filterAccordingToTarget[T](target:String,mccl:List[T]):List[T] = mccl.filter(mcc => {
+		mcc match {
+			case m:MeTLCanvasContent => m.target.trim.toLowerCase == target.trim.toLowerCase
+			case _ => false
+		}	
+	}).toList
 
-	def render(h:History,intWidth:Int,intHeight:Int):Array[Byte] = Stopwatch.time("SlideRenderer.render", () => {
+	def render(h:History,intWidth:Int,intHeight:Int,target:String = "presentationSpace"):Array[Byte] = Stopwatch.time("SlideRenderer.render", () => {
 		val width = intWidth.toDouble
 		val height = intHeight.toDouble
 
@@ -222,7 +229,7 @@ object SlideRenderer {
 			case true => {
 				val tempImage = new BufferedImage(1,1,BufferedImage.TYPE_3BYTE_BGR)
 				val tempG = tempImage.createGraphics.asInstanceOf[Graphics2D]
-				val nativeScalePreparedTextLines = h.getTexts.map(t => measureText(t,tempG))
+				val nativeScalePreparedTextLines = filterAccordingToTarget[MeTLText](target,h.getTexts).map(t => measureText(t,tempG))
 
 				val (left,right,top,bottom) = nativeScalePreparedTextLines.foldLeft((h.getLeft,h.getRight,h.getTop,h.getBottom))((acc,item) => {
 					item.foldLeft(acc)((internalAcc,internalItem) => {
@@ -285,10 +292,10 @@ object SlideRenderer {
 
 				//g.transform(AffineTransform.getTranslateInstance((width-renderWidth)/2,(height-renderHeight)/2))
 
-				scaledHistory.getImages.foreach(renderImage(_,g))
-				scaledHistory.getHighlighters.foreach(renderInk(_,g))
-				scaledHistory.getTexts.foreach(t => renderText(measureText(t,g),g))
-				scaledHistory.getInks.foreach(renderInk(_,g))
+				filterAccordingToTarget[MeTLImage](target,scaledHistory.getImages).foreach(renderImage(_,g))
+				filterAccordingToTarget[MeTLInk](target,scaledHistory.getHighlighters).foreach(renderInk(_,g))
+				filterAccordingToTarget[MeTLText](target,scaledHistory.getTexts).foreach(t => renderText(measureText(t,g),g))
+				filterAccordingToTarget[MeTLInk](target,scaledHistory.getInks).foreach(renderInk(_,g))
 
 				println("---")
 				imageToByteArray(unscaledImage)
