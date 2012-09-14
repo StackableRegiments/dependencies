@@ -25,6 +25,9 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   private var quizResponses:List[MeTLQuizResponse] = List.empty[MeTLQuizResponse]
   private var submissions:List[MeTLSubmission] = List.empty[MeTLSubmission]
   private var commands:List[MeTLCommand] = List.empty[MeTLCommand]
+	private var latestCommands:Map[String,MeTLCommand] = Map.empty[String,MeTLCommand]
+
+	def getLatestCommands:Map[String,MeTLCommand] = latestCommands
 
   def getHighlighters = highlighters
   def getInks = inks
@@ -168,6 +171,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     this
   })
   def addCommand(s:MeTLCommand) = Stopwatch.time("History.addCommand", () => {
+		latestCommands = latestCommands.updated(s.command,s)
     commands = s :: commands
     update
     this
