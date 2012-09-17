@@ -65,7 +65,6 @@ object SlideRenderer {
 							val internalHeight = h match {
 								case d:Double if (d.isNaN) => {
 									val observedHeight = image.getHeight(imageObserver)
-									//println("observed height: %s".format(observedHeight))
 									observedHeight * metlImage.scaleFactorY
 								}
 								case d:Double => d
@@ -74,7 +73,6 @@ object SlideRenderer {
 							val internalWidth = w match {
 								case d:Double if (d.isNaN) => {
 									val observedWidth = image.getWidth(imageObserver)
-									//println("observed width: %s".format(observedWidth))
 									observedWidth * metlImage.scaleFactorX
 								}
 								case d:Double => d
@@ -85,7 +83,6 @@ object SlideRenderer {
 						case (h:Double,d:Double) => (h,d)
 						case _ => (0.0,0.0)	
 					}
-					//println("rendered image: %s with height (%s) and width (%S)".format(m,finalHeight,finalWidth))
 					image match {
 						case i:Image if (finalHeight == 0.0 || finalWidth == 0.0) => {}
 						case i:Image => g.drawImage(image,m.left.toInt,m.top.toInt,finalWidth.toInt,finalHeight.toInt,null)
@@ -240,17 +237,12 @@ object SlideRenderer {
 						(newLeft,newRight,newTop,newBottom)
 					})
 				})
-				println("")
 				val contentWidth = (right - left)
 				val contentHeight = (bottom - top)
 				val contentXOffset = left * -1
 				val contentYOffset = top * -1
 				val historyRatio = tryo(contentHeight/contentWidth).openOr(ratioConst)
 				
-				println("---")
-				println("requested: W:%s,H:%s".format(width,height))
-				println("history: %s (left:%s,right:%s,top:%s,bottom:%s)".format(h,h.getLeft,h.getRight,h.getTop,h.getBottom))
-				println("history ratio: %s (width:%s,height:%s) <- (left:%s,right:%s,top:%s,bottom:%s)".format(historyRatio,contentWidth,contentHeight,left,right,top,bottom))	
 
 				val (renderWidth,renderHeight,scaleFactor) = (historyRatio >= ratioConst) match {
 					case true => {
@@ -274,7 +266,6 @@ object SlideRenderer {
 						(renderWidth,renderHeight,renderHeight/contentHeight)
 					}
 				}
-				println("render: F:%s (RW:%s,RH:%s)".format(scaleFactor,renderWidth,renderHeight))
 
 				val unscaledImage = new BufferedImage(width.toInt,height.toInt,BufferedImage.TYPE_3BYTE_BGR)
 				val g = unscaledImage.createGraphics.asInstanceOf[Graphics2D]
@@ -288,7 +279,6 @@ object SlideRenderer {
 					case true => h.adjustToVisual(contentXOffset,contentYOffset,scaleApplier,scaleApplier)
 					case false => h
 				}
-				println("scaledHistory: %s (l:%s,r:%s,t:%s,b:%s)".format(scaledHistory,scaledHistory.getLeft,scaledHistory.getRight,scaledHistory.getTop,scaledHistory.getBottom))
 
 				//g.transform(AffineTransform.getTranslateInstance((width-renderWidth)/2,(height-renderHeight)/2))
 
@@ -297,7 +287,6 @@ object SlideRenderer {
 				filterAccordingToTarget[MeTLText](target,scaledHistory.getTexts).foreach(t => renderText(measureText(t,g),g))
 				filterAccordingToTarget[MeTLInk](target,scaledHistory.getInks).foreach(renderInk(_,g))
 
-				println("---")
 				imageToByteArray(unscaledImage)
 			}
 
