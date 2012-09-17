@@ -90,7 +90,6 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 				val (reqId,deconstructedArgs) = deconstructArgs(funcArgs)
 				try {
 					val output = Stopwatch.time("MeTLActor.ClientSideFunction.%s.serverSideFunc".format(name),() => {
-						println("deconstructedArgs: %s".format(deconstructedArgs))
 						serverSideFunc(deconstructedArgs)
 					})
 					returnResultFunction.map(rrf => {

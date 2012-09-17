@@ -39,7 +39,6 @@ case class XmppDataType[T](elementName:String,serialize:(T) => NodeSeq,deseriali
 class MeTLExtensionProvider extends PacketExtensionProvider {
 	override def parseExtension(parser:XmlPullParser):PacketExtension = {
 		val (elemName,xmlString) = parseTag(parser,"","")	
-		println("parseExtension: (%s,%s)".format(elemName,xmlString))
 		new Payload(elemName,XmppUtils.ns,xmlString)
 	}
 	private def parseTag(parser:XmlPullParser,elementName:String,progress:String,depth:Int = 0):Tuple2[String,String] = {
@@ -105,7 +104,6 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 				val muc = r._2
 				val roomMessage = muc.createMessage
 				roomMessage.addExtension(st.generatePacketExtension(message))
-				println("XMPP-OUT: "+roomMessage.toXML)
 				muc.sendMessage(roomMessage)
 			})
 		})
@@ -115,7 +113,6 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 			val muc = r._2
 			val roomMessage = muc.createMessage
 			roomMessage.setBody(message)
-			println("XMPP-SIMPLE-OUT: "+roomMessage.toXML)
 			muc.sendMessage(roomMessage)
 		})
 	})
@@ -216,27 +213,23 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
   }
   class RemoteSyncListener extends PacketListener{
 		def processPacket(packet:Packet)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
-			println("XMPP-IN: "+packet.toXML)
 			val room = packet.getFrom.split("@").head
 			if (List(packet.getExtensions.toArray:_*).map(e => {
 				val ext = e.asInstanceOf[PacketExtension]
 				ext.getElementName match {
 					case other:String if (relevantElementNames.contains(other)) => {
-						println("XMPP-IN-EXT: "+ext.toXML)
 						subscribedTypes.find(st => st.name.toString.trim == other.toString.trim).map(st => {
 							onMessageRecieved(room,other,st.comprehendResponse(packet))
 							true
 						}).getOrElse(false)
 					}
 					case other => {
-						println("XMPP-IN-?_EXT: "+ext.toXML)
 						onUntypedMessageRecieved(room,ext.toXML)	
 						true
 					}
 				}
 			}).filter(a => a == true).length == 0){
 				val msg = packet.asInstanceOf[Message]
-				println("XMPP-IN-NO_EXT: "+msg.getBody)
 				onUntypedMessageRecieved(room,msg.getBody)
 			}
 		})
