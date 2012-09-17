@@ -1,4 +1,5 @@
 package com.metl.model
+// TODO: Change namespace to MSOfficeImport specific
 
 import net.liftweb.common._
 import scala.xml._
@@ -14,22 +15,33 @@ import java.awt.{Dimension, RenderingHints}
 import java.awt.image.BufferedImage
 import java.awt.geom._
 
+/*
 object ExportFidelity extends Enumeration {
-    type ExportFidelity = Value
-    val IMAGE_SCALE1X, IMAGE_SCALE2X, SHAPES, UNKNOWN = Value
-    def parse(requestedFidelity: String): ExportFidelity = requestedFidelity.toLowerCase match {
-      case "image_scale1x" => IMAGE_SCALE1X
-      case "image_scale2x" => IMAGE_SCALE2X
-      case "shapes" => SHAPES
-      case _ => UNKNOWN
+    val ImageScale1X, ImageScale2X, Shapes = Value
+
+    def fromString(requestedFidelity: String) = requestedFidelity.toLowerCase match {
+      case "image_scale1x" => Some(ImageScale1x)
+      case "image_scale2x" => Some(ImageScale2x)
+      case "shapes" => Some(Shapes)
+      case _ => None
     }
 }
+*/
+
+// OCDriver will handle the file depending on it's type. Office2003 or Office2007 format
+// OCConverter will export the file depending on the converter requested via export fidelity
+/*
+trait OCType {
+  def driver: OCDriver
+  def converter: OCConverter
+}
+*/
 
 object OfficeConverter {
-    def apply(fileName: String, exportFidelity: ExportFidelity) = {
+    def apply(fileName: String/*, exportFidelity: ExportFidelity*/) = {
       val converter = new OfficeConverter
       converter.fileName = fileName
-      converter
+      converter.convert(fileName)
     }
 }
 

@@ -23,9 +23,9 @@ object MeTLRestHelper extends RestHelper {
 				Full(XmlResponse(a, 200))
 			).openOr(Full(ForbiddenResponse("you are not permitted to access this history"))))
 		case Req("pptx" :: Nil,_,_) => 
-			() => Stopwatch.time("MeTLRestHelpers.pptx", () => Full(XmlResponse(OfficeConverter.convert("test.pptx"),200)))
+			() => Stopwatch.time("MeTLRestHelpers.pptx", () => Full(XmlResponse(OfficeConverter("test.pptx"),200)))
 		case Req("ppt" :: Nil,_,_) => 
-			() => Stopwatch.time("MeTLRestHelpers.ppt", () => Full(XmlResponse(OfficeConverter.convert("test.ppt"),200)))
+			() => Stopwatch.time("MeTLRestHelpers.ppt", () => Full(XmlResponse(OfficeConverter("test.ppt"),200)))
 		case Req("jsonHistory" :: "user" :: user :: "encryptedPass" :: password :: "zone" :: zone :: "room" :: room :: Nil,_,_) =>
 			() => Stopwatch.time("MeTLRestHelper.jsonHistory", () => Authenticator.inSession(user,password, (user) => History.fetchAsJson(zone,room)).map(a =>
 				Full(PlainTextResponse(a, List.empty[Tuple2[String,String]],200))
