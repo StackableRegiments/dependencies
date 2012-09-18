@@ -230,23 +230,26 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 	}
 	def generateChanges(publicHistory:History,privateHistory:History):Tuple2[List[MeTLStanza],List[MeTLStanza]] = Stopwatch.time("MeTLMoveDelta.generateChanges", () => {
 		val privateInks = privateHistory.getInks.filter(i => inkIds.contains(i.identity))
+		val privateHighlighters = privateHistory.getHighlighters.filter(i => inkIds.contains(i.identity))
 		val privateTexts = privateHistory.getTexts.filter(i => textIds.contains(i.identity))
 		val privateImages = privateHistory.getImages.filter(i => imageIds.contains(i.identity))
 		val publicInks = publicHistory.getInks.filter(i => inkIds.contains(i.identity))
+		val publicHighlighters = publicHistory.getHighlighters.filter(i => inkIds.contains(i.identity))
 		val publicTexts = publicHistory.getTexts.filter(i => textIds.contains(i.identity))
 		val publicImages = publicHistory.getImages.filter(i => imageIds.contains(i.identity))
 		newPrivacy match {				
 			case p:Privacy if p == Privacy.PUBLIC => {
 				val notP = Privacy.PRIVATE
 				val privateInksToPublicize = privateInks.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale))
+				val privateHighlightersToPublicize = privateHighlighters.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale))
 				val privateTextsToPublicize = privateTexts.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale)) 
 				val privateImagesToPublicize = privateImages.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale)) 
-				val privateDirtier = ((privateInksToPublicize ::: privateTextsToPublicize ::: privateImagesToPublicize).length > 0) match {
-					case true => List(generateDirtier(privateInksToPublicize.map(i => i.identity),privateTextsToPublicize.map(i => i.identity),privateImagesToPublicize.map(i => i.identity),notP))
+				val privateDirtier = ((privateInksToPublicize ::: privateHighlightersToPublicize ::: privateTextsToPublicize ::: privateImagesToPublicize).length > 0) match {
+					case true => List(generateDirtier(privateInksToPublicize.map(i => i.identity) ::: privateHighlightersToPublicize.map(i => i.identity),privateTextsToPublicize.map(i => i.identity),privateImagesToPublicize.map(i => i.identity),notP))
 					case _ => List.empty[MeTLStanza]
 				}
-				val publicAdjuster = ((publicInks ::: publicTexts ::: publicImages).length > 0) match {
-					case true => List(replaceIds(publicInks.map(i=>i.identity),publicTexts.map(i=>i.identity),publicImages.map(i=>i.identity),p))
+				val publicAdjuster = ((publicInks ::: publicHighlighters ::: publicTexts ::: publicImages).length > 0) match {
+					case true => List(replaceIds(publicInks.map(i=>i.identity) ::: publicHighlighters.map(i => i.identity),publicTexts.map(i=>i.identity),publicImages.map(i=>i.identity),p))
 					case _ => List.empty[MeTLStanza]
 				}
 				(publicAdjuster ::: privateInksToPublicize ::: privateTextsToPublicize ::: privateImagesToPublicize, privateDirtier)
@@ -254,25 +257,26 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 			case p:Privacy if p == Privacy.PRIVATE => {
 				val notP = Privacy.PUBLIC
 				val publicInksToPrivatize = publicInks.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale))
+				val publicHighlightersToPrivatize = publicHighlighters.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale))
 				val publicTextsToPrivatize = publicTexts.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale))
 				val publicImagesToPrivatize = publicImages.map(i => i.alterPrivacy(p).adjustVisual(xTranslate,yTranslate,xScale,yScale))
 				val publicDirtiers = ((publicInksToPrivatize ::: publicTextsToPrivatize ::: publicImagesToPrivatize).length > 0) match {
-					case true => List(generateDirtier(publicInksToPrivatize.map(i => i.identity),publicTextsToPrivatize.map(i => i.identity),publicImagesToPrivatize.map(i => i.identity),notP))
+					case true => List(generateDirtier(publicInksToPrivatize.map(i => i.identity) ::: publicHighlightersToPrivatize.map(i => i.identity),publicTextsToPrivatize.map(i => i.identity),publicImagesToPrivatize.map(i => i.identity),notP))
 					case _ => List.empty[MeTLStanza]
 				}
-				val privateAdjusters = ((privateInks ::: privateTexts ::: privateImages).length > 0) match {
-					case true => List(replaceIds(privateInks.map(i => i.identity),privateTexts.map(i => i.identity),privateImages.map(i => i.identity),p))
+				val privateAdjusters = ((privateInks ::: privateHighlighters ::: privateTexts ::: privateImages).length > 0) match {
+					case true => List(replaceIds(privateInks.map(i => i.identity) ::: privateHighlighters.map(i => i.identity),privateTexts.map(i => i.identity),privateImages.map(i => i.identity),p))
 					case _ => List.empty[MeTLStanza]
 				}
-				(publicDirtiers,privateAdjusters ::: publicInksToPrivatize ::: publicTextsToPrivatize ::: publicImagesToPrivatize)
+				(publicDirtiers,privateAdjusters ::: publicInksToPrivatize ::: publicHighlightersToPrivatize ::: publicTextsToPrivatize ::: publicImagesToPrivatize)
 			}
 			case _ => {
-				val privDelta = ((privateInks ::: privateTexts ::: privateImages).length > 0) match {
-					case true => List(replaceIds(privateInks.map(i=>i.identity),privateTexts.map(i=>i.identity),privateImages.map(i=>i.identity),Privacy.PRIVATE))
+				val privDelta = ((privateInks ::: privateHighlighters ::: privateTexts ::: privateImages).length > 0) match {
+					case true => List(replaceIds(privateInks.map(i=>i.identity) ::: privateHighlighters.map(i => i.identity),privateTexts.map(i=>i.identity),privateImages.map(i=>i.identity),Privacy.PRIVATE))
 					case _ => List.empty[MeTLStanza]
 				}
-				val pubDelta = ((publicInks ::: publicTexts ::: publicImages).length > 0) match {
-					case true => List(replaceIds(publicInks.map(i=>i.identity),publicTexts.map(i=>i.identity),publicImages.map(i=>i.identity),Privacy.PUBLIC))
+				val pubDelta = ((publicInks ::: publicHighlighters ::: publicTexts ::: publicImages).length > 0) match {
+					case true => List(replaceIds(publicInks.map(i=>i.identity) ::: publicHighlighters.map(i => i.identity),publicTexts.map(i=>i.identity),publicImages.map(i=>i.identity),Privacy.PUBLIC))
 					case _ => List.empty[MeTLStanza]
 				}
 				(pubDelta,privDelta)
