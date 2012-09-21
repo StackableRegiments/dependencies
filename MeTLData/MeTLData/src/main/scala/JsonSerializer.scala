@@ -308,6 +308,7 @@ class JsonSerializer(configName:String) extends Serializer{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
+				val cc = parseJObjForCanvasContent(input)
         val slide = utils.getIntByName(input,"slide")
         val url = utils.getStringByName(input,"url")
 				val title = utils.getStringByName(input,"title")
@@ -316,18 +317,17 @@ class JsonSerializer(configName:String) extends Serializer{
 					val highlight = toColor(utils.getColorByName(input,"highlight"))
 					SubmissionBlacklistedPerson(username,highlight)
 				}).toList
-        MeTLSubmission(config,mc.author,mc.timestamp,title,slide,url,blacklist)
+        MeTLSubmission(config,mc.author,mc.timestamp,title,slide,url,blacklist,cc.target,cc.privacy,cc.identity)
       }
       case _ => MeTLSubmission.empty
     }
   })
   override def fromSubmission(input:MeTLSubmission):JValue = Stopwatch.time("JsonSerializer.fromSubmission",() => {
     toJsObj("submission",List(
-      JField("slide",JInt(input.slide)),
       JField("url",JString(input.url)),
 			JField("title",JString(input.title)),
 			JField("blacklist",JArray(input.blacklist.map(bl => JObject(List(JField("username",JString(bl.username)),JField("highlight",fromColor(bl.highlight).asInstanceOf[JValue]))))))
-    ) ::: parseMeTLContent(input))
+    ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
   override def toMeTLQuiz(i:JValue):MeTLQuiz = Stopwatch.time("JsonSerializer.toMeTLQuiz", () => {
     i match {

@@ -4,6 +4,7 @@ import com.metl.utils._
 
 import net.liftweb.common._
 import net.liftweb.util.Helpers._
+import java.util.Date
 
 object PointConverter {
   def fromText(t:String):List[Point] = parsePoints(t.split(" ").toList)
@@ -324,7 +325,7 @@ object MeTLQuiz{
   def empty = MeTLQuiz(ServerConfiguration.empty,"",0L,0L,"","",Empty,Empty,true,List.empty[QuizOption])
 }
 
-case class MeTLSubmission(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,title:String,slide:Int,url:String,blacklist:List[SubmissionBlacklistedPerson] = List.empty[SubmissionBlacklistedPerson]) extends MeTLStanza(server,author,timestamp)
+case class MeTLSubmission(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,title:String,slideJid:Int,url:String,blacklist:List[SubmissionBlacklistedPerson] = List.empty[SubmissionBlacklistedPerson], override val target:String = "submission",override val privacy:Privacy = Privacy.PUBLIC,override val identity:String = new Date().getTime.toString) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slideJid.toString,identity)
 object MeTLSubmission{
   def empty = MeTLSubmission(ServerConfiguration.empty,"",0L,"",0,"")
 }
