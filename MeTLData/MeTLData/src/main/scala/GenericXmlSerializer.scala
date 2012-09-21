@@ -244,14 +244,21 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 	override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission", () => {
 		val m = utils.parseMeTLContent(input)
 		val slide = utils.getIntByName(input,"slide")
+		val title = utils.getStringByName(input,"title")
 		val url = utils.getStringByName(input,"url")
-		MeTLSubmission(config,m.author,m.timestamp,slide,url)
+		val blacklist = utils.getXmlByName(input,"blacklist").map(bl => {
+			val username = utils.getStringByName(input,"username")
+			val highlight = utils.getColorByName(input,"highlight")
+			SubmissionBlacklistedPerson(username,highlight)
+		}).toList
+		MeTLSubmission(config,m.author,m.timestamp,title,slide,url,blacklist)
 	})
 	override def fromSubmission(input:MeTLSubmission):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSubmission", () => {
 		metlContentToXml("submission",input,List(
 			<slide>{input.slide}</slide>,
-			<url>{input.url}</url>
-		))
+			<url>{input.url}</url>,
+			<title>{input.title}</title>
+		) ::: input.blacklist.map(bl => <blacklist><username>{bl.username}</username><highlight>{ColorConverter.toRGBAString(bl.highlight)}</highlight></blacklist> ).toList)
 	})
 	override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("GenericXmlSerializer.toMeTLQuiz", () => {
 		val m = utils.parseMeTLContent(input)

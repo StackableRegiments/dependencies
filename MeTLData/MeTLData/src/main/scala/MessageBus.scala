@@ -3,7 +3,7 @@ package com.metl.data
 import com.metl.utils._
 
 // the feedback name should be bound to a particular onReceive function, so that we can use that feedbackName to match particular behaviours (given that the anonymous functions won't work that way for us)
-class MessageBusDefinition(val location:String, val feedbackName:String, val onReceive:(MeTLStanza) => Unit = (s:MeTLStanza) => {}){
+class MessageBusDefinition(val location:String, val feedbackName:String, val onReceive:(MeTLStanza) => Unit = (s:MeTLStanza) => {}, val onConnectionLost:() => Unit = () => {}, val onConnectionReturned:() => Unit = () => {}){
 	override def equals(other:Any):Boolean = {
 		other match {	
 			case omb:MessageBusDefinition => omb.location == location && omb.feedbackName == feedbackName
@@ -33,6 +33,8 @@ object EmptyMessageBusProvider extends MessageBusProvider{
 abstract class MessageBus(definition:MessageBusDefinition, creator:MessageBusProvider) {
 	def sendStanzaToRoom(stanza:MeTLStanza):Unit
 	def recieveStanzaFromRoom(stanza:MeTLStanza) = definition.onReceive(stanza)
+	def notifyConnectionLost = definition.onConnectionLost()
+	def notifyConnectionResumed = definition.onConnectionReturned()
 	def release = creator.releaseMessageBus(definition)
 }
 class LoopbackBus(definition:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(definition,creator){

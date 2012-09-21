@@ -324,9 +324,13 @@ object MeTLQuiz{
   def empty = MeTLQuiz(ServerConfiguration.empty,"",0L,0L,"","",Empty,Empty,true,List.empty[QuizOption])
 }
 
-case class MeTLSubmission(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,slide:Int,url:String) extends MeTLStanza(server,author,timestamp)
+case class MeTLSubmission(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,title:String,slide:Int,url:String,blacklist:List[SubmissionBlacklistedPerson] = List.empty[SubmissionBlacklistedPerson]) extends MeTLStanza(server,author,timestamp)
 object MeTLSubmission{
-  def empty = MeTLSubmission(ServerConfiguration.empty,"",0L,0,"")
+  def empty = MeTLSubmission(ServerConfiguration.empty,"",0L,"",0,"")
+}
+case class SubmissionBlacklistedPerson(username:String,highlight:Color)
+object SubmissionBlacklistedPerson{
+	def empty = SubmissionBlacklistedPerson("",Color.default)
 }
 
 case class QuizOption(name:String,text:String,correct:Boolean,color:Color)
