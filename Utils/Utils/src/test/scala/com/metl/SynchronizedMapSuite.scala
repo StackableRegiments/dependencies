@@ -9,14 +9,7 @@ import concurrent.AsyncAssertions
 
 import com.metl.utils._ 
 
-/* usage
-
-Stopwatch.time("Function being timed", () => {
-      action
-	}
-*/
-
-class StopwatchSuite extends FunSuite with AsyncAssertions with MustMatchers {
+class SynchronizedMapSuite extends FunSuite with AsyncAssertions with MustMatchers {
 
     test("stopwatch times action") {
 
