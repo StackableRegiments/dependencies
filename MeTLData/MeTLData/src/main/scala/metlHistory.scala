@@ -161,18 +161,18 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     this
   })
   def addQuizResponse(s:MeTLQuizResponse) = Stopwatch.time("History.addQuizResponse", () => {
-    quizResponses = s :: quizResponses
+    quizResponses = quizResponses ::: List(s)
     update
     this
   })
   def addSubmission(s:MeTLSubmission) = Stopwatch.time("History.addSubmission", () => {
-    submissions = s :: submissions
+    submissions = submissions ::: List(s)
     update
     this
   })
   def addCommand(s:MeTLCommand) = Stopwatch.time("History.addCommand", () => {
 		latestCommands = latestCommands.updated(s.command,s)
-    commands = s :: commands
+    commands = commands ::: List(s)
     update
     this
   })
