@@ -11,8 +11,8 @@ trait Synched {
 	
 	def syncWrite[A](f:()=>A):A	= {
 		wl.lock
-		val ret = f()
-		wl.unlock
+        val ret = f()
+        wl.unlock
 		ret	
 	}
 	def syncRead[A](f:()=>A):A = {
@@ -86,6 +86,8 @@ class SynchronizedWriteMap[A,B](collection:scala.collection.mutable.HashMap[A,B]
 	def keys: scala.collection.Iterable[A] = syncRead(()=>coll.map(kv => kv._1)) 
 	def keysIterator: Iterator[A] = syncRead(()=>coll.keysIterator)
 	def isDefinedAt(k: A) = syncRead(()=>coll.isDefinedAt(k))
+    def size:Int = syncRead(()=>coll.size)
+    def isEmpty: Boolean = syncRead(()=>coll.isEmpty)
 	def toList:List[(A,B)] = syncRead(()=>coll.toList)
 	def toArray:Array[(A,B)] = syncRead(()=>coll.toArray)
 	def map(f:((A, B)) => Any):scala.collection.mutable.Iterable[Any] = syncRead(()=>coll.map(f))
