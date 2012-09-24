@@ -13,13 +13,13 @@ case class UserActivityLogRecord(who:String,url:String) {
 }
 
 object EmptyLogActor extends LogActor("empty") {
-	override lazy val http:Box[CleanHttpClient] = Empty
+	override lazy val http:Box[IMeTLHttpClient] = Empty
 }
 
 class LogActor(host:String) extends LiftActor {
 	private val program = "metlviewer"
 
-	protected lazy val http:Box[CleanHttpClient] = Full(Http.getClient)
+	protected lazy val http:Box[IMeTLHttpClient] = Full(Http.getClient)
 
 	private val logUrlFormat = "https://%s:1188/log_message.yaws?program=%s&%s"
 	private def makeUrl(queryFragment:String) = logUrlFormat.format(host,program,queryFragment)

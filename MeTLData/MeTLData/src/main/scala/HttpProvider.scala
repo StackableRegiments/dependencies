@@ -3,7 +3,7 @@ package com.metl.data
 import com.metl.utils._
 
 abstract class HttpProvider{
-	def getClient:CleanHttpClient	
+	def getClient:IMeTLHttpClient	
 }
 
 object EmptyHttpProvider extends HttpProvider {
