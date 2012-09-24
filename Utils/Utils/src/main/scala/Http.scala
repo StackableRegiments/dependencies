@@ -35,12 +35,18 @@ case class RetryException(message:String) extends Exception(message){}
 
 trait IMeTLHttpClient {
   def addAuthorization(domain:String,username:String,password:String):Unit 
-  def get(uri:String,additionalHeaders:List[(String,String)]= List.empty[(String,String)]): String
-  def getAsString(uri:String,additionalHeaders:List[(String,String)]= List.empty[(String,String)]):String 
-  def getAsBytes(uri:String,additionalHeaders:List[(String,String)]= List.empty[(String,String)]):Array[Byte]
-  def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)]= List.empty[(String,String)]):Array[Byte]
-  def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]= List.empty[(String,String)]):Array[Byte] 
-  def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]= List.empty[(String,String)]):Array[Byte] 
+  def get(uri:String):String = get(uri,List.empty[(String,String)])
+  def get(uri:String,additionalHeaders:List[(String,String)]): String
+  def getAsString(uri:String):String = getAsString(uri,List.empty[(String,String)]) 
+  def getAsString(uri:String,additionalHeaders:List[(String,String)]):String 
+  def getAsBytes(uri:String):Array[Byte] = getAsBytes(uri, List.empty[(String,String)])
+  def getAsBytes(uri:String,additionalHeaders:List[(String,String)]):Array[Byte]
+  def postBytes(uri:String,bytes:Array[Byte]): Array[Byte] = postBytes(uri, bytes, List.empty[(String,String)])
+  def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)]):Array[Byte]
+  def postForm(uri:String,postItemList:List[(String,String)]):Array[Byte] = postForm(uri, postItemList, List.empty[(String,String)])
+  def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte] 
+  def postUnencodedForm(uri:String,postItemList:List[(String,String)]):Array[Byte] = postUnencodedForm(uri, postItemList, List.empty[(String,String)])
+  def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte] 
   def setCookies(cookies: Map[String,Header]): Unit
   def getCookies: Map[String,Header]
   def setHttpHeaders(headers:List[Header]): Unit
