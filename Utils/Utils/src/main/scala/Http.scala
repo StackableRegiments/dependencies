@@ -33,7 +33,21 @@ import net.liftweb.util._
 
 case class RetryException(message:String) extends Exception(message){}
 
-class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient(connMgr){
+trait IMeTLHttpClient {
+  def addAuthorization(domain:String,username:String,password:String):Unit 
+  def get(uri:String,additionalHeaders:List[(String,String)]): String
+  def getAsString(uri:String,additionalHeaders:List[(String,String)]):String 
+  def getAsBytes(uri:String,additionalHeaders:List[(String,String)]):Array[Byte]
+  def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)]):Array[Byte]
+  def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte] 
+  def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte] 
+  def setCookies(cookies: Map[String,Header]): Unit
+  def getCookies: Map[String,Header]
+  def setHttpHeaders(headers:List[Header]): Unit
+  def getHttpHeaders: List[Header]
+}
+
+class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient(connMgr) with IMeTLHttpClient {
   protected val connectionTimeout = 120
   //protected val connectionTimeout = 30
   protected val keepAliveTimeout = 120
@@ -44,18 +58,24 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
   //protected val maxRetries = 30
   protected val maxRetries = 2
   private var authorizations:Map[String,(String,String)] = Map.empty[String,(String,String)].withDefault((location) => ("anonymous","unauthorized"))
-  var cookies = Map.empty[String,Header]
-  val httpHeaders = {
+  protected var cookies = Map.empty[String,Header]
+  protected var httpHeaders = {
     Array[Header](
       new BasicHeader("Connection","keep-alive")
     )
   }
 
-  def addAdditionalHeaders(message:AbstractHttpMessage,additionalHeaders:List[(String,String)]):Unit = {
+  override def setCookies(cook:Map[String,Header]):Unit = cookies = cook
+  override def getCookies : Map[String, Header] = cookies
+
+  override def setHttpHeaders(headers:List[Header]):Unit = httpHeaders = headers.toArray
+  override def getHttpHeaders : List[Header] = httpHeaders.toList
+
+  private def addAdditionalHeaders(message:AbstractHttpMessage,additionalHeaders:List[(String,String)]):Unit = {
     if (additionalHeaders.length > 0)
       additionalHeaders.foreach(header => message.addHeader(new BasicHeader(header._1,header._2)))
   }
-  def addAuthorization(domain:String,username:String,password:String):Unit = {
+  override def addAuthorization(domain:String,username:String,password:String):Unit = {
     authorizations = authorizations.updated(domain,(username,password))
   }
   private def applyDefaultHeaders(message:AbstractHttpMessage, uri:URI):Unit = {
@@ -156,7 +176,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
 
 		println("rec'd:	%s (%s bytes)".format(m.getResponseCount,m.getReceivedBytesCount))
 	}
-	def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.post[Array[Byte]]", () => {
+  override def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.post[Array[Byte]]", () => {
     val correctlyFormedUrl = new URI(uri)
 		val bytePostingPost = (conn:ManagedClientConnection,path:String) => {
 			val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
@@ -171,7 +191,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
 		}
 		withConn(uri,bytePostingPost)
 	})
-	def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.post[List[(String,String)]]", () => {
+	override def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.post[List[(String,String)]]", () => {
     val correctlyFormedUrl = new URI(uri)
 		val formPostingPost = (conn:ManagedClientConnection,path:String) => {
 			val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
@@ -191,7 +211,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
 		}
 		withConn(uri,formPostingPost)
 	})
-  def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postUnencodedForm", () => {
+  override def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postUnencodedForm", () => {
 		val correctlyFormedUrl = new URI(uri)
 		val unencodedFormPostingPost = (conn:ManagedClientConnection,path:String) => {
 			val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
@@ -208,13 +228,13 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
 		}
 		withConn(uri,unencodedFormPostingPost)
   })
-  def get(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.get", () => {
+  override def get(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.get", () => {
 		getAsString(uri,additionalHeaders)
 	})
-  def getAsString(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.getAsString", () => {
+  override def getAsString(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.getAsString", () => {
 		IOUtils.toString(getAsBytes(uri,additionalHeaders))
 	})
-  def getAsBytes(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.getAsBytes", () => {
+  override def getAsBytes(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.getAsBytes", () => {
 		val correctlyFormedUrl = new URI(uri)
 		val bytesGettingGet = (conn:ManagedClientConnection,path:String) => {
         val getMethod = new BasicHttpRequest("GET",path)
@@ -345,20 +365,19 @@ object Http{
     client
   })
   def cloneClient(incoming:CleanHttpClient):CleanHttpClient = Stopwatch.time("Http.cloneClient", () => {
-    val client = new CleanHttpClient(getConnectionManager){
-      override val httpHeaders = incoming.httpHeaders
-    }
-    client.cookies = incoming.cookies
+    val client = new CleanHttpClient(getConnectionManager)
+    client.setCookies(incoming.getCookies)
+    client.setHttpHeaders(incoming.getHttpHeaders)
     client
   })
   def getClient(headers:List[(String,String)]):CleanHttpClient = Stopwatch.time("Http.getClient(headers)", () => {
-    val newHeaders = Array[Header](headers.map(tup => new BasicHeader(tup._1,tup._2)):_*)
+    val newHeaders = headers.map(tup => new BasicHeader(tup._1,tup._2)).toList
     val client = new CleanHttpClient(getConnectionManager){
-      override val httpHeaders = newHeaders
       override val connectionTimeout = 3600
       override val keepAliveTimeout = 5400
       override val readTimeout = 7200000
     }
+    client.setHttpHeaders(newHeaders)
     client
   })
 }
