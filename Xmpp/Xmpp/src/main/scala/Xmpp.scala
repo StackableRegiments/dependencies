@@ -51,7 +51,31 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 			}
 			case XmlPullParser.START_TAG => {
 				val name = parser.getName
-				val newProgress = progress+"<"+name+">"
+				val newProgress = parser.getAttributeCount() match {
+					case attCount:Int if (attCount > 0) => {
+						val attributes = Range(0,attCount).foldLeft(List.empty[String])((acc,attIndex) => {
+							var attributeString = ""
+							parser.getAttributePrefix(attIndex) match {
+								case attPref:String if (attPref.length > 0) => attributeString += "%s:".format(attPref)
+								case _ => {}
+							}
+							parser.getAttributeName(attIndex) match {
+								case attName:String if (attName.length > 0) => {
+									parser.getAttributeValue(attIndex) match {
+										case attValue:String if (attValue.length > 0) => {
+											attributeString += "%s='%s'".format(attName,attValue)
+										}
+										case _ => {}
+									}
+								}
+								case _ => {}
+							}
+							attributeString :: acc	
+						})
+						progress+"<"+name+" "+attributes.mkString(" ")+">"
+					}
+					case _ => progress+"<"+name+">"
+				}
 				val en = elementName match {
 					case "" => name 
 					case _ => elementName
