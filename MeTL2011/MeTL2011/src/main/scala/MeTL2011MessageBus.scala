@@ -22,11 +22,11 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 //	override lazy val debug = true
 
 	override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
-		println("recieved for (%s) message: %s".format(room,message))
+//		println("recieved for (%s) message: %s".format(room,message))
 		bus.recieveStanzaFromRoom(message)
 	}
 	override def onUntypedMessageRecieved(room:String,message:String) = {
-		println("recieved untyped message: %s".format(message))
+//		println("recieved untyped message: %s".format(message))
 		val parts = message.split(" ")
 		bus.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList))
 	}

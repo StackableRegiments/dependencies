@@ -36,7 +36,8 @@ object XmlUtils {
 	}
 	def parseMeTLContent(i:NodeSeq):ParsedMeTLContent = {
 		val author = getStringByName(i,"author")
-		val timestamp = tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(-1L)
+		//val timestamp = tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(-1L)
+		val timestamp = getLongByName(i,"timestamp")
 		ParsedMeTLContent(author,timestamp)
 	}
 	def parsedMeTLContentToXml(p:ParsedMeTLContent):List[NodeSeq] = {
