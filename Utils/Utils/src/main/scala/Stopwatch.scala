@@ -15,7 +15,7 @@ object StopwatchActor extends LiftActor {
 }
 
 object Stopwatch{
-	def start(label:String) ={
+	private def start(label:String) ={
 		val zero = new Date().getTime
 		()=>{
 			val elapsed = new Date().getTime - zero

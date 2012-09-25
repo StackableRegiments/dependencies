@@ -27,6 +27,11 @@
       <name>SonaType Maven2 Repository</name>
       <url>https://oss.sonatype.org/content/repositories/releases</url>
     </repository>
+		<repository>
+			<id>Central</id>
+			<name>Central Maven2 Repository</name>
+			<url>http://repo2.maven.org/maven2/</url>
+		</repository>
   </repositories>
 
   <pluginRepositories>
@@ -49,12 +54,18 @@
 		<artifactId>scalatest_2.9.1</artifactId>
 		<version>1.8</version>
 	</dependency>
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.9.1</artifactId>
-      <version>1.6.9</version>
-      <scope>test</scope>
-    </dependency>
+	<dependency>
+		<groupId>org.scala-tools.testing</groupId>
+		<artifactId>specs_2.9.1</artifactId>
+		<version>1.6.9</version>
+		<scope>test</scope>
+	</dependency>
+	<dependency>
+		<groupId>org.mockito</groupId>
+		<artifactId>mockito-core</artifactId>
+		<version>1.9.0</version>
+		<scope>test</scope>
+	</dependency>
 <!--
     <dependency>
       <groupId>junit</groupId>
