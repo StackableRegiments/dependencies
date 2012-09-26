@@ -96,12 +96,12 @@ class HttpClientSuite extends FunSuite with AsyncAssertions with ShouldMatchers 
         assert(result === "Whatever")
     }
 
-    private def prepareHttpResponse(body: String, statusCode: Int): HttpResponse = {
+    private def prepareHttpResponse(expectedBody: String, expectedStatusCode: Int): HttpResponse = {
     
-        var response = new BasicHttpResponse(new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), statusCode, ""))
+        var response = new BasicHttpResponse(new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), expectedStatusCode, ""))
         response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-        response.setEntity(new StringEntity(body))
-        response.setStatusCode(statusCode)
+        response.setEntity(new StringEntity(expectedBody))
+        response.setStatusCode(expectedStatusCode)
         response
     }
 }
