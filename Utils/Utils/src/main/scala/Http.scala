@@ -119,10 +119,10 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
       message.addHeader(new BasicHeader("Host","%s:%s".format(host,port)))
   }
 	private def withConn(uri:String,actOnConn:(ManagedClientConnection,String) => Unit,redirectNumber:Int = 0,retryNumber:Int = 0):Array[Byte] = Stopwatch.time("Http.withConn", () => {
+    var output = Array[Byte]()
     try {
       testRedirectCount(uri,redirectNumber)
       testRetryCount(uri,retryNumber)
-      var output = Array[Byte]()
       val correctlyFormedUrl = new URI(uri)
       val port = determinePort(correctlyFormedUrl)
       val host = determineHost(correctlyFormedUrl)
@@ -135,7 +135,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
       try {
         conn.open(route,httpContext,httpParams)
         val relPath = path+query
-				actOnConn(conn,relPath)
+        actOnConn(conn,relPath)
         if(conn.isResponseAvailable(readTimeout)){
 					val response = conn.receiveResponseHeader
 					storeClientCookies(response.getHeaders("Set-Cookie").toList)
@@ -171,16 +171,18 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         case ex:Throwable => {
           conn.abortConnection
           println("Exception during httpConnection - retrying.  (attempt: %s, exception: %s, uri: %s)".format(retryNumber,ex.getMessage,uri))
-					withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
+          withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
         }
       }
     } catch {
       case ex:RetryException => {
-        throw ex
+        println("Exception during httpConnection - retrying.  (attempt: %s, exception: %s, uri: %s)".format(retryNumber,ex.getMessage,uri))
+        // don't want to try again if we've exceeded the maximum requested, it's just going to throw an exception again
+        //withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
+        output
       }
       case ex:Throwable => {
-        println("Exception during httpConnection - retrying.  (attempt: %s, exception: %s, uri: %s)".format(retryNumber,ex.getMessage,uri))
-				withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
+        throw ex
       }
     }
 	})
@@ -251,11 +253,11 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
   override def getAsBytes(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.getAsBytes", () => {
 		val correctlyFormedUrl = new URI(uri)
 		val bytesGettingGet = (conn:ManagedClientConnection,path:String) => {
-        val getMethod = new BasicHttpRequest("GET",path)
-        applyDefaultHeaders(getMethod,correctlyFormedUrl)
-        addAdditionalHeaders(getMethod,additionalHeaders)
-        conn.sendRequestHeader(getMethod)
-        conn.flush
+          val getMethod = new BasicHttpRequest("GET",path)
+          applyDefaultHeaders(getMethod,correctlyFormedUrl)
+          addAdditionalHeaders(getMethod,additionalHeaders)
+          conn.sendRequestHeader(getMethod)
+          conn.flush
 		}
 		withConn(uri,bytesGettingGet)
   })
@@ -274,7 +276,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
   }
   private def determineHost(uri:URI):String = {
     uri.getHost match {
-      case null => throw new Exception("No hostname supplied")
+      case null => throw new IllegalArgumentException("No hostname supplied")
       case host:String => host
     }
   }
@@ -326,8 +328,8 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     request.addHeader(new BasicHeader("Cookie",cookieString))
   }
   private def storeClientCookies(newHeaders:List[Header]):Unit = {
-    val newCookies = newHeaders.map(header => header.getElements.toList.map(item => (item.getName, header)))
-    newCookies.foreach(newCookieList => newCookieList.foreach(newCookie => cookies = cookies.updated(newCookie._1,newCookie._2)))
+      val newCookies = newHeaders.map(header => header.getElements.toList.map(item => (item.getName, header)))
+      newCookies.foreach(newCookieList => newCookieList.foreach(newCookie => cookies = cookies.updated(newCookie._1,newCookie._2)))
   }
   private def testRedirectCount(uri:String,redirectNumber:Int):Unit = {
     if ((maxRedirects != 0 || maxRedirects != -1) && redirectNumber > maxRedirects) throw new Exception("exceeded configured maximum number of redirects when requesting: %s".format(uri))
@@ -345,7 +347,7 @@ object Http{
   private object TrustingTrustManager extends X509TrustManager{
     override def getAcceptedIssuers = Array.empty[X509Certificate]
     override def checkClientTrusted(certs:Array[X509Certificate], t:String) = ()
-      override def checkServerTrusted(certs:Array[X509Certificate], t:String) = ()
+    override def checkServerTrusted(certs:Array[X509Certificate], t:String) = ()
   }
   private val getSchemeRegistry = {
     val ssl_ctx = SSLContext.getInstance("TLS")
