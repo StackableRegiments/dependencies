@@ -137,32 +137,32 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         val relPath = path+query
         actOnConn(conn,relPath)
         if(conn.isResponseAvailable(readTimeout)){
-					val response = conn.receiveResponseHeader
-					storeClientCookies(response.getHeaders("Set-Cookie").toList)
-					response.getStatusLine.getStatusCode match {
-						case 200 => {
-							conn.receiveResponseEntity(response)
-							val entity = response.getEntity
-							output = IOUtils.toByteArray(entity.getContent)
-							EntityUtils.consume(entity)
-						}
-						case 300 | 301 | 302 | 303 => {
-							val newLoc = response.getHeaders("Location").first.getValue
-							val oldLocUri = new URI(uri)
-							val newLocUri = new URI(newLoc)
-							val newLocString = if (newLocUri.getHost == null) oldLocUri.resolve(newLocUri).toString else newLoc
-							conn.abortConnection
-							withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber)
-						}
-						case 400 => throw new Exception("bad request sent to %s".format(uri))
-						case 401 => throw new Exception("acces to object at %s requires authentication".format(uri))
-						case 403 => throw new Exception("access forbidden to object at %s".format(uri))
-						case 404 => throw new Exception("object not found at %s".format(uri))
-						case 500 => throw new Exception("server error encountered at %s".format(uri))
-						case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
-					}
-					output
-					}
+          val response = conn.receiveResponseHeader
+          storeClientCookies(response.getHeaders("Set-Cookie").toList)
+          response.getStatusLine.getStatusCode match {
+              case 200 => {
+                  conn.receiveResponseEntity(response)
+                  val entity = response.getEntity
+                  output = IOUtils.toByteArray(entity.getContent)
+                  EntityUtils.consume(entity)
+              }
+              case 300 | 301 | 302 | 303 => {
+                  val newLoc = response.getHeaders("Location").first.getValue
+                  val oldLocUri = new URI(uri)
+                  val newLocUri = new URI(newLoc)
+                  val newLocString = if (newLocUri.getHost == null) oldLocUri.resolve(newLocUri).toString else newLoc
+                  conn.abortConnection
+                  output = withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber)
+              }
+              case 400 => throw new Exception("bad request sent to %s".format(uri))
+              case 401 => throw new Exception("access to object at %s requires authentication".format(uri))
+              case 403 => throw new Exception("access forbidden to object at %s".format(uri))
+              case 404 => throw new Exception("object not found at %s".format(uri))
+              case 500 => throw new Exception("server error encountered at %s".format(uri))
+              case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
+          }
+          output
+        }
         else
           throw new Exception("Socket timeout - No data from: %s".format(uri))
         connMgr.releaseConnection(conn,keepAliveTimeout,TimeUnit.SECONDS)
@@ -171,13 +171,14 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         case ex:Throwable => {
           conn.abortConnection
           println("Exception during httpConnection - retrying.  (attempt: %s, exception: %s, uri: %s)".format(retryNumber,ex.getMessage,uri))
-          withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
+          output = withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
+          output
         }
       }
     } catch {
       case ex:RetryException => {
         println("Exception during httpConnection - retrying.  (attempt: %s, exception: %s, uri: %s)".format(retryNumber,ex.getMessage,uri))
-        // don't want to try again if we've exceeded the maximum requested, it's just going to throw an exception again
+        // don't want to try again if we've exceeded the maximum requested retries, it's just going to throw an exception again
         //withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
         output
       }
