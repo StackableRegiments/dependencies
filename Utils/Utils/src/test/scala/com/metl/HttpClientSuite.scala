@@ -12,7 +12,7 @@ import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => the, any, anyInt}
 
 import java.util.concurrent.TimeUnit
-import org.apache.http.{HttpResponse, HttpStatus, ProtocolVersion}
+import org.apache.http.{HttpResponse, HttpStatus, HttpVersion, ProtocolVersion, HttpRequest, HttpEntityEnclosingRequest}
 import org.apache.http.entity.StringEntity
 import org.apache.http.conn.{ClientConnectionManager, ManagedClientConnection, ClientConnectionRequest}
 import org.apache.http.conn.routing.HttpRoute
@@ -283,9 +283,72 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
         }
     }
 
+    test("post bytes using the connection") { () =>
+        withConnection { f =>
+            
+            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
+            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+         
+            val requestedUri = "http://test.metl.com/data.xml"
+            val expectedResult = "Whatever"
+
+            val result1 = f.client.postBytes(requestedUri, expectedResult.toCharArray.map(_.toByte))
+            assert(result1 === expectedResult.toCharArray.map(_.toByte))
+
+            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+            verify(f.conn).flush
+        }
+    }
+
+    test("post form using the connection") { () =>
+        withConnection { f =>
+            
+            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
+            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+         
+            val requestedUri = "http://test.metl.com/data.xml"
+            val expectedResult = "Whatever"
+
+            val result1 = f.client.postForm(requestedUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")))
+            assert(result1 === expectedResult.toCharArray.map(_.toByte))
+
+            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+            verify(f.conn).flush
+        }
+    }
+
+    test("post unencoded form using the connection") { () =>
+        withConnection { f =>
+            
+            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
+            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+         
+            val requestedUri = "http://test.metl.com/data.xml"
+            val expectedResult = "Whatever"
+
+            val result1 = f.client.postUnencodedForm(requestedUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")))
+            assert(result1 === expectedResult.toCharArray.map(_.toByte))
+
+            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+            verify(f.conn).flush
+        }
+    }
+
     private def prepareHttpResponse(expectedBody: String, expectedStatusCode: Int): HttpResponse = {
     
-        var response = new BasicHttpResponse(new BasicStatusLine(new ProtocolVersion("HTTP", 1, 1), expectedStatusCode, ""))
+        var response = new BasicHttpResponse(HttpVersion.HTTP_1_1, expectedStatusCode, "OK")
         response.setEntity(new StringEntity(expectedBody))
         response.setStatusCode(expectedStatusCode)
         response
