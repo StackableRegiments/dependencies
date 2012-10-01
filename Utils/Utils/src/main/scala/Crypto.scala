@@ -167,6 +167,7 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 					}	
 				}	
 				val internalIv = cipherName match {
+                    // Array[Byte](1, 2, 3, 4, 5, 6, 7, 8) works too
 					case "DESede" =>  new IvParameterSpec(inputIv.getOrElse(List(1,2,3,4,5,6,7,8).map(a => a.asInstanceOf[Byte]).toArray.take(8)))
 					case _ => new IvParameterSpec(inputIv.getOrElse(kgen.generateKey.getEncoded))
 				}
