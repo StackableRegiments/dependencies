@@ -167,8 +167,8 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 					}	
 				}	
 				val internalIv = cipherName match {
-                    // Array[Byte](1, 2, 3, 4, 5, 6, 7, 8) works too
-					case "DESede" =>  new IvParameterSpec(inputIv.getOrElse(List(1,2,3,4,5,6,7,8).map(a => a.asInstanceOf[Byte]).toArray.take(8)))
+                    // List(1,2,3,4,5,6,7,8).map(a => a.asInstanceOf[Byte]).toArray.take(8)
+					case "DESede" =>  new IvParameterSpec(inputIv.getOrElse(Array[Byte](1,2,3,4,5,6,7,8)))
 					case _ => new IvParameterSpec(inputIv.getOrElse(kgen.generateKey.getEncoded))
 				}
 				eciph.init(Cipher.ENCRYPT_MODE, internalKey, internalIv)
@@ -181,6 +181,8 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 		(eciph,dciph)
 	})
 	def cloneCrypto = Stopwatch.time("Crypto.cloneCrypto",() => new Crypto(cipherName,cipherMode,padding,inputKey,inputIv))
+
+    override def toString = "Crypto(%s,%s,%s)".format(cipher,inputKey,inputIv)
 
 	val encoding = "UTF8"
 
@@ -241,7 +243,7 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 		key.map(k => {
 			val b64Encoder = new sun.misc.BASE64Encoder()
 			val internalKey = b64Encoder.encode(k.asInstanceOf[java.security.Key].getEncoded)
-			val internalIv = iv.map(i => b64Encoder.encode(i.asInstanceOf[java.security.Key].getEncoded)).getOrElse("")
+			val internalIv = iv.map(i => b64Encoder.encode(i.asInstanceOf[javax.crypto.spec.IvParameterSpec].getIV)).getOrElse("")
 			<KeyPair><Key>{internalKey}</Key><Iv>{internalIv}</Iv></KeyPair>
 		}).getOrElse(<NoKey/>)
 	})
