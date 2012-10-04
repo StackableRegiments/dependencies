@@ -31,7 +31,8 @@ import org.apache.http.params.BasicHttpParams
 import org.apache.http.protocol.BasicHttpContext
 import net.liftweb.util._
 
-case class RetryException(message:String) extends Exception(message){}
+case class RetryException(message:String,exceptions:List[Throwable] = List.empty[Throwable]) extends Exception(message){}
+case class RedirectException(message:String,exceptions:List[Throwable] = List.empty[Throwable]) extends Exception(message){}
 
 trait IMeTLHttpClient {
   def addAuthorization(domain:String,username:String,password:String):Unit 
@@ -118,11 +119,10 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     else
       message.addHeader(new BasicHeader("Host","%s:%s".format(host,port)))
   }
-	private def withConn(uri:String,actOnConn:(ManagedClientConnection,String) => Unit,redirectNumber:Int = 0,retryNumber:Int = 0):Array[Byte] = Stopwatch.time("Http.withConn", () => {
-    var output = Array[Byte]()
+	private def withConn(uri:String,actOnConn:(ManagedClientConnection,String) => Unit,redirectNumber:Int = 0,retryNumber:Int = 0, exceptionsSoFar:List[Throwable] = List.empty[Throwable]):Array[Byte] = Stopwatch.time("Http.withConn", () => {
     try {
-      testRedirectCount(uri,redirectNumber)
-      testRetryCount(uri,retryNumber)
+      if (maxRedirects > 0 && redirectNumber > maxRedirects) throw new RedirectException("exceeded configured maximum number of redirects (%s) when requesting: %s".format(maxRedirects,uri),exceptionsSoFar)
+      if (maxRetries > 0 && retryNumber > maxRetries) throw new RetryException("exceeded configured maximum number of retries (%s) when requesting: %s".format(maxRetries,uri),exceptionsSoFar)
       val correctlyFormedUrl = new URI(uri)
       val port = determinePort(correctlyFormedUrl)
       val host = determineHost(correctlyFormedUrl)
@@ -139,12 +139,13 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         if(conn.isResponseAvailable(readTimeout)){
           val response = conn.receiveResponseHeader
           storeClientCookies(response.getHeaders("Set-Cookie").toList)
-          response.getStatusLine.getStatusCode match {
+          val output = response.getStatusLine.getStatusCode match {
               case 200 => {
                   conn.receiveResponseEntity(response)
                   val entity = response.getEntity
-                  output = IOUtils.toByteArray(entity.getContent)
+                  val tempOutput = IOUtils.toByteArray(entity.getContent)
                   EntityUtils.consume(entity)
+                  tempOutput
               }
               case 300 | 301 | 302 | 303 => {
                   val newLoc = response.getHeaders("Location").first.getValue
@@ -152,7 +153,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
                   val newLocUri = new URI(newLoc)
                   val newLocString = if (newLocUri.getHost == null) oldLocUri.resolve(newLocUri).toString else newLoc
                   conn.abortConnection
-                  output = withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber)
+                  withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber, exceptionsSoFar ::: List(new RedirectException("healthy redirect from: %s to %s".format(oldLocUri,newLocUri))))
               }
               case 400 => throw new Exception("bad request sent to %s".format(uri))
               case 401 => throw new Exception("access to object at %s requires authentication".format(uri))
@@ -161,27 +162,26 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
               case 500 => throw new Exception("server error encountered at %s".format(uri))
               case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
           }
+          connMgr.releaseConnection(conn,keepAliveTimeout,TimeUnit.SECONDS)
           output
         }
-        else
+        else {
+          connMgr.releaseConnection(conn,keepAliveTimeout,TimeUnit.SECONDS)
           throw new Exception("Socket timeout - No data from: %s".format(uri))
-        connMgr.releaseConnection(conn,keepAliveTimeout,TimeUnit.SECONDS)
-        output
+        }
       } catch {
+        case ex:RetryException => {
+          throw ex
+        }
+        case ex:RedirectException => {
+          throw ex
+        }
         case ex:Throwable => {
           conn.abortConnection
-          println("Exception during httpConnection - retrying.  (attempt: %s, exception: %s, uri: %s)".format(retryNumber,ex.getMessage,uri))
-          output = withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
-          output
+          withConn(uri,actOnConn,redirectNumber,retryNumber + 1, exceptionsSoFar ::: List(ex))
         }
       }
     } catch {
-      case ex:RetryException => {
-        println("Exception during httpConnection - retrying.  (attempt: %s, exception: %s, uri: %s)".format(retryNumber,ex.getMessage,uri))
-        // don't want to try again if we've exceeded the maximum requested retries, it's just going to throw an exception again
-        //withConn(uri,actOnConn,redirectNumber,retryNumber + 1)
-        output
-      }
       case ex:Throwable => {
         throw ex
       }
@@ -331,13 +331,6 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
   private def storeClientCookies(newHeaders:List[Header]):Unit = {
       val newCookies = newHeaders.map(header => header.getElements.toList.map(item => (item.getName, header)))
       newCookies.foreach(newCookieList => newCookieList.foreach(newCookie => cookies = cookies.updated(newCookie._1,newCookie._2)))
-  }
-  private def testRedirectCount(uri:String,redirectNumber:Int):Unit = {
-    if ((maxRedirects != 0 || maxRedirects != -1) && redirectNumber > maxRedirects) throw new Exception("exceeded configured maximum number of redirects when requesting: %s".format(uri))
-  }
-  private def testRetryCount(uri:String,retryNumber:Int):Unit = {
-    if (retryNumber > 0) println("retrying %s (attempt: %s)".format(uri,retryNumber))
-    if ((maxRetries != 0 || maxRetries != -1) && retryNumber > maxRetries) throw new RetryException("exceeded configured maximum number of retries when requesting: %s".format(uri))
   }
 }
 

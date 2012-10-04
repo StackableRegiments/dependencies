@@ -94,13 +94,13 @@
       <scope>test</scope>
     </dependency>
 -->
-		<!-- for stream handling -->
+	<!-- for stream handling -->
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
       <version>1.4</version>
     </dependency>
-		<!-- for LiftUtils -->
+	<!-- for LiftUtils -->
     <dependency>
       <groupId>net.liftweb</groupId>
       <artifactId>lift-util_2.9.0-1</artifactId>
@@ -116,7 +116,7 @@
       <artifactId>lift-mapper_2.9.0-1</artifactId>
       <version>2.4</version>
     </dependency>
-		<!-- for Http client -->
+	<!-- for Http client -->
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>

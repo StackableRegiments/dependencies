@@ -12,13 +12,15 @@ import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => the, any, anyInt}
 
 import java.util.concurrent.TimeUnit
-import org.apache.http.{HttpResponse, HttpStatus, HttpVersion, ProtocolVersion, HttpRequest, HttpEntityEnclosingRequest}
+import java.io.IOException
+import org.apache.http.{HttpResponse, HttpStatus, HttpVersion, ProtocolVersion, HttpRequest, HttpEntityEnclosingRequest, HttpException}
 import org.apache.http.entity.StringEntity
 import org.apache.http.conn.{ClientConnectionManager, ManagedClientConnection, ClientConnectionRequest}
 import org.apache.http.conn.routing.HttpRoute
 import org.apache.http.message.{BasicStatusLine, BasicHeader, BasicHttpResponse}
 
 import com.metl.utils._ 
+// TODO: separate the client.get calls into their own tests
 
 class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with MockitoSugar {
 
@@ -149,14 +151,16 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
             val requestedUri = "http://test.metl.com/data.xml"
             val expectedResult = ""
 
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
+            intercept[RetryException] {
+              val result1a = f.client.get(requestedUri)
+              assert(result1a === expectedResult)
 
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
+              val result2a = f.client.getAsBytes(requestedUri)
+              assert(result2a === expectedResult.toCharArray.map(_.toByte))
 
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
+              val result3a = f.client.getAsString(requestedUri)
+              assert(result3a === expectedResult)
+            }
         }
     }
 
@@ -169,15 +173,67 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
             val expectedResult = ""
             val additionalHeader = List(("Accept", "text/plain"))
 
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
+            intercept[RetryException] {
+              val result1b = f.client.get(requestedUri, additionalHeader)
+              assert(result1b === expectedResult)
 
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
+              val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
+              assert(result2b === expectedResult.toCharArray.map(_.toByte))
 
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
+              val result3b = f.client.getAsString(requestedUri, additionalHeader)
+              assert(result3b === expectedResult)
+          }
         }
+    }
+
+    test("handle io exception from receiveResponseHeader") { () =>
+        withConnection { f =>
+
+            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+            response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
+            when(f.conn.receiveResponseHeader).thenThrow(new IOException())
+         
+            val requestedUri = "http://test.metl.com/data.xml"
+            val expectedResult = ""
+
+            intercept[RetryException] {
+              val result1a = f.client.get(requestedUri)
+              assert(result1a === expectedResult)
+
+              val result2a = f.client.getAsBytes(requestedUri)
+              assert(result2a === expectedResult.toCharArray.map(_.toByte))
+
+              val result3a = f.client.getAsString(requestedUri)
+              assert(result3a === expectedResult)
+          }
+      }
+    }
+
+    test("handle http exception from receiveResponseHeader") { () =>
+        withConnection { f =>
+
+            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+            response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
+            when(f.conn.receiveResponseHeader).thenThrow(new HttpException())
+         
+            val requestedUri = "http://test.metl.com/data.xml"
+            val expectedResult = ""
+
+            intercept[RetryException] {
+              val result1a = f.client.get(requestedUri)
+              assert(result1a === expectedResult)
+
+              val result2a = f.client.getAsBytes(requestedUri)
+              assert(result2a === expectedResult.toCharArray.map(_.toByte))
+
+              val result3a = f.client.getAsString(requestedUri)
+              assert(result3a === expectedResult)
+          }
+      }
     }
 
     test("response available and has status code of ok") { () =>
@@ -200,6 +256,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3a = f.client.getAsString(requestedUri)
             assert(result3a === expectedResult)
+
+            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -224,6 +282,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3b = f.client.getAsString(requestedUri, additionalHeader)
             assert(result3b === expectedResult)
+
+            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -246,6 +306,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3a = f.client.getAsString(requestedUri)
             assert(result3a === expectedResult)
+
+            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -269,6 +331,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3b = f.client.getAsString(requestedUri, additionalHeader)
             assert(result3b === expectedResult)
+
+            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -283,14 +347,16 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
             val requestedUri = "http://test.metl.com/data.xml"
             val expectedResult = ""
 
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
+            intercept[RetryException] {
+              val result1a = f.client.get(requestedUri)
+              assert(result1a === expectedResult)
 
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
+              val result2a = f.client.getAsBytes(requestedUri)
+              assert(result2a === expectedResult.toCharArray.map(_.toByte))
 
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
+              val result3a = f.client.getAsString(requestedUri)
+              assert(result3a === expectedResult)
+          }
         }
     }
 
@@ -306,14 +372,16 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
             val expectedResult = ""
             val additionalHeader = List(("Accept", "text/plain"))
 
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
+            intercept[RetryException] {
+              val result1b = f.client.get(requestedUri, additionalHeader)
+              assert(result1b === expectedResult)
 
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
+              val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
+              assert(result2b === expectedResult.toCharArray.map(_.toByte))
 
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
+              val result3b = f.client.getAsString(requestedUri, additionalHeader)
+              assert(result3b === expectedResult)
+          }
         }
     }
 
@@ -329,14 +397,18 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
             val requestedUri = "http://test.metl.com/data.xml"
             val expectedResult = ""
 
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
+            intercept[RedirectException] {
+              val result1a = f.client.get(requestedUri)
+              assert(result1a === expectedResult)
 
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
+              val result2a = f.client.getAsBytes(requestedUri)
+              assert(result2a === expectedResult.toCharArray.map(_.toByte))
 
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
+              val result3a = f.client.getAsString(requestedUri)
+              assert(result3a === expectedResult)
+            }
+
+            verify(f.conn, times(21)).abortConnection
         }
     }
 
@@ -353,14 +425,18 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
             val expectedResult = ""
             val additionalHeader = List(("Accept", "text/plain"))
 
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
+            intercept[RedirectException] {
+              val result1b = f.client.get(requestedUri, additionalHeader)
+              assert(result1b === expectedResult)
 
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
+              val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
+              assert(result2b === expectedResult.toCharArray.map(_.toByte))
 
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
+              val result3b = f.client.getAsString(requestedUri, additionalHeader)
+              assert(result3b === expectedResult)
+            }
+
+            verify(f.conn, times(21)).abortConnection
         }
     }
 
@@ -387,6 +463,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3a = f.client.getAsString(requestedUri)
             assert(result3a === expectedResult)
+
+            verify(f.connMgr, times(4)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -414,6 +492,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3b = f.client.getAsString(requestedUri, additionalHeader)
             assert(result3b === expectedResult)
+
+            verify(f.connMgr, times(4)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -432,11 +512,13 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
             val result1a = f.client.get(requestedUri)
             assert(result1a === expectedResult)
 
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
+            //val result2a = f.client.getAsBytes(requestedUri)
+            //assert(result2a === expectedResult.toCharArray.map(_.toByte))
 
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
+            //val result3a = f.client.getAsString(requestedUri)
+            //assert(result3a === expectedResult)
+
+            verify(f.connMgr, times(2)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -461,6 +543,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3b = f.client.getAsString(requestedUri, additionalHeader)
             assert(result3b === expectedResult)
+
+            verify(f.connMgr, times(4)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -486,6 +570,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3a = f.client.getAsString(requestedUri)
             assert(result3a === expectedResult)
+
+            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
@@ -512,6 +598,8 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
 
             val result3b = f.client.getAsString(requestedUri, additionalHeader)
             assert(result3b === expectedResult)
+
+            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
