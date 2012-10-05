@@ -63,7 +63,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		getAll.foreach(s => println(s))
 		println("canvasState")
 		getCanvasContents.foreach(s => println(s))
-		(resetToOriginalVisual.getAll ::: other.resetToOriginalVisual.getAll).sortBy(i => i.timestamp).map(i => newHistory.addStanza(i))
+		(getAll ::: other.getAll).sortBy(i => i.timestamp).map(i => newHistory.addStanza(i))
 		newHistory
 	})	
 
@@ -95,7 +95,6 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 
   private def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
 		getCanvasContents.foreach(cc => moveIndividualContent(s,cc))
-		this
   })
 	private def moveIndividualContent(s:MeTLMoveDelta,c:MeTLCanvasContent) = Stopwatch.time("History.moveIndividualContent", () => {
 		def matches(coll:Seq[String],i:MeTLCanvasContent):Boolean = coll.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
@@ -345,8 +344,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		}
 		val newHistory = History(jid,xScale,yScale,xOffset,yOffset)
 		getAll.foreach(i => i match {
-			case q:MeTLQuiz => newHistory.addQuiz(q)
-			case c:MeTLCommand => newHistory.addCommand(c)
+			case q:MeTLQuiz => newHistory.addStanza(q)
+			case c:MeTLCommand => newHistory.addStanza(c)
 			case s:MeTLStanza => possiblyAdd(s,() => newHistory.addStanza(s))
 		})
     newHistory

@@ -64,12 +64,13 @@ class JsonSerializer(configName:String) extends Serializer{
     ParsedCanvasContent(target,privacy,slide,identity)
   }
   override def fromHistory(input:History):JValue = Stopwatch.time("JsonSerializer.fromHistory",() => {
+		val (texts,highlighters,inks,images) = input.getRenderableGrouped
     toJsObj("history",List(
       JField("jid",JString(input.jid)),
-      JField("inks",JObject(input.getInks.map(i => JField(i.identity,fromMeTLInk(i))))),
-      JField("highlighters",JObject(input.getHighlighters.map(i => JField(i.identity,fromMeTLInk(i))))),
-      JField("images",JObject(input.getImages.map(i => JField(i.identity,fromMeTLImage(i))))),
-      JField("texts",JObject(input.getTexts.map(i => JField(i.identity,fromMeTLText(i))))),
+      JField("inks",JObject(inks.map(i => JField(i.identity,fromMeTLInk(i))))),
+      JField("highlighters",JObject(highlighters.map(i => JField(i.identity,fromMeTLInk(i))))),
+      JField("images",JObject(images.map(i => JField(i.identity,fromMeTLImage(i))))),
+      JField("texts",JObject(texts.map(i => JField(i.identity,fromMeTLText(i))))),
       JField("quizzes",JArray(input.getQuizzes.map(i => fromMeTLQuiz(i)))),
       JField("quizResponses",JArray(input.getQuizResponses.map(i => fromMeTLQuizResponse(i)))),
       JField("submissions",JArray(input.getSubmissions.map(i => fromSubmission(i)))),
