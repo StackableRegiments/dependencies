@@ -284,6 +284,9 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 			}
 		}
 	})
+	def refersTo(other:MeTLCanvasContent):Boolean = {
+		(inkIds.contains(other.identity) || textIds.contains(other.identity) || imageIds.contains(other.identity)) && privacy == other.privacy && timestamp >= other.timestamp
+	}
 }
 case object MeTLMoveDelta{ 
   def empty = MeTLMoveDelta(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,Nil,Nil,0.0,0.0,1.0,1.0,Privacy.NOT_SET,false)
@@ -296,6 +299,7 @@ case object MeTLMove{
 
 case class MeTLDirtyInk(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity) {
 	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyInk = MeTLDirtyInk(server,author,timestamp,target,newPrivacy,slide,identity)
+	def refersTo(other:MeTLInk):Boolean = identity == other.identity && privacy == other.privacy && timestamp >= other.timestamp
 }
 object MeTLDirtyInk{
   def empty = MeTLDirtyInk(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
@@ -303,6 +307,7 @@ object MeTLDirtyInk{
 
 case class MeTLDirtyText(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity){
 	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyText = MeTLDirtyText(server,author,timestamp,target,newPrivacy,slide,identity)
+	def refersTo(other:MeTLText):Boolean = identity == other.identity && privacy == other.privacy && timestamp >= other.timestamp
 }
 object MeTLDirtyText{
   def empty = MeTLDirtyText(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
@@ -310,6 +315,7 @@ object MeTLDirtyText{
 
 case class MeTLDirtyImage(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity) {
 	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyImage = MeTLDirtyImage(server,author,timestamp,target,newPrivacy,slide,identity)
+	def refersTo(other:MeTLImage):Boolean = identity == other.identity && privacy == other.privacy && timestamp >= other.timestamp
 }
 object MeTLDirtyImage{
   def empty = MeTLDirtyImage(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")

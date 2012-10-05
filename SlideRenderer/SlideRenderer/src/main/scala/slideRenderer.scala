@@ -221,12 +221,13 @@ object SlideRenderer {
 	def render(h:History,intWidth:Int,intHeight:Int,target:String = "presentationSpace"):Array[Byte] = Stopwatch.time("SlideRenderer.render", () => {
 		val width = intWidth.toDouble
 		val height = intHeight.toDouble
+		val (texts,highlighters,inks,images) = h.getRenderableGrouped	
 
 		h.shouldRender match {
 			case true => {
 				val tempImage = new BufferedImage(1,1,BufferedImage.TYPE_3BYTE_BGR)
 				val tempG = tempImage.createGraphics.asInstanceOf[Graphics2D]
-				val nativeScalePreparedTextLines = filterAccordingToTarget[MeTLText](target,h.getTexts).map(t => measureText(t,tempG))
+				val nativeScalePreparedTextLines = filterAccordingToTarget[MeTLText](target,texts).map(t => measureText(t,tempG))
 
 				val (left,right,top,bottom) = nativeScalePreparedTextLines.foldLeft((h.getLeft,h.getRight,h.getTop,h.getBottom))((acc,item) => {
 					item.foldLeft(acc)((internalAcc,internalItem) => {
@@ -275,17 +276,15 @@ object SlideRenderer {
 				g.fill(new Rectangle(0,0,width.toInt,height.toInt))
 				val scaleApplier = scaleFactor
 				val scaledHistory = (scaleFactor != h.xScale || scaleFactor != h.yScale || h.xOffset != 0 || h.yOffset != 0) match {
-					//case true => h.adjustToVisual(contentXOffset,contentYOffset,1.0,1.0).scale(scaleApplier)
 					case true => h.adjustToVisual(contentXOffset,contentYOffset,scaleApplier,scaleApplier)
 					case false => h
 				}
 
-				//g.transform(AffineTransform.getTranslateInstance((width-renderWidth)/2,(height-renderHeight)/2))
-
-				filterAccordingToTarget[MeTLImage](target,scaledHistory.getImages).foreach(renderImage(_,g))
-				filterAccordingToTarget[MeTLInk](target,scaledHistory.getHighlighters).foreach(renderInk(_,g))
-				filterAccordingToTarget[MeTLText](target,scaledHistory.getTexts).foreach(t => renderText(measureText(t,g),g))
-				filterAccordingToTarget[MeTLInk](target,scaledHistory.getInks).foreach(renderInk(_,g))
+				val (scaledTexts,scaledHighlighters,scaledInks,scaledImages) = scaledHistory.getRenderableGrouped	
+				filterAccordingToTarget[MeTLImage](target,scaledImages).foreach(renderImage(_,g))
+				filterAccordingToTarget[MeTLInk](target,scaledHighlighters).foreach(renderInk(_,g))
+				filterAccordingToTarget[MeTLText](target,scaledTexts).foreach(t => renderText(measureText(t,g),g))
+				filterAccordingToTarget[MeTLInk](target,scaledInks).foreach(renderInk(_,g))
 
 				imageToByteArray(unscaledImage)
 			}
