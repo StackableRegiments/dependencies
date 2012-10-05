@@ -150,8 +150,11 @@ case class MeTLInk(override val server:ServerConfiguration,override val author:S
 			}
 			MeTLInk(server,author,timestamp,checksum,startingSum,newPoints,color,thickness * averageFactor,isHighlighter,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
 	})
-	def generateDirty:MeTLDirtyInk = Stopwatch.time("MeTLInk.generateDirty", () => {
-			MeTLDirtyInk(server,author,new java.util.Date().getTime,target,privacy,slide,identity)
+	def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLInk = Stopwatch.time("MeTLInk.adjustTimestamp", () => {
+			MeTLInk(server,author,newTime,checksum,startingSum,points,color,thickness,isHighlighter,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
+	})
+	def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyInk = Stopwatch.time("MeTLInk.generateDirty", () => {
+			MeTLDirtyInk(server,author,dirtyTime,target,privacy,slide,identity)
 	})
 }
 
@@ -179,8 +182,11 @@ case class MeTLImage(override val server:ServerConfiguration,override val author
 	def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.adjustVisual", () => {
 		MeTLImage(server,author,timestamp,tag,source,imageBytes,pngBytes,width * xScale,height * yScale,x + xTranslate,y + yTranslate,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
 	})
-	def generateDirty:MeTLDirtyImage = Stopwatch.time("MeTLImage.generateDirty", () => {
-		MeTLDirtyImage(server,author,new java.util.Date().getTime,target,privacy,slide,identity)
+	def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLImage = Stopwatch.time("MeTLimage.adjustTimestamp", () => {
+		MeTLImage(server,author,newTime,tag,source,imageBytes,pngBytes,width,height,x,y,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
+	})
+	def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyImage = Stopwatch.time("MeTLImage.generateDirty", () => {
+		MeTLDirtyImage(server,author,dirtyTime,target,privacy,slide,identity)
 	})
 }
 
@@ -210,8 +216,11 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
 		val averageFactor = (xScale + yScale) / 2
 		MeTLText(server,author,timestamp,text,height * yScale,width * xScale,caret,x + xTranslate,y + yTranslate,tag,style,family,weight,size * averageFactor,decoration,identity,target,privacy,slide,color,scaleFactorX,scaleFactorY)
 	})
-	def generateDirty:MeTLDirtyText = Stopwatch.time("MeTLText.generateDirty", () => {
-		MeTLDirtyText(server,author,new java.util.Date().getTime,target,privacy,slide,identity)
+	def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLText = Stopwatch.time("MeTLText.adjustTimestamp", () => {
+		MeTLText(server,author,newTime,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,identity,target,privacy,slide,color,scaleFactorX,scaleFactorY)	
+	})
+	def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyText = Stopwatch.time("MeTLText.generateDirty", () => {
+		MeTLDirtyText(server,author,dirtyTime,target,privacy,slide,identity)
 	})
 }
 
@@ -285,7 +294,7 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 		}
 	})
 	def refersTo(other:MeTLCanvasContent):Boolean = {
-		(inkIds.contains(other.identity) || textIds.contains(other.identity) || imageIds.contains(other.identity)) && privacy == other.privacy && timestamp >= other.timestamp
+		(inkIds.contains(other.identity) || textIds.contains(other.identity) || imageIds.contains(other.identity)) && privacy == other.privacy && timestamp > other.timestamp
 	}
 }
 case object MeTLMoveDelta{ 
@@ -299,7 +308,7 @@ case object MeTLMove{
 
 case class MeTLDirtyInk(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity) {
 	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyInk = MeTLDirtyInk(server,author,timestamp,target,newPrivacy,slide,identity)
-	def refersTo(other:MeTLInk):Boolean = identity == other.identity && privacy == other.privacy && timestamp >= other.timestamp
+	def refersTo(other:MeTLInk):Boolean = identity == other.identity && privacy == other.privacy && timestamp > other.timestamp
 }
 object MeTLDirtyInk{
   def empty = MeTLDirtyInk(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
@@ -307,7 +316,7 @@ object MeTLDirtyInk{
 
 case class MeTLDirtyText(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity){
 	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyText = MeTLDirtyText(server,author,timestamp,target,newPrivacy,slide,identity)
-	def refersTo(other:MeTLText):Boolean = identity == other.identity && privacy == other.privacy && timestamp >= other.timestamp
+	def refersTo(other:MeTLText):Boolean = identity == other.identity && privacy == other.privacy && timestamp > other.timestamp
 }
 object MeTLDirtyText{
   def empty = MeTLDirtyText(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
@@ -315,7 +324,7 @@ object MeTLDirtyText{
 
 case class MeTLDirtyImage(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity) {
 	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyImage = MeTLDirtyImage(server,author,timestamp,target,newPrivacy,slide,identity)
-	def refersTo(other:MeTLImage):Boolean = identity == other.identity && privacy == other.privacy && timestamp >= other.timestamp
+	def refersTo(other:MeTLImage):Boolean = identity == other.identity && privacy == other.privacy && timestamp > other.timestamp
 }
 object MeTLDirtyImage{
   def empty = MeTLDirtyImage(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
