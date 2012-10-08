@@ -3,10 +3,12 @@ package com.metl
 import net.liftweb.util._
 import net.liftweb.common._
 
+import org.scalatest._
 import org.scalatest.fixture
 import org.scalatest.fixture.ConfigMapFixture
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.OptionValues._
+import org.scalatest.prop.TableDrivenPropertyChecks._
 
 import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => the, any, anyInt}
@@ -20,11 +22,23 @@ import org.apache.http.conn.routing.HttpRoute
 import org.apache.http.message.{BasicStatusLine, BasicHeader, BasicHttpResponse}
 
 import com.metl.utils._ 
-// TODO: separate the client.get calls into their own tests
 
-class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with MockitoSugar {
+trait HttpClientHelpers {
+    def prepareHttpResponse(expectedBody: String, expectedStatusCode: Int): HttpResponse = {
+    
+        var response = new BasicHttpResponse(HttpVersion.HTTP_1_1, expectedStatusCode, "OK")
+        response.setEntity(new StringEntity(expectedBody))
+        response.setStatusCode(expectedStatusCode)
+        response
+    }
+}
+
+class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with MockitoSugar with HttpClientHelpers {
 
     case class F(connMgr: ClientConnectionManager, client: CleanHttpClient, conn: ManagedClientConnection, connRequest: ClientConnectionRequest)
+
+    private val mockUri = "http://test.metl.com/data.xml"
+    private val additionalHeader = List(("Accept", "text/plain"))
 
     def withClient(test: F => Any) {
 
@@ -48,7 +62,21 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
         when(connMgr.requestConnection(any(classOf[HttpRoute]), any)).thenReturn(connRequest)
 
         val fixture = F(connMgr, client, conn, connRequest)
+        test(fixture)
+    }
 
+    def withConnectionAndResponse(test: F => Any) {
+
+        val connMgr = mock[ClientConnectionManager]
+        val client = new CleanHttpClient(connMgr)
+        val conn = mock[ManagedClientConnection]
+        val connRequest = mock[ClientConnectionRequest]
+
+        when(connRequest.getConnection(anyInt, any(classOf[TimeUnit]))).thenReturn(conn)
+        when(connMgr.requestConnection(any(classOf[HttpRoute]), any)).thenReturn(connRequest)
+        when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+
+        val fixture = F(connMgr, client, conn, connRequest)
         test(fixture)
     }
 
@@ -61,682 +89,717 @@ class HttpClientSuite extends fixture.FunSuite with ConfigMapFixture with Mockit
         }
     }
 
-    test("handles empty string as uri gracefully") { () =>
+    test("get with empty string as uri") { () =>
         withClient { f =>
         
             intercept[IllegalArgumentException] {
 
-                val requestedUri = ""
-                val expectedResult = ""
-
-                val result1a = f.client.get(requestedUri)
-                assert(result1a === expectedResult)
-
-                val result2a = f.client.getAsBytes(requestedUri)
-                assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-                val result3a = f.client.getAsString(requestedUri)
-                assert(result3a === expectedResult)
+                val result = f.client.get("")
+                assert(result === "")
             }
         }
     }
 
-    test("handles empty string as uri gracefully with additional header") { () =>
+    test("get as bytes with empty string as uri") { () =>
         withClient { f =>
         
             intercept[IllegalArgumentException] {
 
-                val requestedUri = ""
-                val expectedResult = ""
-                val additionalHeader = List(("Accept", "text/plain"))
-
-                val result1b = f.client.get(requestedUri, additionalHeader)
-                assert(result1b === expectedResult)
-
-                val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-                assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-                val result3b = f.client.getAsString(requestedUri, additionalHeader)
-                assert(result3b === expectedResult)
+                val result = f.client.getAsBytes("")
+                assert(result === Array.empty[Byte])
             }
         }
     }
 
-    test("handles junk string as uri gracefully") { () =>
+    test("get as string with empty string as uri") { () =>
         withClient { f =>
         
             intercept[IllegalArgumentException] {
 
-                val requestedUri = "garbage"
-                val expectedResult = ""
-
-                val result1a = f.client.get(requestedUri)
-                assert(result1a === expectedResult)
-
-                val result2a = f.client.getAsBytes(requestedUri)
-                assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-                val result3a = f.client.getAsString(requestedUri)
-                assert(result3a === expectedResult)
+                val result = f.client.getAsString("")
+                assert(result === "")
             }
         }
     }
 
-    test("handles junk string as uri gracefully with additional header") { () =>
+    test("get with empty string as uri and additional header") { () =>
         withClient { f =>
         
             intercept[IllegalArgumentException] {
 
-                val requestedUri = "garbage"
-                val expectedResult = ""
-                val additionalHeader = List(("Accept", "text/plain"))
-
-                val result1b = f.client.get(requestedUri, additionalHeader)
-                assert(result1b === expectedResult)
-
-                val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-                assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-                val result3b = f.client.getAsString(requestedUri, additionalHeader)
-                assert(result3b === expectedResult)
+                val result = f.client.get("", additionalHeader)
+                assert(result === "")
             }
         }
     }
 
-    test("handle socket timeout gracefully") { () =>
+    test("get as bytes with empty string as uri and additional header") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.getAsBytes("", additionalHeader)
+                assert(result === Array.empty[Byte])
+            }
+        }
+    }
+
+    test("get as string with empty string as uri and additional header") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.getAsString("", additionalHeader)
+                assert(result === "")
+            }
+        }
+    }
+
+    test("get with junk string as uri") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.get("garbage")
+                assert(result === "")
+            }
+        }
+    }
+
+    test("get as bytes with junk string as uri") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.getAsBytes("garbage")
+                assert(result === Array.empty[Byte])
+            }
+        }
+    }
+
+    test("get as string with junk string as uri") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.getAsString("garbage")
+                assert(result === "")
+            }
+        }
+    }
+
+    test("get with junk string as uri and additional header") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.get("garbage", additionalHeader)
+                assert(result === "")
+            }
+        }
+    }
+
+    test("get as bytes with junk string as uri and additional header") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.getAsBytes("garbage", additionalHeader)
+                assert(result === Array.empty[Byte])
+            }
+        }
+    }
+
+    test("get as string with junk string as uri and additional header") { () =>
+        withClient { f =>
+        
+            intercept[IllegalArgumentException] {
+
+                val result = f.client.getAsString("garbage", additionalHeader)
+                assert(result === "")
+            }
+        }
+    }
+
+    test("get with socket timeout") { () =>
         withConnection { f =>
         
             when(f.conn.isResponseAvailable(anyInt)).thenReturn(false)
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
-
             intercept[RetryException] {
-              val result1a = f.client.get(requestedUri)
-              assert(result1a === expectedResult)
 
-              val result2a = f.client.getAsBytes(requestedUri)
-              assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-              val result3a = f.client.getAsString(requestedUri)
-              assert(result3a === expectedResult)
+              val result = f.client.get(mockUri)
+              assert(result === "")
             }
         }
     }
 
-    test("handle socket timeout gracefully with additional header") { () =>
+    test("get bytes with socket timeout") { () =>
         withConnection { f =>
         
             when(f.conn.isResponseAvailable(anyInt)).thenReturn(false)
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
-            val additionalHeader = List(("Accept", "text/plain"))
-
             intercept[RetryException] {
-              val result1b = f.client.get(requestedUri, additionalHeader)
-              assert(result1b === expectedResult)
 
-              val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-              assert(result2b === expectedResult.toCharArray.map(_.toByte))
+              val result = f.client.getAsBytes(mockUri)
+              assert(result === Array.empty[Byte])
+            }
+        }
+    }
 
-              val result3b = f.client.getAsString(requestedUri, additionalHeader)
-              assert(result3b === expectedResult)
+    test("get string with socket timeout") { () =>
+        withConnection { f =>
+        
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(false)
+         
+            intercept[RetryException] {
+
+              val result = f.client.getAsString(mockUri)
+              assert(result === "")
+            }
+        }
+    }
+
+    test("get with socket timeout and additional header") { () =>
+        withConnection { f =>
+        
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(false)
+         
+            intercept[RetryException] {
+
+              val result = f.client.get(mockUri, additionalHeader)
+              assert(result === "")
           }
         }
     }
 
-    test("handle io exception from receiveResponseHeader") { () =>
+    test("get bytes with socket timeout and additional header") { () =>
         withConnection { f =>
+        
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(false)
+         
+            intercept[RetryException] {
 
-            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+              val result = f.client.getAsBytes(mockUri, additionalHeader)
+              assert(result === Array.empty[Byte])
+          }
+        }
+    }
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
+    test("get string with socket timeout and additional header") { () =>
+        withConnection { f =>
+        
+            when(f.conn.isResponseAvailable(anyInt)).thenReturn(false)
+         
+            intercept[RetryException] {
+
+              val result = f.client.getAsString(mockUri, additionalHeader)
+              assert(result === "")
+          }
+        }
+    }
+
+    test("get with retry when receive response header throws io exception") { () =>
+        withConnectionAndResponse { f =>
+
             when(f.conn.receiveResponseHeader).thenThrow(new IOException())
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
-
             intercept[RetryException] {
-              val result1a = f.client.get(requestedUri)
-              assert(result1a === expectedResult)
 
-              val result2a = f.client.getAsBytes(requestedUri)
-              assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-              val result3a = f.client.getAsString(requestedUri)
-              assert(result3a === expectedResult)
+              val result = f.client.get(mockUri)
+              assert(result === "")
           }
       }
     }
 
-    test("handle http exception from receiveResponseHeader") { () =>
-        withConnection { f =>
+    test("get as bytes with retry when receive response header throws io exception") { () =>
+        withConnectionAndResponse { f =>
 
-            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+            when(f.conn.receiveResponseHeader).thenThrow(new IOException())
+         
+            intercept[RetryException] {
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
+              val result = f.client.getAsBytes(mockUri)
+              assert(result === Array.empty[Byte])
+          }
+      }
+    }
+
+    test("get as string with retry when receive response header throws io exception") { () =>
+        withConnectionAndResponse { f =>
+
+            when(f.conn.receiveResponseHeader).thenThrow(new IOException())
+         
+            intercept[RetryException] {
+
+              val result = f.client.getAsString(mockUri)
+              assert(result === "")
+          }
+      }
+    }
+
+    test("get with handle http exception from receiveResponseHeader") { () =>
+        withConnectionAndResponse { f =>
+
             when(f.conn.receiveResponseHeader).thenThrow(new HttpException())
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
-
             intercept[RetryException] {
-              val result1a = f.client.get(requestedUri)
-              assert(result1a === expectedResult)
 
-              val result2a = f.client.getAsBytes(requestedUri)
-              assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-              val result3a = f.client.getAsString(requestedUri)
-              assert(result3a === expectedResult)
+              val result = f.client.get(mockUri)
+              assert(result === "")
           }
       }
     }
 
-    test("response available and has status code of ok") { () =>
-        withConnection { f => 
+    test("get as bytes with handle http exception from receiveResponseHeader") { () =>
+        withConnectionAndResponse { f =>
 
-            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(response)
+            when(f.conn.receiveResponseHeader).thenThrow(new HttpException())
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
+            intercept[RetryException] {
 
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
+              val result = f.client.getAsBytes(mockUri)
+              assert(result === Array.empty[Byte])
+          }
+      }
+    }
 
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
+    test("get as string with handle http exception from receiveResponseHeader") { () =>
+        withConnectionAndResponse { f =>
 
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
+            when(f.conn.receiveResponseHeader).thenThrow(new HttpException())
+         
+            intercept[RetryException] {
 
-            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
+              val result = f.client.getAsString(mockUri)
+              assert(result === "")
+          }
+      }
+    }
+}
+
+class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClientHelpers { 
+
+    case class F(connMgr: ClientConnectionManager, client: CleanHttpClient, conn: ManagedClientConnection, connRequest: ClientConnectionRequest)
+
+    private val mockUri = "http://test.metl.com/data.xml"
+    private val additionalHeader = List(("Accept", "text/plain"))
+
+    abstract class Action
+    case object Get extends Action
+    case object GetAsBytes extends Action
+    case object GetAsString extends Action
+
+    val getFunctions = 
+      Table(
+        ("action", "expectedResult"),
+        (Get, "Whatever"),
+        (GetAsBytes, "Whatever".toCharArray.map(_.toByte)),
+        (GetAsString, "Whatever")
+      )
+
+    def clientWithResponse(body: String, statusCode: Int): F = {
+
+        val connMgr = mock[ClientConnectionManager]
+        val client = new CleanHttpClient(connMgr)
+        val conn = mock[ManagedClientConnection]
+        val connRequest = mock[ClientConnectionRequest]
+
+        when(connRequest.getConnection(anyInt, any(classOf[TimeUnit]))).thenReturn(conn)
+        when(connMgr.requestConnection(any(classOf[HttpRoute]), any)).thenReturn(connRequest)
+
+        val response = prepareHttpResponse(body, statusCode)
+        response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+        when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+        when(conn.receiveResponseHeader).thenReturn(response)
+
+        F(connMgr, client, conn, connRequest)
+    }
+
+    def clientWithCustomResponse(customResponse: (ManagedClientConnection) => Unit): F = {
+
+        val connMgr = mock[ClientConnectionManager]
+        val client = new CleanHttpClient(connMgr)
+        val conn = mock[ManagedClientConnection]
+        val connRequest = mock[ClientConnectionRequest]
+
+        when(connRequest.getConnection(anyInt, any(classOf[TimeUnit]))).thenReturn(conn)
+        when(connMgr.requestConnection(any(classOf[HttpRoute]), any)).thenReturn(connRequest)
+
+        customResponse(conn)
+
+        F(connMgr, client, conn, connRequest)
+    }
+
+    def clientWithResponseNoCookie(body: String, statusCode: Int): F = {
+
+        val connMgr = mock[ClientConnectionManager]
+        val client = new CleanHttpClient(connMgr)
+        val conn = mock[ManagedClientConnection]
+        val connRequest = mock[ClientConnectionRequest]
+
+        when(connRequest.getConnection(anyInt, any(classOf[TimeUnit]))).thenReturn(conn)
+        when(connMgr.requestConnection(any(classOf[HttpRoute]), any)).thenReturn(connRequest)
+
+        val response = prepareHttpResponse(body, statusCode)
+
+        when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+        when(conn.receiveResponseHeader).thenReturn(response)
+
+        F(connMgr, client, conn, connRequest)
+    }
+
+    test("response available and has status code of ok") { 
+      forAll (getFunctions) { (action, expectedResult) =>
+          val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
+
+          val result = action match {
+            case Get => f.client.get(mockUri)
+            case GetAsBytes => f.client.getAsBytes(mockUri)
+            case GetAsString => f.client.getAsString(mockUri)
+          }
+
+          assert(result === expectedResult)
+          verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
+      }
+    }
+
+    test("response available and has status code of ok with additional header") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
+
+            val result = action match {
+                case Get => f.client.get(mockUri, additionalHeader)
+                case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
+                case GetAsString => f.client.getAsString(mockUri, additionalHeader)
+            }
+
+            assert(result === expectedResult)
+            verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("response available and has status code of ok with additional header") { () =>
-        withConnection { f => 
+    test("response available but has no cookies") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithResponseNoCookie("Whatever", HttpStatus.SC_OK)
 
-            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+            val result = action match {
+                case Get => f.client.get(mockUri)
+                case GetAsBytes => f.client.getAsBytes(mockUri)
+                case GetAsString => f.client.getAsString(mockUri)
+            }
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(response)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
-
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
-
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
-
-            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
+            assert(result === expectedResult)
+            verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("response available but has no cookies") { () =>
-        withConnection { f =>
-        
-            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+    test("response available but has no cookies with additional header") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithResponseNoCookie("Whatever", HttpStatus.SC_OK)
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(response)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
+            val result = action match {
+                case Get => f.client.get(mockUri, additionalHeader)
+                case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
+                case GetAsString => f.client.getAsString(mockUri, additionalHeader)
+            }
 
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
-
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
-
-            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
+            assert(result === expectedResult)
+            verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("response available but has no cookies with additional header") { () =>
-        withConnection { f =>
-        
-            var response = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(response)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
-
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
-
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
-
-            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
-        }
-    }
-
-    test("handle unimplemented status code") { () =>
-        withConnection { f => 
-
-            var response = prepareHttpResponse("Ignored", HttpStatus.SC_NO_CONTENT)
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(response)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
+    test("handle unimplemented status code by retrying") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithResponse("Whatever", HttpStatus.SC_NO_CONTENT)
 
             intercept[RetryException] {
-              val result1a = f.client.get(requestedUri)
-              assert(result1a === expectedResult)
 
-              val result2a = f.client.getAsBytes(requestedUri)
-              assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-              val result3a = f.client.getAsString(requestedUri)
-              assert(result3a === expectedResult)
-          }
+              val result = action match {
+                  case Get => f.client.get(mockUri)
+                  case GetAsBytes => f.client.getAsBytes(mockUri)
+                  case GetAsString => f.client.getAsString(mockUri)
+              }
+            }
         }
     }
 
-    test("handle unimplemented status code with additional header") { () =>
-        withConnection { f => 
-
-            var response = prepareHttpResponse("Ignored", HttpStatus.SC_NO_CONTENT)
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(response)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
-            val additionalHeader = List(("Accept", "text/plain"))
+    test("handle unimplemented status code by retrying with additional header") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithResponse("Whatever", HttpStatus.SC_NO_CONTENT)
 
             intercept[RetryException] {
-              val result1b = f.client.get(requestedUri, additionalHeader)
-              assert(result1b === expectedResult)
 
-              val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-              assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-              val result3b = f.client.getAsString(requestedUri, additionalHeader)
-              assert(result3b === expectedResult)
-          }
+              val result = action match {
+                case Get => f.client.get(mockUri, additionalHeader)
+                case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
+                case GetAsString => f.client.getAsString(mockUri, additionalHeader)
+              }
+            }
         }
     }
 
-    test("handle redirect to invalid uri") { () =>
-        withConnection { f =>
-
-            var redirectResponse = prepareHttpResponse("Redirection", HttpStatus.SC_MOVED_PERMANENTLY)
-            redirectResponse.addHeader(new BasicHeader("Location", "lkjlasdoifljsf"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(redirectResponse)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
+    test("handle redirect to invalid uri") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) => 
+            {
+              val response = prepareHttpResponse("Redirection", HttpStatus.SC_MOVED_PERMANENTLY)
+              response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+              response.addHeader(new BasicHeader("Location", "lkjlasdoifljsf"))
+              
+              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(response)
+            })
 
             intercept[RedirectException] {
-              val result1a = f.client.get(requestedUri)
-              assert(result1a === expectedResult)
 
-              val result2a = f.client.getAsBytes(requestedUri)
-              assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-              val result3a = f.client.getAsString(requestedUri)
-              assert(result3a === expectedResult)
+              val result = action match {
+                  case Get => f.client.get(mockUri)
+                  case GetAsBytes => f.client.getAsBytes(mockUri)
+                  case GetAsString => f.client.getAsString(mockUri)
+              }
             }
 
             verify(f.conn, times(21)).abortConnection
         }
     }
 
-    test("handle redirect to invalid uri with additional header") { () =>
-        withConnection { f =>
+    test("handle redirect to invalid uri with additional header") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) => 
+            {
+              val response = prepareHttpResponse("Redirection", HttpStatus.SC_MOVED_PERMANENTLY)
+              response.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+              response.addHeader(new BasicHeader("Location", "lkjlasdoifljsf"))
 
-            var redirectResponse = prepareHttpResponse("Redirection", HttpStatus.SC_MOVED_PERMANENTLY)
-            redirectResponse.addHeader(new BasicHeader("Location", "lkjlasdoifljsf"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(redirectResponse)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = ""
-            val additionalHeader = List(("Accept", "text/plain"))
+              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(response)
+            })
 
             intercept[RedirectException] {
-              val result1b = f.client.get(requestedUri, additionalHeader)
-              assert(result1b === expectedResult)
 
-              val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-              assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-              val result3b = f.client.getAsString(requestedUri, additionalHeader)
-              assert(result3b === expectedResult)
+              val result = action match {
+                  case Get => f.client.get(mockUri, additionalHeader)
+                  case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
+                  case GetAsString => f.client.getAsString(mockUri, additionalHeader)
+              }
             }
 
             verify(f.conn, times(21)).abortConnection
         }
+ 
     }
 
-    test("response available with redirect status code") { () =>
-        withConnection { f => 
+    test("response available with redirect status code") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) =>
+            {
+              var redirectResponse = prepareHttpResponse("Redirection", HttpStatus.SC_MULTIPLE_CHOICES)
+              redirectResponse.addHeader(new BasicHeader("Location", "http://test2.metl.com/redirect.xml"))
 
-            var redirectResponse = prepareHttpResponse("Redirection", HttpStatus.SC_MULTIPLE_CHOICES)
-            redirectResponse.addHeader(new BasicHeader("Location", "http://test2.metl.com/redirect.xml"))
+              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
 
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(redirectResponse).thenReturn(contentResponse)
+              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(redirectResponse).thenReturn(contentResponse)
+            })
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
+            val result = action match {
+                case Get => f.client.get(mockUri)
+                case GetAsBytes => f.client.getAsBytes(mockUri)
+                case GetAsString => f.client.getAsString(mockUri)
+            }
 
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
-
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
-
-            verify(f.connMgr, times(4)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
-        }
-    }
-
-    test("response available with redirect status code with additional header") { () =>
-        withConnection { f => 
-
-            var redirectResponse = prepareHttpResponse("Redirection", HttpStatus.SC_MULTIPLE_CHOICES)
-            redirectResponse.addHeader(new BasicHeader("Location", "http://test2.metl.com/redirect.xml"))
-
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(redirectResponse).thenReturn(contentResponse)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
-
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
-
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
-
-            verify(f.connMgr, times(4)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
-        }
-    }
-
-    test("response available after socket timeout") { () =>
-        withConnection { f =>
-        
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(false).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
-
-            //val result2a = f.client.getAsBytes(requestedUri)
-            //assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-            //val result3a = f.client.getAsString(requestedUri)
-            //assert(result3a === expectedResult)
-
+            assert(result === expectedResult)
             verify(f.connMgr, times(2)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("response available after socket timeout with additional header") { () =>
-        withConnection { f =>
-        
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+    test("response available with redirect status code with additional header") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) =>
+            {
+              var redirectResponse = prepareHttpResponse("Redirection", HttpStatus.SC_MULTIPLE_CHOICES)
+              redirectResponse.addHeader(new BasicHeader("Location", "http://test2.metl.com/redirect.xml"))
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(false).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(redirectResponse).thenReturn(contentResponse)
+            })
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
+            val result = action match {
+                case Get => f.client.get(mockUri, additionalHeader)
+                case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
+                case GetAsString => f.client.getAsString(mockUri, additionalHeader)
+            }
 
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
-
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
-
-            verify(f.connMgr, times(4)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
+            assert(result === expectedResult)
+            verify(f.connMgr, times(2)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("response available after unimplemented statuscode exception") { () =>
-        withConnection { f => 
+    test("response available after socket timeout") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) =>
+            {
+              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
 
-            var unimplementedResponse = prepareHttpResponse("Unimplemented", HttpStatus.SC_USE_PROXY)
-
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(unimplementedResponse).thenReturn(contentResponse)
+              when(conn.isResponseAvailable(anyInt)).thenReturn(false).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(contentResponse)
+            })
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-
-            val result1a = f.client.get(requestedUri)
-            assert(result1a === expectedResult)
-
-            val result2a = f.client.getAsBytes(requestedUri)
-            assert(result2a === expectedResult.toCharArray.map(_.toByte))
-
-            val result3a = f.client.getAsString(requestedUri)
-            assert(result3a === expectedResult)
-
-            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
+            val result = action match {
+                case Get => f.client.get(mockUri)
+                case GetAsBytes => f.client.getAsBytes(mockUri)
+                case GetAsString => f.client.getAsString(mockUri)
+            }
+         
+            assert(result === expectedResult)
+            verify(f.connMgr, times(2)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("response available after unimplemented statuscode exception with additional header") { () =>
-        withConnection { f => 
+    test("response available after socket timeout with additional header") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) =>
+            {
+              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
 
-            var unimplementedResponse = prepareHttpResponse("Unimplemented", HttpStatus.SC_USE_PROXY)
-
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(unimplementedResponse).thenReturn(contentResponse)
+              when(conn.isResponseAvailable(anyInt)).thenReturn(false).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(contentResponse)
+            })
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
-
-            val result1b = f.client.get(requestedUri, additionalHeader)
-            assert(result1b === expectedResult)
-
-            val result2b = f.client.getAsBytes(requestedUri, additionalHeader)
-            assert(result2b === expectedResult.toCharArray.map(_.toByte))
-
-            val result3b = f.client.getAsString(requestedUri, additionalHeader)
-            assert(result3b === expectedResult)
-
-            verify(f.connMgr, times(3)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
+            val result = action match {
+                case Get => f.client.get(mockUri, additionalHeader)
+                case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
+                case GetAsString => f.client.getAsString(mockUri, additionalHeader)
+            }
+         
+            assert(result === expectedResult)
+            verify(f.connMgr, times(2)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("post bytes using the connection") { () =>
-        withConnection { f =>
-            
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+    test("response available after unimplemented statuscode exception") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) =>
+            {
+              var unimplementedResponse = prepareHttpResponse("Unimplemented", HttpStatus.SC_USE_PROXY)
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(unimplementedResponse).thenReturn(contentResponse)
+            })
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-
-            val result1a = f.client.postBytes(requestedUri, expectedResult.toCharArray.map(_.toByte))
-            assert(result1a === expectedResult.toCharArray.map(_.toByte))
-
-            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
-            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
-            verify(f.conn).flush
+            val result = action match {
+                case Get => f.client.get(mockUri)
+                case GetAsBytes => f.client.getAsBytes(mockUri)
+                case GetAsString => f.client.getAsString(mockUri)
+            }
+         
+            assert(result === expectedResult)
+            verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("post bytes using the connection with additional header") { () =>
-        withConnection { f =>
-            
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+    test("response available after unimplemented statuscode exception with additional header") { 
+        forAll (getFunctions) { (action, expectedResult) =>
+            val f = clientWithCustomResponse((conn) =>
+            {
+              var unimplementedResponse = prepareHttpResponse("Unimplemented", HttpStatus.SC_USE_PROXY)
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
+              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+
+              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
+              when(conn.receiveResponseHeader).thenReturn(unimplementedResponse).thenReturn(contentResponse)
+            })
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
-
-            val result1b = f.client.postBytes(requestedUri, expectedResult.toCharArray.map(_.toByte), additionalHeader)
-            assert(result1b === expectedResult.toCharArray.map(_.toByte))
-
-            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
-            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
-            verify(f.conn).flush
+            val result = action match {
+                case Get => f.client.get(mockUri, additionalHeader)
+                case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
+                case GetAsString => f.client.getAsString(mockUri, additionalHeader)
+            }
+         
+            assert(result === expectedResult)
+            verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
 
-    test("post form using the connection") { () =>
-        withConnection { f =>
-            
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+    test("post bytes using the connection") { 
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
+        val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
+        val result = f.client.postBytes(mockUri, Array.empty[Byte])
+        assert(result === "Whatever".toCharArray.map(_.toByte))
 
-            val result1a = f.client.postForm(requestedUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")))
-            assert(result1a === expectedResult.toCharArray.map(_.toByte))
-
-            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
-            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
-            verify(f.conn).flush
-        }
+        verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+        verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+        verify(f.conn).flush
     }
 
-    test("post form using the connection with additional header") { () =>
-        withConnection { f =>
-            
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+    test("post bytes using the connection with additional header") { 
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
-         
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
+        val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
+        val result = f.client.postBytes(mockUri, Array.empty[Byte], additionalHeader)
+        assert(result === "Whatever".toCharArray.map(_.toByte))
 
-            val result1b = f.client.postForm(requestedUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")), additionalHeader)
-            assert(result1b === expectedResult.toCharArray.map(_.toByte))
-
-            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
-            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
-            verify(f.conn).flush
-        }
+        verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+        verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+        verify(f.conn).flush
     }
 
-    test("post unencoded form using the connection") { () =>
-        withConnection { f =>
-            
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+    test("post form using the connection") { 
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+      val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
+      val result = f.client.postForm(mockUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")))
+      assert(result === "Whatever".toCharArray.map(_.toByte))
 
-            val result1a = f.client.postUnencodedForm(requestedUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")))
-            assert(result1a === expectedResult.toCharArray.map(_.toByte))
-
-            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
-            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
-            verify(f.conn).flush
-        }
+      verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+      verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+      verify(f.conn).flush
     }
 
-    test("post unencoded form using the connection with additional header") { () =>
-        withConnection { f =>
-            
-            var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-            contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
+    test("post form using the connection with additional header") { 
 
-            when(f.conn.isResponseAvailable(anyInt)).thenReturn(true)
-            when(f.conn.receiveResponseHeader).thenReturn(contentResponse)
+      val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
          
-            val requestedUri = "http://test.metl.com/data.xml"
-            val expectedResult = "Whatever"
-            val additionalHeader = List(("Accept", "text/plain"))
+      val result = f.client.postForm(mockUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")), additionalHeader)
+      assert(result === "Whatever".toCharArray.map(_.toByte))
 
-            val result1b = f.client.postUnencodedForm(requestedUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")), additionalHeader)
-            assert(result1b === expectedResult.toCharArray.map(_.toByte))
-
-            verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
-            verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
-            verify(f.conn).flush
-        }
+      verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+      verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+      verify(f.conn).flush
     }
 
-    private def prepareHttpResponse(expectedBody: String, expectedStatusCode: Int): HttpResponse = {
-    
-        var response = new BasicHttpResponse(HttpVersion.HTTP_1_1, expectedStatusCode, "OK")
-        response.setEntity(new StringEntity(expectedBody))
-        response.setStatusCode(expectedStatusCode)
-        response
+    test("post unencoded form using the connection") { 
+
+        val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
+
+        val result = f.client.postUnencodedForm(mockUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")))
+        assert(result === "Whatever".toCharArray.map(_.toByte))
+
+        verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+        verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+        verify(f.conn).flush
+    }
+
+    test("post unencoded form using the connection with additional header") { 
+
+        val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
+
+        val result = f.client.postUnencodedForm(mockUri, List(("FirstName", "Bob"), ("LastName", "Barry"), ("Age", "35")), additionalHeader)
+        assert(result === "Whatever".toCharArray.map(_.toByte))
+
+        verify(f.conn).sendRequestHeader(any(classOf[HttpRequest]))
+        verify(f.conn).sendRequestEntity(any(classOf[HttpEntityEnclosingRequest]))
+        verify(f.conn).flush
     }
 }
