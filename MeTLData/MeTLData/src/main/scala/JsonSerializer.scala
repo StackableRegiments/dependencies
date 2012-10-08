@@ -142,7 +142,7 @@ class JsonSerializer(configName:String) extends Serializer{
         val yScale = utils.getDoubleByName(input,"yScale")
         val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
         val isDeleted = utils.getBooleanByName(input,"isDeleted")
-        MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+        MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
       }
       case _ => MeTLMoveDelta.empty
     }

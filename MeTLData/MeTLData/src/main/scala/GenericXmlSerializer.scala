@@ -37,7 +37,7 @@ object XmlUtils {
 	def parseMeTLContent(i:NodeSeq):ParsedMeTLContent = {
 		val author = getStringByName(i,"author")
 		//val timestamp = tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(-1L)
-		val timestamp = getLongByName(i,"timestamp")
+		val timestamp = getLongByName(getXmlByName(i,"metlMetaData"),"timestamp")
 		ParsedMeTLContent(author,timestamp)
 	}
 	def parsedMeTLContentToXml(p:ParsedMeTLContent):List[NodeSeq] = {
@@ -108,7 +108,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 		val yScale = utils.getDoubleByName(input,"yScale")
 		val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
 		val isDeleted = utils.getBooleanByName(input,"isDeleted")
-		MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,"moveDelta",inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+		MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
 	})
 	override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", () => {
 		canvasContentToXml("moveDelta",input, List(

@@ -22,18 +22,15 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 //	override lazy val debug = true
 
 	override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
-//		println("recieved for (%s) message: %s".format(room,message))
 		bus.recieveStanzaFromRoom(message)
 	}
 	override def onUntypedMessageRecieved(room:String,message:String) = {
-//		println("recieved untyped message: %s".format(message))
 		val parts = message.split(" ")
 		bus.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList))
 	}
 	override lazy val ignoredTypes = List("metlMetaData")
 	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command","moveDelta","teacherstatus").map(item => {
 		val ser = (i:MeTLStanza) => {
-//			println("attempting serialization: %s".format(i))
 			val xml = serializer.fromMeTLStanza(i) 
 			val messages = xml
 			val head = messages.headOption
@@ -43,7 +40,6 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 			}.getOrElse(NodeSeq.Empty)
 		}
 		val deser = (s:NodeSeq) => {
-//			println("attempting deserialization: %s".format(s))
 			serializer.toMeTLStanza(s)
 		}
 		XmppDataType[MeTLStanza](item,ser,deser)

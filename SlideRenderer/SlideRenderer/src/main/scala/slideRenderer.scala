@@ -224,7 +224,7 @@ object SlideRenderer {
 		val (texts,highlighters,inks,images) = h.getRenderableGrouped	
 		h.shouldRender match {
 			case true => {
-		
+	/*	
 		println("rendering slide: %s".format(h))
 		println(" -- --")
 		println(" -- --")
@@ -236,7 +236,7 @@ object SlideRenderer {
 		h.getRenderable.foreach(println)
 		println(" -- --")
 		println(" -- --")
-
+*/
 				val tempImage = new BufferedImage(1,1,BufferedImage.TYPE_3BYTE_BGR)
 				val tempG = tempImage.createGraphics.asInstanceOf[Graphics2D]
 				val nativeScalePreparedTextLines = filterAccordingToTarget[MeTLText](target,texts).map(t => measureText(t,tempG))
@@ -293,12 +293,7 @@ object SlideRenderer {
 				}
 
 				val (scaledTexts,scaledHighlighters,scaledInks,scaledImages) = scaledHistory.getRenderableGrouped	
-				println("--- ---")
-				println("--- ---")
-				println("new inks after transformation")
-				scaledInks.foreach(println)
-				println("--- ---")
-				println("--- ---")
+				
 				filterAccordingToTarget[MeTLImage](target,scaledImages).foreach(renderImage(_,g))
 				filterAccordingToTarget[MeTLInk](target,scaledHighlighters).foreach(renderInk(_,g))
 				filterAccordingToTarget[MeTLText](target,scaledTexts).foreach(t => renderText(measureText(t,g),g))
