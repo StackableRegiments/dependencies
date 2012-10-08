@@ -236,7 +236,10 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,identity,newInkIds,newTextIds,newImageIds,xTranslate,yTranslate,xScale,yScale,Privacy.NOT_SET,isDeleted)
 	})
 	def adjustVisual(newXTranslate:Double,newYTranslate:Double,newXScale:Double,newYScale:Double):MeTLMoveDelta = {
-		MeTLMoveDelta(server,author,timestamp,target,newPrivacy,slide,identity,inkIds,textIds,imageIds,xTranslate + newXTranslate,yTranslate + newYTranslate,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
+		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,inkIds,textIds,imageIds,xTranslate + newXTranslate,yTranslate + newYTranslate,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
+	}
+	def scale(newXScale:Double,newYScale:Double):MeTLMoveDelta = {
+		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,inkIds,textIds,imageIds,xTranslate * newXScale,yTranslate * newYScale,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
 	}
 	def adjustIndividualContent(cc:MeTLCanvasContent):MeTLCanvasContent = {
 		cc match {
