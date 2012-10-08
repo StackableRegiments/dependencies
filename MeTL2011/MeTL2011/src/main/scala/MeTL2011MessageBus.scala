@@ -30,7 +30,8 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
 		val parts = message.split(" ")
 		bus.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList))
 	}
-	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command","moveDelta","teacherstatus","metlMetaData").map(item => {
+	override lazy val ignoredTypes = List("metlMetaData")
+	override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","submission","quiz","quizResponse","command","moveDelta","teacherstatus").map(item => {
 		val ser = (i:MeTLStanza) => {
 //			println("attempting serialization: %s".format(i))
 			val xml = serializer.fromMeTLStanza(i) 
