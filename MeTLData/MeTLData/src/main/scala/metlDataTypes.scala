@@ -119,20 +119,42 @@ object MeTLStanza{
   def empty = MeTLStanza(ServerConfiguration.empty,"",0L)
 }
 
-case class MeTLCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,target:String,privacy:Privacy,slide:String,identity:String,scaleFactorX:Double = 1.0,scaleFactorY:Double = 1.0) extends MeTLStanza(server,author,timestamp)
+case class MeTLCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,target:String,privacy:Privacy,slide:String,identity:String,scaleFactorX:Double = 1.0,scaleFactorY:Double = 1.0) extends MeTLStanza(server,author,timestamp) {
+	def left:Double = 0.0
+	def right:Double = 0.0
+	def top:Double = 0.0
+	def bottom:Double = 0.0
+	def scale(factor:Double):MeTLCanvasContent = this
+	def scale(xScale:Double,yScale:Double):MeTLCanvasContent = this
+	def alterPrivacy(newPrivacy:Privacy):MeTLCanvasContent = this
+	def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double) = this
+	def adjustTimestamp(newTimestamp:Long) = this
+	def generateDirty(dirtyTime:Long) = this
+	def matches(other:MeTLCanvasContent):Boolean = other.identity == identity && other.privacy == privacy && other.slide == slide
+	def isDirtiedBy(other:MeTLCanvasContent):Boolean = false
+	def isDirtierFor(other:MeTLCanvasContent):Boolean = false
+}
 
 case class MeTLInk(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,checksum:Double,startingSum:Double,points:List[Point],color:Color,thickness:Double,isHighlighter:Boolean,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String,override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,scaleFactorX,scaleFactorY) {
   private def offsetAt(point:Point) = point.thickness/256*thickness
-  val left:Double = points.map(p => p.x-offsetAt(p)).min
-  val right:Double = points.map(p => p.x+offsetAt(p)).max
-  val top:Double = points.map(p => p.y-offsetAt(p)).min
-  val bottom:Double = points.map(p => p.y+offsetAt(p)).max
-	def scale(factor:Double):MeTLInk = scale(factor,factor)
-  def scale(xScale:Double,yScale:Double):MeTLInk = Stopwatch.time("MeTLInk.scale", () => {
+	override def matches(other:MeTLCanvasContent) = other match {
+		case o:MeTLInk => super.matches(o)
+		case _ => false
+	}
+	override def isDirtiedBy(other:MeTLCanvasContent) = other match {
+		case o:MeTLDirtyInk => matches(o) && o.timestamp > timestamp 
+		case _ => false
+	}
+  override val left:Double = points.map(p => p.x-offsetAt(p)).min
+  override val right:Double = points.map(p => p.x+offsetAt(p)).max
+  override val top:Double = points.map(p => p.y-offsetAt(p)).min
+  override val bottom:Double = points.map(p => p.y+offsetAt(p)).max
+	override def scale(factor:Double):MeTLInk = scale(factor,factor)
+  override def scale(xScale:Double,yScale:Double):MeTLInk = Stopwatch.time("MeTLInk.scale", () => {
 		val averageFactor = (xScale + yScale) / 2
     MeTLInk(server,author,timestamp,checksum,startingSum,points.map(p => Point(p.x*xScale,p.y*yScale,p.thickness)),color,thickness*averageFactor,isHighlighter,target,privacy,slide,identity,scaleFactorX * xScale,scaleFactorY * yScale)
   })
-	def alterPrivacy(newPrivacy:Privacy):MeTLInk = Stopwatch.time("MeTLInk.alterPrivacy", () => {
+	override def alterPrivacy(newPrivacy:Privacy):MeTLInk = Stopwatch.time("MeTLInk.alterPrivacy", () => {
 		newPrivacy match {
 			case p:Privacy if (p == privacy) => this
 			case Privacy.NOT_SET => this
@@ -140,7 +162,7 @@ case class MeTLInk(override val server:ServerConfiguration,override val author:S
 			case _ => this
 		}
 	})
-	def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double) = Stopwatch.time("MeTLInk.adjustVisual", () => {
+	override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double) = Stopwatch.time("MeTLInk.adjustVisual", () => {
 			val averageFactor = (xScale + yScale) / 2
 			val newPoints = (xTranslate,yTranslate,xScale,yScale) match {
 				case (0,0,1.0,1.0) => points
@@ -150,10 +172,10 @@ case class MeTLInk(override val server:ServerConfiguration,override val author:S
 			}
 			MeTLInk(server,author,timestamp,checksum,startingSum,newPoints,color,thickness * averageFactor,isHighlighter,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
 	})
-	def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLInk = Stopwatch.time("MeTLInk.adjustTimestamp", () => {
+	override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLInk = Stopwatch.time("MeTLInk.adjustTimestamp", () => {
 			MeTLInk(server,author,newTime,checksum,startingSum,points,color,thickness,isHighlighter,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
 	})
-	def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyInk = Stopwatch.time("MeTLInk.generateDirty", () => {
+	override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyInk = Stopwatch.time("MeTLInk.generateDirty", () => {
 			MeTLDirtyInk(server,author,dirtyTime,target,privacy,slide,identity)
 	})
 }
@@ -163,15 +185,23 @@ object MeTLInk{
 }
 
 case class MeTLImage(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,tag:String,source:Box[String],imageBytes:Box[Array[Byte]],pngBytes:Box[Array[Byte]],width:Double,height:Double,x:Double,y:Double,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String,override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,scaleFactorX,scaleFactorY) {
-  val left:Double = x
-  val right:Double = x+width
-  val top:Double = y
-  val bottom:Double = y+height
-	def scale(factor:Double):MeTLImage = scale(factor,factor)
-  def scale(xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.scale", () => {
+	override def matches(other:MeTLCanvasContent) = other match {
+		case o:MeTLImage => super.matches(o)
+		case _ => false
+	}
+	override def isDirtiedBy(other:MeTLCanvasContent) = other match {
+		case o:MeTLDirtyImage => matches(o) && o.timestamp > timestamp 
+		case _ => false
+	}
+  override val left:Double = x
+  override val right:Double = x+width
+  override val top:Double = y
+  override val bottom:Double = y+height
+	override def scale(factor:Double):MeTLImage = scale(factor,factor)
+  override def scale(xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.scale", () => {
     MeTLImage(server,author,timestamp,tag,source,imageBytes,pngBytes,width*xScale,height*yScale,x*xScale,y*yScale,target,privacy,slide,identity,scaleFactorX * xScale,scaleFactorY * yScale)
   })
-	def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLImage = Stopwatch.time("MeTLImage.alterPrivacy", () => {
+	override def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLImage = Stopwatch.time("MeTLImage.alterPrivacy", () => {
 		possiblyNewPrivacy match {
 			case p:Privacy if (p == privacy) => this
 			case Privacy.NOT_SET => this
@@ -179,13 +209,13 @@ case class MeTLImage(override val server:ServerConfiguration,override val author
 			case _ => this
 		}
 	})
-	def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.adjustVisual", () => {
+	override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.adjustVisual", () => {
 		MeTLImage(server,author,timestamp,tag,source,imageBytes,pngBytes,width * xScale,height * yScale,x + xTranslate,y + yTranslate,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
 	})
-	def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLImage = Stopwatch.time("MeTLimage.adjustTimestamp", () => {
+	override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLImage = Stopwatch.time("MeTLimage.adjustTimestamp", () => {
 		MeTLImage(server,author,newTime,tag,source,imageBytes,pngBytes,width,height,x,y,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
 	})
-	def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyImage = Stopwatch.time("MeTLImage.generateDirty", () => {
+	override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyImage = Stopwatch.time("MeTLImage.generateDirty", () => {
 		MeTLDirtyImage(server,author,dirtyTime,target,privacy,slide,identity)
 	})
 }
@@ -195,16 +225,24 @@ object MeTLImage{
 }
 
 case class MeTLText(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,text:String,height:Double,width:Double,caret:Int,x:Double,y:Double,tag:String,style:String,family:String,weight:String,size:Double,decoration:String,override val identity:String,override val target:String,override val privacy:Privacy,override val slide:String,color:Color,override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,scaleFactorX,scaleFactorY) {
-  def left:Double = x
-  def right:Double = x+width
-  def top:Double = y
-  def bottom:Double = y+height
-	def scale(factor:Double):MeTLText = scale(factor,factor)
-  def scale(xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.scale", () => {
+	override def matches(other:MeTLCanvasContent) = other match {
+		case o:MeTLText => super.matches(o)
+		case _ => false
+	}
+	override def isDirtiedBy(other:MeTLCanvasContent) = other match {
+		case o:MeTLDirtyInk => matches(o) && o.timestamp > timestamp 
+		case _ => false
+	}
+  override def left:Double = x
+  override def right:Double = x+width
+  override def top:Double = y
+  override def bottom:Double = y+height
+	override def scale(factor:Double):MeTLText = scale(factor,factor)
+  override def scale(xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.scale", () => {
 		val averageFactor = (xScale + yScale) / 2
     MeTLText(server,author,timestamp,text,height*yScale,width*xScale,caret,x*xScale,y*yScale,tag,style,family,weight,size*averageFactor,decoration,identity,target,privacy,slide,color,scaleFactorX * xScale,scaleFactorY * yScale)
   })
-	def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLText = Stopwatch.time("MeTLText.alterPrivacy", () => {
+	override def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLText = Stopwatch.time("MeTLText.alterPrivacy", () => {
 		possiblyNewPrivacy match {
 			case p:Privacy if (p == privacy) => this
 			case Privacy.NOT_SET => this
@@ -212,14 +250,14 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
 			case _ => this
 		}
 	})
-	def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.adjustVisual", () => {
+	override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.adjustVisual", () => {
 		val averageFactor = (xScale + yScale) / 2
 		MeTLText(server,author,timestamp,text,height * yScale,width * xScale,caret,x + xTranslate,y + yTranslate,tag,style,family,weight,size * averageFactor,decoration,identity,target,privacy,slide,color,scaleFactorX,scaleFactorY)
 	})
-	def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLText = Stopwatch.time("MeTLText.adjustTimestamp", () => {
+	override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLText = Stopwatch.time("MeTLText.adjustTimestamp", () => {
 		MeTLText(server,author,newTime,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,identity,target,privacy,slide,color,scaleFactorX,scaleFactorY)	
 	})
-	def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyText = Stopwatch.time("MeTLText.generateDirty", () => {
+	override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyText = Stopwatch.time("MeTLText.generateDirty", () => {
 		MeTLDirtyText(server,author,dirtyTime,target,privacy,slide,identity)
 	})
 }
@@ -229,16 +267,20 @@ object MeTLText{
 }
 
 case class MeTLMoveDelta(override val server:ServerConfiguration, override val author:String,override val timestamp:Long,override val target:String, override val privacy:Privacy,override val slide:String,override val identity:String,inkIds:Seq[String],textIds:Seq[String],imageIds:Seq[String],xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double,newPrivacy:Privacy,isDeleted:Boolean) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity){
+	override def matches(other:MeTLCanvasContent) = other match {
+		case o:MeTLMoveDelta => super.matches(o)
+		case _ => false
+	}
 	def generateDirtier(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.generateDirtier", () => {
 		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,identity,newInkIds,newTextIds,newImageIds,0.0,0.0,1.0,1.0,Privacy.NOT_SET,true)
 	})
 	def replaceIds(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.replaceIds", () => {
 		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,identity,newInkIds,newTextIds,newImageIds,xTranslate,yTranslate,xScale,yScale,Privacy.NOT_SET,isDeleted)
 	})
-	def adjustVisual(newXTranslate:Double,newYTranslate:Double,newXScale:Double,newYScale:Double):MeTLMoveDelta = {
+	override def adjustVisual(newXTranslate:Double,newYTranslate:Double,newXScale:Double,newYScale:Double):MeTLMoveDelta = {
 		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,inkIds,textIds,imageIds,xTranslate + newXTranslate,yTranslate + newYTranslate,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
 	}
-	def scale(newXScale:Double,newYScale:Double):MeTLMoveDelta = {
+	override def scale(newXScale:Double,newYScale:Double):MeTLMoveDelta = {
 		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,inkIds,textIds,imageIds,xTranslate * newXScale,yTranslate * newYScale,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
 	}
 	def adjustIndividualContent(cc:MeTLCanvasContent):MeTLCanvasContent = {
@@ -304,8 +346,11 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 			}
 		}
 	})
-	def refersTo(other:MeTLCanvasContent):Boolean = {
-		(inkIds.contains(other.identity) || textIds.contains(other.identity) || imageIds.contains(other.identity)) && privacy == other.privacy && timestamp > other.timestamp
+	override def isDirtierFor(other:MeTLCanvasContent):Boolean = other match {
+		case i:MeTLInk => privacy == i.privacy && timestamp > i.timestamp && i.slide == slide && inkIds.contains(other.identity) 
+		case i:MeTLImage => privacy == i.privacy && timestamp > i.timestamp && i.slide == slide && imageIds.contains(other.identity) 
+		case i:MeTLText => privacy == i.privacy && timestamp > i.timestamp && i.slide == slide && textIds.contains(other.identity) 
+		case _ => false
 	}
 }
 case object MeTLMoveDelta{ 
@@ -318,24 +363,45 @@ case object MeTLMove{
 }
 
 case class MeTLDirtyInk(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity) {
-	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyInk = MeTLDirtyInk(server,author,timestamp,target,newPrivacy,slide,identity)
-	def refersTo(other:MeTLInk):Boolean = identity == other.identity && privacy == other.privacy && timestamp > other.timestamp
+	override def matches(other:MeTLCanvasContent) = other match {
+		case o:MeTLDirtyInk => super.matches(o)
+		case _ => false
+	}
+	override def isDirtierFor(other:MeTLCanvasContent) = other match {
+		case o:MeTLInk => matches(o) && o.timestamp < timestamp 
+		case _ => false
+	}
+	override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyInk = MeTLDirtyInk(server,author,timestamp,target,newPrivacy,slide,identity)
 }
 object MeTLDirtyInk{
   def empty = MeTLDirtyInk(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
 }
 
 case class MeTLDirtyText(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity){
-	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyText = MeTLDirtyText(server,author,timestamp,target,newPrivacy,slide,identity)
-	def refersTo(other:MeTLText):Boolean = identity == other.identity && privacy == other.privacy && timestamp > other.timestamp
+	override def matches(other:MeTLCanvasContent) = other match {
+		case o:MeTLDirtyText => super.matches(o)
+		case _ => false
+	}
+	override def isDirtierFor(other:MeTLCanvasContent) = other match {
+		case o:MeTLText => matches(o) && o.timestamp < timestamp 
+		case _ => false
+	}
+	override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyText = MeTLDirtyText(server,author,timestamp,target,newPrivacy,slide,identity)
 }
 object MeTLDirtyText{
   def empty = MeTLDirtyText(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
 }
 
 case class MeTLDirtyImage(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity) {
-	def alterPrivacy(newPrivacy:Privacy):MeTLDirtyImage = MeTLDirtyImage(server,author,timestamp,target,newPrivacy,slide,identity)
-	def refersTo(other:MeTLImage):Boolean = identity == other.identity && privacy == other.privacy && timestamp > other.timestamp
+	override def matches(other:MeTLCanvasContent) = other match {
+		case o:MeTLDirtyImage => super.matches(o)
+		case _ => false
+	}
+	override def isDirtierFor(other:MeTLCanvasContent) = other match {
+		case o:MeTLImage => matches(o) && o.timestamp < timestamp 
+		case _ => false
+	}
+	override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyImage = MeTLDirtyImage(server,author,timestamp,target,newPrivacy,slide,identity)
 }
 object MeTLDirtyImage{
   def empty = MeTLDirtyImage(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
