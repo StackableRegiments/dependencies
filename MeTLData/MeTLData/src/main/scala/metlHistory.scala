@@ -25,10 +25,10 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 	def lastVisuallyModified = lastVisuallyModifiedTime
 
 	private def scaleItemToSuitHistory(cc:MeTLCanvasContent):MeTLCanvasContent = {
-		cc.adjustVisual(xOffset * -1, yOffset * -1,1.0,1.0).scale(1 / xScale, 1 / yScale)
+		if(shouldAdjust) cc.adjustVisual(xOffset,yOffset,1.0,1.0).scale(xScale,yScale) else cc
 	}
 	private def unscaleItemToSuitHistory(cc:MeTLCanvasContent):MeTLCanvasContent = {
-		if(shouldAdjust) cc.adjustVisual(xOffset,yOffset,1.0,1.0).scale(xScale,yScale) else cc
+		cc.adjustVisual(xOffset * -1, yOffset * -1,1.0,1.0).scale(1 / xScale, 1 / yScale)
 	}
 
 	private var stanzas:List[MeTLStanza] = List.empty[MeTLStanza]
@@ -60,10 +60,10 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getSubmissions = submissions
   def getCommands = commands
 
-  def getRenderable = Stopwatch.time("History.getRenderable", () => getCanvasContents)
+  def getRenderable = Stopwatch.time("History.getRenderable", () => getCanvasContents.map(scaleItemToSuitHistory(_)))
 
 	def getRenderableGrouped:Tuple4[List[MeTLText],List[MeTLInk],List[MeTLInk],List[MeTLImage]] = Stopwatch.time("History.getRenderableGrouped", () => {
-		getCanvasContents.foldLeft((List.empty[MeTLText],List.empty[MeTLInk],List.empty[MeTLInk],List.empty[MeTLImage]))((acc,item) => item match {
+		getRenderable.foldLeft((List.empty[MeTLText],List.empty[MeTLInk],List.empty[MeTLInk],List.empty[MeTLImage]))((acc,item) => item match {
 			case t:MeTLText => (acc._1 ::: List(t),acc._2,acc._3,acc._4)
 			case h:MeTLInk if h.isHighlighter => (acc._1,acc._2 ::: List(h),acc._3,acc._4)
 			case s:MeTLInk => (acc._1,acc._2,acc._3 ::: List(s),acc._4)
@@ -110,30 +110,22 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 			case i:MeTLInk if matches(s.inkIds,i) => {
 				removeInk(i.generateDirty(s.timestamp),false)
 				if (!s.isDeleted){
-					addInk(adjustIndividualContent(s,i.adjustVisual(xOffset * -1, yOffset * -1,1.0,1.0).scale(1 / xScale, 1 / yScale)).asInstanceOf[MeTLInk],false)
+					addInk(s.adjustIndividualContent(i).asInstanceOf[MeTLInk],false)
 				}
 			}		
 			case i:MeTLText if matches(s.textIds,i) => {
 				removeText(i.generateDirty(s.timestamp),false)
 				if (!s.isDeleted) 
-					addText(adjustIndividualContent(s,i.adjustVisual(xOffset * -1, yOffset * -1,1.0,1.0).scale(1 / xScale, 1 / yScale)).asInstanceOf[MeTLText],false)
+					addText(s.adjustIndividualContent(i).asInstanceOf[MeTLText],false)
 			}
 			case i:MeTLImage if matches(s.imageIds,i) => {
 				removeImage(i.generateDirty(s.timestamp),false)
 				if (!s.isDeleted) 
-					addImage(adjustIndividualContent(s,i.adjustVisual(xOffset * -1, yOffset * -1,1.0,1.0).scale(1 / xScale, 1 / yScale)).asInstanceOf[MeTLImage],false)
+					addImage(s.adjustIndividualContent(i).asInstanceOf[MeTLImage],false)
 			}
 			case _ => {}
 		}
 	})
-	private def adjustIndividualContent(md:MeTLMoveDelta,c:MeTLCanvasContent) = {
-		c match {
-			case i:MeTLInk => md.adjustIndividualContent(i)
-			case t:MeTLText => md.adjustIndividualContent(t)
-			case i:MeTLImage => md.adjustIndividualContent(i)
-			case _ => c
-		}
-	}
   private def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
 		getCanvasContents.foreach(cc => moveIndividualContent(s,cc))
   })
@@ -149,19 +141,17 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 
 	def addMeTLMoveDelta(s:MeTLMoveDelta,store:Boolean = true) = Stopwatch.time("History.addMeTLMoveDelta", () => {
 		if (!metlMoveDeltas.exists(mmd => mmd.identity == s.identity)){
-			val newS = if(shouldAdjust) s.adjustVisual(xOffset,yOffset,1.0,1.0).scale(xScale,yScale) else s
-			moveContent(newS)
+			moveContent(s)
 			if (store)
-				metlMoveDeltas = metlMoveDeltas ::: List(newS)
+				metlMoveDeltas = metlMoveDeltas ::: List(s)
 		}
 		this
 	})
 
 	def addHighlighter(s:MeTLInk,store:Boolean = true) = Stopwatch.time("History.addHighlighter", () => {
-		val newS = if(shouldAdjust) s.adjustVisual(xOffset,yOffset,1.0,1.0).scale(xScale,yScale) else s
-		if (shouldAdd(newS)){
-			val adjustedInk = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(newS)).sortBy(_.timestamp).foldLeft(newS)((acc,item) => {
-				adjustIndividualContent(item,acc).asInstanceOf[MeTLInk]
+		if (shouldAdd(s)){
+			val adjustedInk = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(s)).sortBy(_.timestamp).foldLeft(s)((acc,item) => {
+				item.adjustIndividualContent(acc).asInstanceOf[MeTLInk]
 			})
 			canvasContents = canvasContents.filterNot(cc => cc match {
 				case i:MeTLInk => i.identity == s.identity && i.privacy == s.privacy && i.author == s.author
@@ -171,50 +161,46 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 			update(true)
 		}
 		if (store)
-			highlighters = highlighters ::: List(newS)
+			highlighters = highlighters ::: List(s)
     this
   })
   def addInk(s:MeTLInk,store:Boolean = true) = Stopwatch.time("History.addInk", () => {
-		val newS = if(shouldAdjust) s.adjustVisual(xOffset,yOffset,1.0,1.0).scale(xScale,yScale) else s
-		if (shouldAdd(newS)){
-			val adjustedInk = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(newS)).sortBy(_.timestamp).foldLeft(newS)((acc,item) => {
-				adjustIndividualContent(item,acc).asInstanceOf[MeTLInk]
+		if (shouldAdd(s)){
+			val adjustedInk = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(s)).sortBy(_.timestamp).foldLeft(s)((acc,item) => {
+				item.adjustIndividualContent(acc).asInstanceOf[MeTLInk]
 			})
 			canvasContents = canvasContents ::: List(adjustedInk)
 			growBounds(adjustedInk.left,adjustedInk.right,adjustedInk.top,adjustedInk.bottom)
 			update(true)
 		}
 		if (store)
-			inks = inks ::: List(newS)
+			inks = inks ::: List(s)
     this
   })
   def addImage(s:MeTLImage,store:Boolean = true) = Stopwatch.time("History.addImage", () => {
-		val newS = if(shouldAdjust) s.adjustVisual(xOffset,yOffset,1.0,1.0).scale(xScale,yScale) else s
-		if (shouldAdd(newS)){
-			println("adding image: %s".format(s))
-			val adjustedImage = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(newS)).sortBy(_.timestamp).foldLeft(newS)((acc,item) => {
-				adjustIndividualContent(item,acc).asInstanceOf[MeTLImage]
+		if (shouldAdd(s)){
+			val adjustedImage = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(s)).sortBy(_.timestamp).foldLeft(s)((acc,item) => {
+				item.adjustIndividualContent(acc).asInstanceOf[MeTLImage]
 			})
 			canvasContents = canvasContents ::: List(adjustedImage)
 			growBounds(adjustedImage.left,adjustedImage.right,adjustedImage.top,adjustedImage.bottom)
 			update(true)
 		}
 		if (store)
-			images = images ::: List(newS)
+			images = images ::: List(s)
     this
   })
   def addText(s:MeTLText,store:Boolean = true) = Stopwatch.time("History.addText", () => {
-    val newS = if(shouldAdjust) s.adjustVisual(xOffset,yOffset,1.0,1.0).scale(xScale,yScale) else s
-		if (shouldAdd(newS)){
+		if (shouldAdd(s)){
 			val (suspectTexts,remainingContent) = canvasContents.partition(cc => cc match {
 				case t:MeTLText => t.identity == s.identity && t.privacy == s.privacy && t.author == s.author
 				case _ => false
 			})
-			val identifiedTexts = (suspectTexts ::: List(newS)).sortBy(q => q.timestamp).reverse
+			val identifiedTexts = (suspectTexts ::: List(s)).sortBy(q => q.timestamp).reverse
 			canvasContents = identifiedTexts.headOption.map(ho => ho match {
 				case hot:MeTLText => {
 					val adjustedText = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(hot)).sortBy(_.timestamp).foldLeft(hot)((acc,item) => {
-						adjustIndividualContent(item,acc).asInstanceOf[MeTLText]
+						item.adjustIndividualContent(acc).asInstanceOf[MeTLText]
 					})
 					val newCanvasContents = remainingContent ::: List(adjustedText)
 					if (adjustedText.left < getLeft || adjustedText.right > getRight || getBottom < adjustedText.bottom || adjustedText.top < getTop)
@@ -233,7 +219,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 			update(true)
 		}
 		if (store)
-			texts = texts ::: List(newS)
+			texts = texts ::: List(s)
     this
   })
   def addQuiz(s:MeTLQuiz,store:Boolean = true) = Stopwatch.time("History.addQuiz", () => {
@@ -296,7 +282,6 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		canvasContents = remaining
 		item.map(s => s match {
 			case i:MeTLImage => {
-				println("removing image by means of dirtyImage: %s -> %s".format(dirtyImage,i))
 				calculateBoundsWithout(i.left,i.right,i.top,i.bottom)
 				update(true)
 			}

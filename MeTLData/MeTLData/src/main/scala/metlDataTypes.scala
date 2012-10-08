@@ -368,7 +368,7 @@ case class MeTLDirtyInk(override val server:ServerConfiguration,override val aut
 		case _ => false
 	}
 	override def isDirtierFor(other:MeTLCanvasContent) = other match {
-		case o:MeTLInk => matches(o) && o.timestamp < timestamp 
+		case o:MeTLInk => super.matches(o) && o.timestamp < timestamp 
 		case _ => false
 	}
 	override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyInk = MeTLDirtyInk(server,author,timestamp,target,newPrivacy,slide,identity)
@@ -383,7 +383,7 @@ case class MeTLDirtyText(override val server:ServerConfiguration,override val au
 		case _ => false
 	}
 	override def isDirtierFor(other:MeTLCanvasContent) = other match {
-		case o:MeTLText => matches(o) && o.timestamp < timestamp 
+		case o:MeTLText => super.matches(o) && o.timestamp < timestamp 
 		case _ => false
 	}
 	override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyText = MeTLDirtyText(server,author,timestamp,target,newPrivacy,slide,identity)
@@ -398,7 +398,7 @@ case class MeTLDirtyImage(override val server:ServerConfiguration,override val a
 		case _ => false
 	}
 	override def isDirtierFor(other:MeTLCanvasContent) = other match {
-		case o:MeTLImage => matches(o) && o.timestamp < timestamp 
+		case o:MeTLImage => super.matches(o) && o.timestamp < timestamp 
 		case _ => false
 	}
 	override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyImage = MeTLDirtyImage(server,author,timestamp,target,newPrivacy,slide,identity)

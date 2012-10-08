@@ -58,7 +58,6 @@ object SlideRenderer {
 		try {
 			metlImage match {
 				case m:MeTLImage => {
-					println("rendering this image: %s".format(metlImage))
 					val image:Image = getImageFor(metlImage)
 					val (finalHeight,finalWidth) = (metlImage.height,metlImage.width) match {
 						case (h:Double,w:Double) if (h.isNaN || w.isNaN) => {
@@ -225,19 +224,6 @@ object SlideRenderer {
 		val (texts,highlighters,inks,images) = h.getRenderableGrouped	
 		h.shouldRender match {
 			case true => {
-	/*	
-		println("rendering slide: %s".format(h))
-		println(" -- --")
-		println(" -- --")
-		println("allState:")
-		h.getAll.foreach(println)
-		println(" -- --")
-		println(" -- --")
-		println("canvasState:")
-		h.getRenderable.foreach(println)
-		println(" -- --")
-		println(" -- --")
-*/
 				val tempImage = new BufferedImage(1,1,BufferedImage.TYPE_3BYTE_BGR)
 				val tempG = tempImage.createGraphics.asInstanceOf[Graphics2D]
 				val nativeScalePreparedTextLines = filterAccordingToTarget[MeTLText](target,texts).map(t => measureText(t,tempG))
@@ -296,13 +282,6 @@ object SlideRenderer {
 
 				val (scaledTexts,scaledHighlighters,scaledInks,scaledImages) = scaledHistory.getRenderableGrouped	
 			
-
-				println("---->  RENDERABLE <----")
-				scaledImages.foreach(println(_))
-				println("---->  END RENDERABLE <----")
-	
-				println("SlideRender: rw:%s, rh:%s, sf:%s (h1:%s -> h2:%s)".format(renderWidth,renderHeight,scaleFactor,h,scaledHistory))
-
 				filterAccordingToTarget[MeTLImage](target,scaledImages).foreach(img => renderImage(img,g))
 				filterAccordingToTarget[MeTLInk](target,scaledHighlighters).foreach(renderInk(_,g))
 				filterAccordingToTarget[MeTLText](target,scaledTexts).foreach(t => renderText(measureText(t,g),g))
