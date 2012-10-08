@@ -31,6 +31,13 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		cc.adjustVisual(xOffset * -1, yOffset * -1,1.0,1.0).scale(1 / xScale, 1 / yScale)
 	}
 
+	def attachRealtimeHook(hook:MeTLStanza=>Unit):History = {
+		outputHook = hook
+		this
+	}
+
+	private var outputHook:MeTLStanza => Unit = (s) => {}
+
 	private var stanzas:List[MeTLStanza] = List.empty[MeTLStanza]
 	private var canvasContents:List[MeTLCanvasContent] = List.empty[MeTLCanvasContent]
   private var highlighters:List[MeTLInk] = List.empty[MeTLInk]
@@ -142,8 +149,10 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 	def addMeTLMoveDelta(s:MeTLMoveDelta,store:Boolean = true) = Stopwatch.time("History.addMeTLMoveDelta", () => {
 		if (!metlMoveDeltas.exists(mmd => mmd.identity == s.identity)){
 			moveContent(s)
-			if (store)
+			if (store){
+				outputHook(s)
 				metlMoveDeltas = metlMoveDeltas ::: List(s)
+			}
 		}
 		this
 	})
@@ -158,6 +167,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 				case _ => false	
 			}) ::: List(adjustedInk)
 			growBounds(adjustedInk.left,adjustedInk.right,adjustedInk.top,adjustedInk.bottom)
+			if (store)
+				outputHook(adjustedInk)
 			update(true)
 		}
 		if (store)
@@ -171,6 +182,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 			})
 			canvasContents = canvasContents ::: List(adjustedInk)
 			growBounds(adjustedInk.left,adjustedInk.right,adjustedInk.top,adjustedInk.bottom)
+			if (store)
+				outputHook(adjustedInk)
 			update(true)
 		}
 		if (store)
@@ -184,6 +197,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 			})
 			canvasContents = canvasContents ::: List(adjustedImage)
 			growBounds(adjustedImage.left,adjustedImage.right,adjustedImage.top,adjustedImage.bottom)
+			if (store)
+				outputHook(adjustedImage)
 			update(true)
 		}
 		if (store)
@@ -212,6 +227,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 							case _ => {}
 						}
 					}
+					if (store)
+						outputHook(adjustedText)
 					newCanvasContents
 				}
 				case _ => remainingContent
@@ -230,6 +247,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 				case true => quizzes = remainingQuizzes
 				case false => quizzes = newQuiz :: remainingQuizzes
 			}
+			outputHook(newQuiz)
 			update(false)
 		}
     this
@@ -237,6 +255,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def addQuizResponse(s:MeTLQuizResponse,store:Boolean = true) = Stopwatch.time("History.addQuizResponse", () => {
 	  if (store) {
 			quizResponses = quizResponses ::: List(s)
+			outputHook(s)
     	update(false)
 		}
     this
@@ -244,6 +263,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def addSubmission(s:MeTLSubmission,store:Boolean = true) = Stopwatch.time("History.addSubmission", () => {
 	  if (store){
 			submissions = submissions ::: List(s)
+			outputHook(s)
     	update(false)
 		}
     this
@@ -252,6 +272,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 	  if (store){
 			latestCommands = latestCommands.updated(s.command,s)
 			commands = commands ::: List(s)
+			outputHook(s)
 			update(false)
 		}
     this
@@ -265,6 +286,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		item.map(s => s match {
 			case i:MeTLInk => {
 				calculateBoundsWithout(i.left,i.right,i.top,i.bottom)
+				if (store)
+					outputHook(dirtyInk)
 				update(true)
 			}
 			case _ => {}
@@ -283,6 +306,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		item.map(s => s match {
 			case i:MeTLImage => {
 				calculateBoundsWithout(i.left,i.right,i.top,i.bottom)
+				if (store)
+					outputHook(dirtyImage)
 				update(true)
 			}
 			case _ => {}
@@ -300,6 +325,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		item.map(s => s match {
 			case t:MeTLText => {
 				calculateBoundsWithout(t.left,t.right,t.top,t.bottom)
+				if (store)
+					outputHook(dirtyText)
 				update(true)
 			}
 			case _ => {}
