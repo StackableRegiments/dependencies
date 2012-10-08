@@ -154,6 +154,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	protected def onUntypedMessageRecieved(room:String,message:String)
 	// override this to add messageTypes
 	protected lazy val subscribedTypes:List[XmppDataType[T]] = List.empty[XmppDataType[T]]
+	protected lazy val ignoredTypes:List[String] = List.empty[String]
 
 	lazy val relevantElementNames = subscribedTypes.map(st => st.name).toList
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
@@ -241,6 +242,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 			if (List(packet.getExtensions.toArray:_*).map(e => {
 				val ext = e.asInstanceOf[PacketExtension]
 				ext.getElementName match {
+					case ignored:String if (ignoredTypes.exists(it => it.toLowerCase.trim == ignored.toLowerCase.trim)) => false
 					case other:String if (relevantElementNames.contains(other)) => {
 						subscribedTypes.find(st => st.name.toString.trim == other.toString.trim).map(st => {
 							onMessageRecieved(room,other,st.comprehendResponse(packet))
