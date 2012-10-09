@@ -22,37 +22,49 @@ import JE._
 
 import json.JsonAST._
 
-class ClientMessageBroker(messageContainerId:String,messageTemplate:NodeSeq,messageSelector:String,labelSelector:String,contentSelector:String,closeSelector:String,onMessageProcessed:(JsCmd)=>Unit) {
+class ClientMessageBroker(messageTemplate:NodeSeq,messageSelector:String,labelSelector:String,contentSelector:String,closeSelector:String,onMessageArrival:(ClientMessage)=>Unit,onMessageRemoval:(ClientMessage)=>Unit) {
 	private var visibleMessages = List.empty[ClientMessage]
-	private def removeMessage(cm:ClientMessage) = visibleMessages = visibleMessages.filterNot(m => m == cm)
-	private def addMessage(cm:ClientMessage) = cm :: visibleMessages
+	private def removeMessageFromVisible(cm:ClientMessage) = visibleMessages = visibleMessages.filterNot(m => m == cm)
+	private def addMessageToVisible(cm:ClientMessage) = cm :: visibleMessages
 	private def clearAllMessages = visibleMessages.map(vm => vm.done)
 	def repeatVisibleMessages = {
 		visibleMessages.foreach(vm => processMessage(vm))
 	}
+	def removeMessage(cm:ClientMessage):Unit = {
+		visibleMessages.find(m => m.uniqueId == cm.uniqueId).map(m => {
+			onMessageRemoval(m)
+			removeMessageFromVisible(m)
+		})
+	}
 	def processMessage(cm:ClientMessage):Unit = {
 		cm match {
 			case s:SpamMessage => {
-				val message = SpamMessage(s.content,s.title,(cmi) => {removeMessage(cmi);s.removalFunc(cmi);},s.cancellable,messageTemplate,messageSelector,labelSelector,contentSelector,closeSelector,s.uniqueId)
-				val removalFunction = visibleMessages.find(m => m.uniqueId == message.uniqueId).map(em => em.done).getOrElse(Noop)
-				onMessageProcessed(removalFunction & PrependHtml(messageContainerId,message.renderMessage))
-				addMessage(message)
+				val message = SpamMessage(s.content,s.role,s.title,(cmi) => {
+					removeMessage(cmi);
+					s.removalFunc(cmi);
+				},s.cancellable,messageTemplate,messageSelector,labelSelector,contentSelector,closeSelector,s.uniqueId)
+				removeMessage(message)
+				onMessageArrival(message)
+				addMessageToVisible(message)
 			}
 			case i:InteractableMessage => {
-				val message = InteractableMessage(i.scope,i.title,(cmi) => {removeMessage(cmi);i.removalFunc(cmi);},i.cancellable,messageTemplate,messageSelector,labelSelector,contentSelector,closeSelector,i.uniqueId)
-				val removalFunction = visibleMessages.find(m => m.uniqueId == message.uniqueId).map(em => em.done).getOrElse(Noop)
-				onMessageProcessed(removalFunction & PrependHtml(messageContainerId,message.renderMessage))
-				addMessage(message)
+				val message = InteractableMessage(i.scope,i.role,i.title,(cmi) => {
+					removeMessage(cmi);
+					i.removalFunc(cmi);
+				},i.cancellable,messageTemplate,messageSelector,labelSelector,contentSelector,closeSelector,i.uniqueId)
+				removeMessage(message)
+				onMessageArrival(message)
+				addMessageToVisible(message)
 			}
 			case Clear => {
-				onMessageProcessed(visibleMessages.foldLeft(Noop)((acc,item) => acc & item.done))
+				visibleMessages.foreach(removeMessage)	
 			}
 		}
 	}
 }
 
-abstract class ClientMessage(id:String, incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit,template:NodeSeq,messageSelector:String,labelSelector:String,contentSelector:String,closeSelector:String){
-  var title:Box[String] = Empty
+abstract class ClientMessage(id:String, incomingRole:Box[String] = Empty, incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit,template:NodeSeq,messageSelector:String,labelSelector:String,contentSelector:String,closeSelector:String){
+  var title:Box[String] = incomingTitle
   def entitled(t:String) = {
     title = Full(t) 
     this
@@ -62,6 +74,7 @@ abstract class ClientMessage(id:String, incomingTitle:Box[String] = Empty,remova
 		uniqueId = t
 		this
 	}
+	val role:Box[String] = incomingRole
 	val content:NodeSeq
 	val cancellable:Boolean = false
 	val contentNode:NodeSeq = content
@@ -84,16 +97,16 @@ abstract class ClientMessage(id:String, incomingTitle:Box[String] = Empty,remova
     doThese = doThis :: doThese
   }
 }
-case object Clear extends ClientMessage("clearSingleton",Empty,(cm)=>{},NodeSeq.Empty,"","","",""){
+case object Clear extends ClientMessage("clearSingleton",Empty,Empty,(cm)=>{},NodeSeq.Empty,"","","",""){
 	override val content = NodeSeq.Empty
 	override def renderMessage = NodeSeq.Empty
 }
-case class InteractableMessage(scope:InteractableMessage=>NodeSeq,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
+case class InteractableMessage(scope:InteractableMessage=>NodeSeq,override val role:Box[String] = Empty,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,role,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
   override val content = scope(this)
 	override val contentNode = ajaxForm(content)
 }
 
-case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,defaultValue:String,onChanged:(String)=>Boolean, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,defaultValue:String,onChanged:(String)=>Boolean, customError:Box[()=>Unit] = Empty, override val role:Box[String] = Empty) extends InteractableMessage((i)=>{
 	var answerProvided = false
 	<div>
 		<div>{body}</div>
@@ -113,9 +126,9 @@ case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,def
 			</span>
 		</div>
 	</div>
-},Full(messageTitle))
+},role,Full(messageTitle))
 
-case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:String,buttons:Map[String,()=>Boolean], customError:Box[()=>Unit] = Empty, vertical:Boolean = true) extends InteractableMessage((i)=>{
+case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:String,buttons:Map[String,()=>Boolean], customError:Box[()=>Unit] = Empty, vertical:Boolean = true,override val role:Box[String] = Empty) extends InteractableMessage((i)=>{
 	var answerProvided = false
 	<div>
 		<div>{body}</div>
@@ -142,9 +155,9 @@ case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:Stri
 			}
 		</div>
 	</div>	
-},Full(messageTitle))
+},role,Full(messageTitle))
 
-case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,radioOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty, customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,radioOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty, customError:Box[()=>Unit] = Empty,override val role:Box[String] = Empty) extends InteractableMessage((i)=>{
 	var answerProvided = false
 	<div>
 		<div>{body}</div>
@@ -164,9 +177,9 @@ case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,
 			</div>
 		</div>
 	</div>	
-},Full(messageTitle))
+},role,Full(messageTitle))
 
-case class SimpleDropdownInteractableMessage(messageTitle:String,body:String,dropdownOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty,customError:Box[()=>Unit] = Empty) extends InteractableMessage((i)=>{
+case class SimpleDropdownInteractableMessage(messageTitle:String,body:String,dropdownOptions:Map[String,()=>Boolean],defaultOption:Box[String] = Empty,customError:Box[()=>Unit] = Empty,override val role:Box[String] = Empty) extends InteractableMessage((i)=>{
 	var answerProvided = false
 	<div>
 		<div>{body}</div>
@@ -186,8 +199,8 @@ case class SimpleDropdownInteractableMessage(messageTitle:String,body:String,dro
 			</div>
 		</div>
 	</div>	
-},Full(messageTitle))
+},role,Full(messageTitle))
 
-case class SpamMessage(content:NodeSeq,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
+case class SpamMessage(content:NodeSeq,override val role:Box[String] = Empty,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,role,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
 	override val contentNode = a(() => done,content)
 }
