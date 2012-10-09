@@ -114,13 +114,16 @@ object XmppUtils {
 	}
 }
 
-abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String) {
+abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String, xmppConnection: Box[XMPPConnection]) {
+
+    def this(incomingUsername: String, password: String, incomingResource: String, incomingHost: String) {
+        this(incomingUsername, password, incomingResource, incomingHost, xmppConnection = Empty)
+    }
 
 	val host = incomingHost
 	val username = incomingUsername
 	val resource = incomingResource
 	Packet.setDefaultXmlns(XmppUtils.ns)
-
 
 	def sendMessage(room:String,messageType:String,message:T):Unit = Stopwatch.time("XmppConnection.sendMessage", () => {			
 		rooms.find(r => r._1 == room).map(r => {
@@ -176,11 +179,18 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		val filter = new AndFilter( new PacketTypeFilter(classOf[Message]), new MessageTypeFilter(relevantElementNames))
 		conn.map(c => c.addPacketListener(new RemoteSyncListener,filter))
 	})
-	initializeXmpp
+    initializeXmpp
+
+    private def createXmppConnection: Box[XMPPConnection] = {
+        xmppConnection match {
+          case Full(xmpp) => xmppConnection
+          case _ => tryo(new XMPPConnection(config))
+        }
+    }
 
 	def connectToXmpp:Unit = Stopwatch.time("Xmpp.connectToXmpp", () => {
 		disconnectFromXmpp
-		conn = tryo(new XMPPConnection(config))
+		conn = createXmppConnection 
 		conn.map(c => c.connect)
 		try {
 			conn.map(c => c.login(username,password,resource))
@@ -188,7 +198,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		catch {
 			case e:XMPPException if (shouldAttemptRegistrationOnAuthFailed && e.getMessage.contains("not-authorized")) => {
 				disconnectFromXmpp
-				conn = tryo(new XMPPConnection(config))
+				conn = createXmppConnection
 				conn.map(c => {
 					c.connect
 					register
