@@ -285,9 +285,9 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 	}
 	def adjustIndividualContent(cc:MeTLCanvasContent):MeTLCanvasContent = {
 		cc match {
-			case i:MeTLInk => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
-			case t:MeTLText => t.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
-			case i:MeTLImage => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case i:MeTLInk if (isDirtierFor(i)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case t:MeTLText if (isDirtierFor(t)) => t.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case i:MeTLImage if (isDirtierFor(i)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
 			case _ => cc
 		}
 	}
