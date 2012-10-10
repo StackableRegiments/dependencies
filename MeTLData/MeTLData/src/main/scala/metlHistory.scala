@@ -88,6 +88,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getImageBySource(source:String) = Stopwatch.time("History.getImageBySource", () => getImages.find(i => i.source.map(s => s == source).openOr(false)))
   def getImageByIdentity(identity:String) = Stopwatch.time("History.getImageByIdentity", () => getImages.find(i => i.identity == identity))
 	def getQuizByIdentity(identity:String) = Stopwatch.time("History.getQuizImageByIdentity", () => getQuizzes.filter(i => i.id == identity).sortBy(q => q.timestamp).reverse.headOption)
+	def getSubmissionByAuthorAndIdentity(author:String,identity:String) = Stopwatch.time("History.getSubmissionByAuthorAndIdentity", () => getSubmissions.find(s => s.author == author && s.identity == identity))
 
   def addStanza(s:MeTLStanza) = Stopwatch.time("History.addStanza", () => {
     stanzas = stanzas ::: List(s)

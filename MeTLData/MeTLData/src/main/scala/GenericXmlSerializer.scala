@@ -247,12 +247,13 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 		val c = utils.parseCanvasContent(input)
 		val title = utils.getStringByName(input,"title")
 		val url = utils.getStringByName(input,"url")
+		val imageBytes = Full(config.getResource(url))
 		val blacklist = utils.getXmlByName(input,"blacklist").map(bl => {
 			val username = utils.getStringByName(input,"username")
 			val highlight = utils.getColorByName(input,"highlight")
 			SubmissionBlacklistedPerson(username,highlight)
 		}).toList
-		MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,blacklist,c.target,c.privacy,c.identity)
+		MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity)
 	})
 	override def fromSubmission(input:MeTLSubmission):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSubmission", () => {
 		canvasContentToXml("screenshotSubmission",input,List(
