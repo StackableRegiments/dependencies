@@ -61,12 +61,5 @@ class XmppSuite extends FunSuite with MockitoSugar {
 
         verify(xmpp.conn).disconnect(new Presence(Presence.Type.unavailable))
     }
-
-    test("join room") {
-       
-        val xmpp = createXmppConnection
-
-        xmpp.controller.joinRoom("test")
-    }
 }
 
