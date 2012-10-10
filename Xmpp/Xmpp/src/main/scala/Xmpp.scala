@@ -228,13 +228,9 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	def joinRoom(room:String):Box[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
 		val roomJid = "%s@conference.%s".format(room,host)
 		conn.map(c => {
-            println("*** About to create muc " + c.toString)
 			val muc = new MultiUserChat(c,roomJid)
-            println("*** MUC created, about to join " + muc.toString)
 			muc.join(resource)
-            println("*** Joined resource %s".format(resource))
 			rooms = rooms.updated(room,muc)
-            println("*** Updated rooms collection")
 			muc
 		})
 	})
