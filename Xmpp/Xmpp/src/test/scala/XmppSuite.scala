@@ -34,26 +34,39 @@ class XmppSuite extends FunSuite with MockitoSugar {
     val user = "username"
     val pass = "password"
 
-    test("create an xmpp connection") { 
+    case class XmppConn(conn: XMPPConnection, controller: TestXmppConnection)
+
+    def createXmppConnection: XmppConn = {
 
         val xmppConnection = mock[XMPPConnection]
         val xmppConn = new TestXmppConnection(user, pass, resource, hostname, tryo(xmppConnection))
-        verify(xmppConnection).connect
-        verify(xmppConnection).login(user, pass, resource)
+        XmppConn(xmppConnection, xmppConn)
+    }
+
+    test("create an xmpp connection") { 
+
+        val xmpp = createXmppConnection
+        verify(xmpp.conn).connect
+        verify(xmpp.conn).login(user, pass, resource)
     }
 
     test("create and disconnect from xmpp connection") {
 
-        val xmppConnection = mock[XMPPConnection]
-        val xmppConn = new TestXmppConnection(user, pass, resource, hostname, tryo(xmppConnection))
+        val xmpp = createXmppConnection
 
-        verify(xmppConnection).connect
-        verify(xmppConnection).login(user, pass, resource) 
+        verify(xmpp.conn).connect
+        verify(xmpp.conn).login(user, pass, resource) 
 
-        xmppConn.disconnectFromXmpp
+        xmpp.controller.disconnectFromXmpp
 
-        verify(xmppConnection).disconnect(new Presence(Presence.Type.unavailable))
+        verify(xmpp.conn).disconnect(new Presence(Presence.Type.unavailable))
     }
 
+    test("join room") {
+       
+        val xmpp = createXmppConnection
+
+        xmpp.controller.joinRoom("test")
+    }
 }
 
