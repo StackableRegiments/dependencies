@@ -1,5 +1,7 @@
 package com.metl
 
+import scala.xml.NodeSeq
+
 import net.liftweb.util._
 import net.liftweb.common._
 import net.liftweb.util.Helpers._
@@ -25,6 +27,16 @@ class TestXmppConnection(user: String, pass: String, res: String, host: String, 
 
 	override def onUntypedMessageRecieved(room:String,message:String) = {
 	}
+
+	override lazy val subscribedTypes = List("string").map(item => {
+		val ser = (i:String) => {
+            <string>i</string>
+		}
+		val deser = (s:NodeSeq) => {
+		    s.text	
+		}
+		XmppDataType[String](item,ser,deser)
+	})
 }
 
 class XmppSuite extends FunSuite with MockitoSugar {
@@ -61,5 +73,13 @@ class XmppSuite extends FunSuite with MockitoSugar {
 
         verify(xmpp.conn).disconnect(new Presence(Presence.Type.unavailable))
     }
-}
 
+    test("send a message when not connected to a room") (pending)
+    test("join room") (pending)
+    test("leave Room") (pending)
+    test("send message") (pending)
+    test("send simple message") (pending)
+    test("xmpp data type : generate packet extension") (pending)
+    test("xmpp data type : comprehend response") (pending)
+    test("metl extension provider : parse extension") (pending)
+}
