@@ -98,6 +98,7 @@ class JsonSerializer(configName:String) extends Serializer{
       case jo:JObject if (isOfType(jo,"quiz")) => toMeTLQuiz(jo)
       case jo:JObject if (isOfType(jo,"quizResponse")) => toMeTLQuizResponse(jo)
       case jo:JObject if (isOfType(jo,"moveDelta")) => toMeTLMoveDelta(jo)
+      case jo:JObject if (isOfType(jo,"command")) => toMeTLCommand(jo)
       case _ => MeTLStanza.empty
     }
   })
