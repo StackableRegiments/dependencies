@@ -12,11 +12,7 @@ object ServerConfiguration{
 	private var defaultConfigFunc = () => serverConfigs(0)
 	def default = {
 		defaultConfigFunc()
-		//configForName("transientMadam")
-//		val host = tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr("reifier.adm.monash.edu.au")
-//		configForHost(host)
 	}
-
 }
 
 abstract class ServerConfiguration(incomingName:String,incomingHost:String) {

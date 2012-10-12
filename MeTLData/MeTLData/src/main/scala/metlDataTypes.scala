@@ -427,13 +427,18 @@ case class MeTLCommand(override val server:ServerConfiguration,override val auth
 	})
 }
 object MeTLCommand{
-  def empty = MeTLCommand(ServerConfiguration.empty,"",0L,"/No Command",List.empty[String])
+  def empty = MeTLCommand(ServerConfiguration.empty,"",0L,"/No_Command",List.empty[String])
 }
 
 case class MeTLQuiz(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,created:Long,question:String,id:String,url:Box[String],imageBytes:Box[Array[Byte]],isDeleted:Boolean,options:List[QuizOption]) extends MeTLStanza(server,author,timestamp){
 	override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLQuiz = Stopwatch.time("MeTLQuiz.adjustTimestamp", () => {
 		MeTLQuiz(server,author,newTime,created,question,id,url,imageBytes,isDeleted,options)
 	})
+	def replaceQuestion(newQ:String) = MeTLQuiz(server,author,timestamp,created,newQ,id,url,imageBytes,isDeleted,options)
+	def addOption(newO:QuizOption) = MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options ::: List(newO.adjustName(QuizOption.nextName(options))))
+	def replaceImage(newImageUrl:Box[String]) = MeTLQuiz(server,author,timestamp,created,question,id,newImageUrl,Empty,isDeleted,options)
+	def replaceOption(optionName:String,newText:String) = options.find(o => o.name == optionName).map(or => MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options.filterNot(o => o == or) ::: List(or.adjustText(newText)))).getOrElse(MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options))
+	def delete = MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,true,options)
 }
 object MeTLQuiz{
   def empty = MeTLQuiz(ServerConfiguration.empty,"",0L,0L,"","",Empty,Empty,true,List.empty[QuizOption])
@@ -452,9 +457,36 @@ object SubmissionBlacklistedPerson{
 	def empty = SubmissionBlacklistedPerson("",Color.default)
 }
 
-case class QuizOption(name:String,text:String,correct:Boolean,color:Color)
+case class QuizOption(name:String,text:String,correct:Boolean,color:Color){
+	def adjustName(newName:String) = QuizOption(newName,text,correct,color)
+	def adjustText(newText:String) = QuizOption(name,newText,correct,color)
+}
 object QuizOption{
   def empty = QuizOption("","",false,Color.default)
+	def colorForName(optionName:String):Color = optionName.toLowerCase.toArray[Char].reverse.headOption.map(ho => ((ho - 'a').asInstanceOf[Int] % 2) match {
+		case 0 => Color(255,255,255,255)
+		case 1 => Color(255,70,130,180)
+	}).getOrElse(Color(255,255,255,255))
+	def numberToName(number:Int):String = {
+		if (number > 0){
+			val numberPart = number % 26 match {
+				case 0 => 26
+				case n => n
+			}
+			val numberRest = number / 26
+			val thisChar = (numberPart + 'a' - 1).asInstanceOf[Char] 
+			if (((number - 1) / 26) > 0)
+				(numberToName(numberRest).toArray[Char].toList ::: List(thisChar)).toArray.mkString.toUpperCase 
+			else 
+				thisChar.toString.toUpperCase
+		} else ""
+	}
+	def nameToNumber(name:String):Int = {
+		name.toLowerCase.toArray[Char].foldLeft(0)((a,i) => (a * 26) + i - 'a' + 1)
+	}
+	def nextName(options:List[QuizOption] = List.empty[QuizOption]) = {
+		numberToName(options.map(o => nameToNumber(o.name)).distinct.max + 1)
+	}
 }
 
 case class MeTLQuizResponse(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,answer:String,answerer:String,id:String) extends MeTLStanza(server,author,timestamp){
