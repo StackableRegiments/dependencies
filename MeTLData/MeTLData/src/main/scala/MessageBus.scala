@@ -38,7 +38,7 @@ abstract class MessageBus(definition:MessageBusDefinition, creator:MessageBusPro
 	def release = creator.releaseMessageBus(definition)
 }
 class LoopbackBus(definition:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(definition,creator){
-	override def sendStanzaToRoom(stanza:MeTLStanza) = recieveStanzaFromRoom(stanza)
+	override def sendStanzaToRoom(stanza:MeTLStanza) = recieveStanzaFromRoom(stanza.adjustTimestamp(new java.util.Date().getTime))
 }
 object EmptyMessageBus extends MessageBus(new MessageBusDefinition("empty","throwaway"),EmptyMessageBusProvider){
 	override def sendStanzaToRoom(stanza:MeTLStanza) = {}

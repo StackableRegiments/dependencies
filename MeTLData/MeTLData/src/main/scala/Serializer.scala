@@ -10,8 +10,6 @@ abstract class Serializer {
   def fromHistory(input:History):T = throw new SerializationNotImplementedException
   def toHistory(input:T):History = throw new SerializationNotImplementedException
   def toMeTLStanza(input:T):MeTLStanza = throw new SerializationNotImplementedException
-  def toMeTLMove(input:T):MeTLMove = throw new SerializationNotImplementedException
-  def fromMeTLMove(input:MeTLMove):T =throw new SerializationNotImplementedException
   def toMeTLMoveDelta(input:T):MeTLMoveDelta = throw new SerializationNotImplementedException
   def fromMeTLMoveDelta(input:MeTLMoveDelta):T = throw new SerializationNotImplementedException
   def toMeTLInk(input:T):MeTLInk = throw new SerializationNotImplementedException
@@ -58,7 +56,6 @@ abstract class Serializer {
     case q:MeTLQuiz => fromMeTLQuiz(q)
     case qr:MeTLQuizResponse => fromMeTLQuizResponse(qr)
     case s:MeTLSubmission => fromSubmission(s)
-    case m:MeTLMove => fromMeTLMove(m)
     case m:MeTLMoveDelta => fromMeTLMoveDelta(m)
     case _ => throw new SerializationNotImplementedException
   }
