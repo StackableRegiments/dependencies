@@ -457,8 +457,8 @@ object SubmissionBlacklistedPerson{
 	def empty = SubmissionBlacklistedPerson("",Color.default)
 }
 
-case class QuizOption(name:String,text:String,correct:Boolean,color:Color){
-	def adjustName(newName:String) = QuizOption(newName,text,correct,color)
+case class QuizOption(name:String,text:String,correct:Boolean = false,color:Color = Color.default){
+	def adjustName(newName:String) = QuizOption(newName,text,correct,QuizOption.colorForName(newName))
 	def adjustText(newText:String) = QuizOption(name,newText,correct,color)
 }
 object QuizOption{

@@ -284,10 +284,9 @@ class GenericXmlSerializer(configName:String) extends Serializer{
 			<created>{input.created}</created>,
 			<question>{input.question}</question>,
 			<id>{input.id}</id>,
-			input.url.map(u => <url>{u}</url>).openOr(NodeSeq.Empty),
 			<isDeleted>{input.isDeleted}</isDeleted>,
 			<options>{input.options.map(o => fromQuizOption(o))}</options>
-		))
+		) ::: input.url.map(u => List(<url>{u}</url>)).openOr(List.empty[Node]))
 	})
 	def toQuizOption(input:NodeSeq):QuizOption = Stopwatch.time("GenericXmlSerializer.toMeTLQuizOption", () => {
 		val name = utils.getStringByName(input,"name")
