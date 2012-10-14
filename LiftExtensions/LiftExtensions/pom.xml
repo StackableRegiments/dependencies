@@ -51,12 +51,16 @@
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
     </dependency>
-
-		<dependency>
-			<groupId>com.metl</groupId>
-			<artifactId>MeTLUtils</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
+	<dependency>
+		<groupId>com.metl</groupId>
+		<artifactId>MeTLUtils</artifactId>
+		<version>1.0-SNAPSHOT</version>
+	</dependency>
+	<dependency>
+		<groupId>javax.servlet</groupId>
+		<artifactId>servlet-api</artifactId>
+		<version>2.5</version>
+	</dependency>
     <!-- Test -->
 	<dependency>
 		<groupId>org.scalatest</groupId>
@@ -75,40 +79,11 @@
 		<version>1.9.0</version>
 		<scope>test</scope>
 	</dependency>
-<!--
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.8.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.8.1</artifactId>
-      <version>1.6.6</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-compiler</artifactId>
-      <version>${scala.version}</version>
-      <scope>test</scope>
-    </dependency>
--->
-<!--
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_${scala.version}</artifactId>
-      <version>1.6.6</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scalatest</groupId>
-      <artifactId>scalatest</artifactId>
-      <version>1.2</version>
-      <scope>test</scope>
-    </dependency>
--->
+	<dependency>
+		<groupId>junit</groupId>
+		<artifactId>junit</artifactId>
+		<version>4.10</version>
+	</dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
@@ -129,6 +104,12 @@
       <artifactId>lift-mapper_2.9.0-1</artifactId>
       <version>2.4</version>
     </dependency>
+	<dependency>
+		<groupId>net.liftweb</groupId>
+		<artifactId>lift-testkit_2.9.0-1</artifactId>
+		<version>2.4</version>
+	</dependency>
+
   </dependencies>
 
   <build>
@@ -165,13 +146,17 @@
           </execution>
         </executions>
       </plugin>
-	  <!-- disable surefire -->
 	  <plugin>
 		<groupId>org.apache.maven.plugins</groupId>
 		<artifactId>maven-surefire-plugin</artifactId>
 		<version>2.7</version>
 		<configuration>
-			<skipTests>true</skipTests>
+			<useSystemClassLoader>false</useSystemClassLoader>
+			<argLine>-Xmx512m</argLine>
+			<includes>
+				<include>**/*Unit.java</include>
+				<include>**/*Spec.java</include>
+			</includes>
 		</configuration>
 	  </plugin>
 	  <!-- enable scalatest -->
