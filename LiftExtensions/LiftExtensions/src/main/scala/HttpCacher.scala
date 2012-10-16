@@ -21,11 +21,15 @@ class HttpCacher {
 	}
 
 	private val formatter = new SimpleDateFormat("EEE', 'dd' 'MMM' 'yyyy' 'HH:mm:ss' 'Z", Locale.US);
-	private def makeCacheHeaders(binary:CachedBinary,expiry:Long) = List(
+	private def makeCacheHeaders(binary:CachedBinary,expiry:Long) = {
+      
+      val maxAge = (expiry-(new Date().getTime-binary.createTime))/1000
+
+      List(
 		"Expires"       -> formatter.format(new Date(binary.createTime+expiry)),
-		"Cache-Control" -> "max-age=%d, must-revalidate".format((expiry-(new Date().getTime-binary.createTime))/1000),
-		"ETag"          -> binary.checksum
-	)
+		"Cache-Control" -> "max-age=%d, must-revalidate".format(if (maxAge < 0) 0 else maxAge),
+		"ETag"          -> binary.checksum)
+    }
 
 	def constructResponse(binary:CachedBinary, contentType:String, expiry:TimeSpan) = {
 		requestEtag match {
