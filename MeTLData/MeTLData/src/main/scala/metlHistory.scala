@@ -401,6 +401,17 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 		})
 	})
 
+	def filterCanvasContentsForMoveDelta(md:MeTLMoveDelta):History = Stopwatch.time("History.filterCanvasContentForMoveDelta", () => {
+		filter(i => i match {
+			case mmd:MeTLMoveDelta => mmd.timestamp < md.timestamp && (mmd.inkIds.exists(i => md.inkIds.contains(i)) || mmd.textIds.exists(i => md.textIds.contains(i)) || mmd.imageIds.exists(i => md.imageIds.contains(i)))
+			case di:MeTLDirtyInk => md.inkIds.contains(di.identity)
+			case dt:MeTLDirtyText => md.textIds.contains(dt.identity)
+			case di:MeTLDirtyImage => md.imageIds.contains(di.identity)
+			case cc:MeTLCanvasContent => md.isDirtierFor(cc,false)
+			case _ => false
+		})
+	})
+
   def scale(factor:Double) = Stopwatch.time("History.scale", () => {
     val newHistory = History(jid,factor,factor,0,0)
 		getAll.foreach(i => newHistory.addStanza(i))
