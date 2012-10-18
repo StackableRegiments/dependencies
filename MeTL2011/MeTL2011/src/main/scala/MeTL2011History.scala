@@ -14,8 +14,12 @@ import java.util.Date
 class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetriever(serverName) {
 	val utils = new MeTL2011Utils(serverName)
 	private def publicHistoryUrl(jid:String) = "https://%s:1749/%s/%s/all.zip".format(server.host,utils.stem(jid.toString),jid)		
+	private def privateHistoryUrl(username:String,jid:String) = "https://%s:1749/%s/%s/%s/all.zip".format(server.host,utils.stem(username.toString),username,jid)		
 	def getMeTLHistory(jid:String):History = Stopwatch.time("MeTL2011History.getMeTLHistory", () => {
-		val url = publicHistoryUrl(jid)
+		val url = jid.dropWhile(_.isDigit) match {
+			case username:String if (username.length > 0) => privateHistoryUrl(username,jid)
+			case _ => publicHistoryUrl(jid)
+		}
 		val downloadedBytes = Stopwatch.time("MeTL2011History.getMeTLHistory.fetch", () => http.getClient.getAsBytes(url))
 		val stream = new ByteArrayInputStream(downloadedBytes)
 		val zipStream = new java.util.zip.ZipInputStream(stream)
