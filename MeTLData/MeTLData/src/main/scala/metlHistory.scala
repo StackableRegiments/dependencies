@@ -147,11 +147,12 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 			case image:MeTLImage => dirtyImages.exists(dImage => dImage.isDirtierFor(image))
 			case _ => false
 		}
-		!(dirtyTest || metlMoveDeltas.filter(md => md.isDirtierFor(cc)).sortBy(_.timestamp).reverse.headOption.map(ho => ho.isDeleted).getOrElse(false))
+		!(dirtyTest || metlMoveDeltas.filter(md => md.isDirtierFor(cc)).exists(md => md.isDeleted))
+//sortBy(_.timestamp).reverse.headOption.map(ho => ho.isDeleted).getOrElse(false))
 	}
 
 	def addMeTLMoveDelta(s:MeTLMoveDelta,store:Boolean = true) = Stopwatch.time("History.addMeTLMoveDelta", () => {
-		if (!metlMoveDeltas.exists(mmd => mmd.identity == s.identity)){
+		if (!metlMoveDeltas.exists(mmd => mmd.matches(s))){
 			moveContent(s)
 			if (store){
 				outputHook(s)
@@ -167,7 +168,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
 				item.adjustIndividualContent(acc).asInstanceOf[MeTLInk]
 			})
 			canvasContents = canvasContents.filterNot(cc => cc match {
-				case i:MeTLInk => i.identity == s.identity && i.privacy == s.privacy && i.author == s.author
+				case i:MeTLInk => i.matches(s)
 				case _ => false	
 			}) ::: List(adjustedInk)
 			growBounds(adjustedInk.left,adjustedInk.right,adjustedInk.top,adjustedInk.bottom)

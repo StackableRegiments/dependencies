@@ -17,9 +17,10 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 	private def privateHistoryUrl(username:String,jid:String) = "https://%s:1749/%s/%s/%s/all.zip".format(server.host,utils.stem(username.toString),username,jid)		
 	def getMeTLHistory(jid:String):History = Stopwatch.time("MeTL2011History.getMeTLHistory", () => {
 		val url = jid.dropWhile(_.isDigit) match {
-			case username:String if (username.length > 0) => privateHistoryUrl(username,jid)
+			case username:String if (username.length > 0) => privateHistoryUrl(username,jid.takeWhile(_.isDigit))
 			case _ => publicHistoryUrl(jid)
 		}
+		println("fetching history from url: %s".format(url))
 		val downloadedBytes = Stopwatch.time("MeTL2011History.getMeTLHistory.fetch", () => http.getClient.getAsBytes(url))
 		val stream = new ByteArrayInputStream(downloadedBytes)
 		val zipStream = new java.util.zip.ZipInputStream(stream)
