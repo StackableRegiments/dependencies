@@ -37,13 +37,13 @@ class JsonSerializer(configName:String) extends Serializer{
   lazy val config = ServerConfiguration.configForName(configName)
   val utils = new JsonSerializerHelper
 
-  private def parseMeTLContent(input:MeTLStanza):List[JField] = {
+  protected def parseMeTLContent(input:MeTLStanza):List[JField] = {
     List(
       JField("author",JString(input.author)),
       JField("timestamp",JInt(input.timestamp))
     )
   }
-  private def parseCanvasContent(input:MeTLCanvasContent):List[JField] = {
+  protected def parseCanvasContent(input:MeTLCanvasContent):List[JField] = {
     List(
       JField("target",JString(input.target)),
       JField("privacy",JString(input.privacy.toString)),
@@ -51,12 +51,12 @@ class JsonSerializer(configName:String) extends Serializer{
       JField("identity",JString(input.identity))
     )
   }
-  private def parseJObjForMeTLContent(input:JObject):ParsedMeTLContent = {
+  protected def parseJObjForMeTLContent(input:JObject):ParsedMeTLContent = {
     val author = utils.getStringByName(input,"author")
     val timestamp = utils.getLongByName(input,"timestamp")
     ParsedMeTLContent(author,timestamp)
   }
-  private def parseJObjForCanvasContent(input:JObject):ParsedCanvasContent = {
+  protected def parseJObjForCanvasContent(input:JObject):ParsedCanvasContent = {
     val target = utils.getStringByName(input,"target")
     val privacy = utils.getPrivacyByName(input,"privacy")
     val slide = utils.getStringByName(input,"slide")
@@ -77,13 +77,13 @@ class JsonSerializer(configName:String) extends Serializer{
       JField("commands",JArray(input.getCommands.map(i => fromMeTLCommand(i))))
     ))
   })
-  private def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has", () => {
+  protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has", () => {
     input.values.contains(fieldName)
   })
-  private def isOfType(input:JObject,name:String) = Stopwatch.time("JsonSerializer.isOfType", () => {
+  protected def isOfType(input:JObject,name:String) = Stopwatch.time("JsonSerializer.isOfType", () => {
     input.values("type") == name
   })
-  private def toJsObj(name:String,fields:List[JField]) = Stopwatch.time("JsonSerializer.toJsObj", () => {
+  protected def toJsObj(name:String,fields:List[JField]) = Stopwatch.time("JsonSerializer.toJsObj", () => {
     JObject(JField("type",JString(name)) :: fields)
   })
   override def toMeTLStanza(input:JValue):MeTLStanza = Stopwatch.time("JsonSerializer.toMeTLStanza", () => {
@@ -442,8 +442,8 @@ class JsonSerializer(configName:String) extends Serializer{
       JField("usersAreCompulsorilySynced",JBool(input.usersAreCompulsorilySynced))
     ))
   })
-  private def convert2AfterN(h:String,n:Int):Int = hexToInt(h.drop(n).take(2).mkString)
-  private def hexToInt(h:String):Int = tryo(Integer.parseInt(h,16)).openOr(0)
+  protected def convert2AfterN(h:String,n:Int):Int = hexToInt(h.drop(n).take(2).mkString)
+  protected def hexToInt(h:String):Int = tryo(Integer.parseInt(h,16)).openOr(0)
   override def toColor(input:AnyRef):Color = Stopwatch.time("JsonSerializer.toColor", () => {
     input match {
       case List(c,a) => {
