@@ -5,10 +5,10 @@ import com.metl.utils._
 
 class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
 	protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
-	protected val history = new MeTL2011History(name,http)
-	protected val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred")
+	protected lazy val history = new MeTL2011History(name,http)
+	protected lazy val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred")
 	protected val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
-	val serializer = new MeTL2011XmlSerializer(name)
+	lazy val serializer = new MeTL2011XmlSerializer(name)
 	protected val resourceProvider = new MeTL2011Resources(name,http)
 	override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
 	override def getHistory(jid:String) = history.getMeTLHistory(jid)
