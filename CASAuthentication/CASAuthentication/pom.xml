@@ -22,18 +22,16 @@
   </properties>
 
   <repositories>
-<!--
     <repository>
-      <id>scala-tools.org</id>
-      <name>Scala-Tools Maven2 Repository</name>
-      <url>http://scala-tools.org/repo-releases</url>
+      <id>SonaType OSS Releases</id>
+      <name>SonaType Maven2 Repository</name>
+      <url>https://oss.sonatype.org/content/repositories/releases</url>
     </repository>
--->
-		<repository>
-			<id>eec-svn</id>
-			<name>eEducation Centre Maven Repository</name>
-			<url>svn:svn://refer.adm.monash.edu.au/maven2</url>
-		</repository>
+	<repository>
+		<id>eec-svn</id>
+		<name>eEducation Centre Maven Repository</name>
+		<url>svn:svn://refer.adm.monash.edu.au/maven2</url>
+	</repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
@@ -48,47 +46,45 @@
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
     </dependency>
-
+	<dependency>
+		<groupId>javax.servlet</groupId>
+		<artifactId>servlet-api</artifactId>
+		<version>2.5</version>
+	</dependency>
     <!-- Test -->
-<!--
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.8.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.8.1</artifactId>
-      <version>1.6.6</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-compiler</artifactId>
-      <version>${scala.version}</version>
-      <scope>test</scope>
-    </dependency>
--->
-<!--
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_${scala.version}</artifactId>
-      <version>1.6.6</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scalatest</groupId>
-      <artifactId>scalatest</artifactId>
-      <version>1.2</version>
-      <scope>test</scope>
-    </dependency>
--->
-		<dependency>
-			<groupId>com.metl</groupId>
-			<artifactId>MeTLUtils</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
+	<dependency>
+		<groupId>org.scalatest</groupId>
+		<artifactId>scalatest_2.9.1</artifactId>
+		<version>1.8</version>
+	</dependency>
+	<dependency>
+		<groupId>org.scala-tools.testing</groupId>
+		<artifactId>specs_2.9.1</artifactId>
+		<version>1.6.9</version>
+		<scope>test</scope>
+	</dependency>
+	<dependency>
+		<groupId>org.mockito</groupId>
+		<artifactId>mockito-core</artifactId>
+		<version>1.9.0</version>
+		<scope>test</scope>
+	</dependency>
+	<dependency>
+		<groupId>com.metl</groupId>
+		<artifactId>MeTLUtils</artifactId>
+		<version>1.0-SNAPSHOT</version>
+	</dependency>
+	<dependency>
+		<groupId>junit</groupId>
+		<artifactId>junit</artifactId>
+		<version>4.10</version>
+	</dependency>
+	<dependency>
+		<groupId>net.liftweb</groupId>
+		<artifactId>lift-testkit_2.9.0-1</artifactId>
+		<version>2.4</version>
+	</dependency>
+	<!-- end Test -->
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
@@ -145,21 +141,42 @@
           </execution>
         </executions>
       </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.6</version>
-        <configuration>
-          <useFile>false</useFile>
-          <disableXmlReport>true</disableXmlReport>
-          <!-- If you have classpath issue like NoDefClassError,... -->
-          <!-- useManifestOnlyJar>false</useManifestOnlyJar -->
-          <includes>
-            <include>**/*Test.*</include>
-            <include>**/*Suite.*</include>
-          </includes>
-        </configuration>
-      </plugin>
+	  <plugin>
+		<groupId>org.apache.maven.plugins</groupId>
+		<artifactId>maven-surefire-plugin</artifactId>
+		<version>2.7</version>
+		<configuration>
+			<useSystemClassLoader>false</useSystemClassLoader>
+			<argLine>-Xmx512m</argLine>
+			<includes>
+				<include>**/*Unit.java</include>
+				<include>**/*Spec.java</include>
+			</includes>
+		</configuration>
+	  </plugin>
+	  <!-- enable scalatest -->
+	  <plugin>
+		  <groupId>org.scalatest</groupId>
+		  <artifactId>scalatest-maven-plugin</artifactId>
+		  <version>1.0-M2</version>
+			<configuration>
+				<reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+				<junitxml>.</junitxml>
+				<includes>
+					<include>**/test/scala/**/*.scala</include>
+					<include>**/*Test.*</include>
+					<include>**/*Suite.*</include>
+				</includes>
+			</configuration>
+			<executions>
+				<execution>
+					<id>test</id>
+					<goals>
+						<goal>test</goal>
+					</goals>
+				</execution>
+			</executions>
+	  </plugin>
     </plugins>
   </build>
 	<distributionManagement>

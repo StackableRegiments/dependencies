@@ -40,9 +40,16 @@ object CASAuthentication {
 
 class InSessionCASState extends SessionVar[CASStateData](CASStateDataForbidden)
 
-class CASAuthenticator(realm:String,alreadyLoggedIn:() => Boolean,onSuccess:(CASStateData) => Unit) {
+class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alreadyLoggedIn:() => Boolean,onSuccess:(CASStateData) => Unit) {
+
+    def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (CASStateData) => Unit) {
+        this(realm, Empty, alreadyLoggedIn, onSuccess)
+    }
+
+    private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
+
 	println("starting up CAS Authenticator for realm: %s".format(realm))
-	val casState = new InSessionCASState
+	val casState = new InSessionCASState 
 	def getCasState = casState.is
 
 	def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => getCasState.authenticated || alreadyLoggedIn())
@@ -88,7 +95,7 @@ class CASAuthenticator(realm:String,alreadyLoggedIn:() => Boolean,onSuccess:(CAS
       case Full(ticket) =>
       {
         val verifyUrl = monashCasUrl + "/serviceValidate?ticket=%s&service=%s"
-	      val casValidityResponse = Http.getClient.getAsString(verifyUrl.format(ticket,URLEncoder.encode(ticketlessUrl(req), "utf-8")))
+        val casValidityResponse = getHttpClient.getAsString(verifyUrl.format(ticket,URLEncoder.encode(ticketlessUrl(req), "utf-8")))
         val casValidityResponseXml = xml.XML.loadString(casValidityResponse)
 	      val state = for(success <- (casValidityResponseXml \\ "authenticationSuccess");
 					user <- (success \\ "user");

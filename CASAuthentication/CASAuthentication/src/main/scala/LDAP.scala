@@ -32,8 +32,11 @@ object LDAP {
 			output = n.headOption.map(net => {
 				val ne = net.asInstanceOf[SearchResult]
 				val attributes = ne.getAttributes()	
-				val name = attributes.get("monashmetacn")
-				List(("monashmetacn", name.toString),("ou","Unrestricted"),("uid",id)) ::: groups.map(group => (group, attributes.get(group))).filter{case (name,attr) => attr != null}.map{ case (name:String,attrib:Attribute) => namingEnumerationToSeq(name,attrib.getAll)}.flatten.toList
+				val metacn = Option(attributes.get("monashmetacn")) match {
+                  case Some(cn) => List(("monashmetacn", cn.toString))
+                  case None => List.empty
+                }
+				metacn ::: List(("ou","Unrestricted"),("uid",id)) ::: groups.map(group => (group, attributes.get(group))).filter{case (name,attr) => attr != null}.map{ case (name:String,attrib:Attribute) => namingEnumerationToSeq(name,attrib.getAll)}.flatten.toList
 			})
 		}
 		withLDAP("(uid=%s)".format(id),func)
