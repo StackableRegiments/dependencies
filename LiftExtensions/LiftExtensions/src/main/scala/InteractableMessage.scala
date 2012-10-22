@@ -119,7 +119,7 @@ case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,def
 					} else {
 						customError.map(ce => ce())
 					}
-				})}
+				},("class","simpleTextAreaInteractableMessageTextarea"))}
 			</span>
 			<span>
 				{submit("Submit", ()=>Noop)}
@@ -147,9 +147,9 @@ case class SimpleMultipleButtonInteractableMessage(messageTitle:String,body:Stri
 							}
 						},Text(buttonName))
 					if (vertical){ 
-						<div>{internalButton}</div>
+						<div class="simpleMultipleButtonInteractableMessageButton">{internalButton}</div>
 					} else {
-						<span>{internalButton}</span>
+						<span class="simpleMultipleButtonInteractableMessageButton">{internalButton}</span>
 					}
 				})
 			}
@@ -170,7 +170,7 @@ case class SimpleRadioButtonInteractableMessage(messageTitle:String,body:String,
 					} else {
 						customError.map(ce => ce())
 					}
-				}).toForm
+				},("class","simpleRadioButtonInteractableMessageButton")).toForm
 			}		
 			<div>
 				{submit("Submit", ()=> Noop) }
@@ -192,7 +192,7 @@ case class SimpleDropdownInteractableMessage(messageTitle:String,body:String,dro
 					} else {
 						customError.map(ce => ce())
 					}
-				})
+				},("class","simpleDropdownInteractableMessageDropdown"))
 			}		
 			<div>
 				{submit("Submit",()=> Noop) }
