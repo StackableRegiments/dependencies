@@ -4,12 +4,12 @@ import com.metl.data._
 import com.metl.utils._
 
 class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
-	private val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
-	private val history = new MeTL2011History(name,http)
-	private val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred")
-	private val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
+	protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
+	protected val history = new MeTL2011History(name,http)
+	protected val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred")
+	protected val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
 	val serializer = new MeTL2011XmlSerializer(name)
-	private val resourceProvider = new MeTL2011Resources(name,http)
+	protected val resourceProvider = new MeTL2011Resources(name,http)
 	override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
 	override def getHistory(jid:String) = history.getMeTLHistory(jid)
 	override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
@@ -28,10 +28,10 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) exten
 }
 
 class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
-	private val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
-	private val history = new MeTL2011History(name,http)
-	private val messageBusProvider = new LoopbackMessageBusProvider
-	private val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
+	protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
+	protected val history = new MeTL2011History(name,http)
+	protected val messageBusProvider = new LoopbackMessageBusProvider
+	protected val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
 	val serializer = new MeTL2011XmlSerializer(name)
 	override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
 	override def getHistory(jid:String) = history.getMeTLHistory(jid)
