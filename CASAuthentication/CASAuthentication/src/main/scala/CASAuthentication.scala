@@ -38,19 +38,19 @@ object CASAuthentication {
 	}	
 }
 
-class InSessionCASState extends SessionVar[CASStateData](CASStateDataForbidden)
+object InSessionCASState extends SessionVar[CASStateData](CASStateDataForbidden)
 
-class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alreadyLoggedIn:() => Boolean,onSuccess:(CASStateData) => Unit) {
+class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: Option[IMeTLLDAP], alreadyLoggedIn:() => Boolean,onSuccess:(CASStateData) => Unit) {
 
     def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (CASStateData) => Unit) {
-        this(realm, Empty, alreadyLoggedIn, onSuccess)
+        this(realm, None, None, alreadyLoggedIn, onSuccess)
     }
 
     private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
+    private def getLDAP: IMeTLLDAP = ldap.getOrElse(LDAP)
 
 	println("starting up CAS Authenticator for realm: %s".format(realm))
-	val casState = new InSessionCASState 
-	def getCasState = casState.is
+	def getCasState = InSessionCASState.is
 
 	def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => getCasState.authenticated || alreadyLoggedIn())
 
@@ -59,9 +59,9 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alread
 		println("verifyingCasCookie: %s".format(req))
 		val result = verifyCASTicket(req)
 		println("req verified: result = %s".format(result))
-		if (result.authenticated){
+		if (result.authenticated) {
 			println("authenticated - adding to internalCASState")
-			casState(result)
+			InSessionCASState.set(result)
 			println("authenticated - firing external handler")
 			onSuccess(result)
 			true
@@ -99,8 +99,8 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alread
         val casValidityResponseXml = xml.XML.loadString(casValidityResponse)
 	      val state = for(success <- (casValidityResponseXml \\ "authenticationSuccess");
 					user <- (success \\ "user");
-					groups <- LDAP.ou(List(user.text)).get(user.text);
-					info <- LDAP.info(List(user.text)).get(user.text)
+					groups <- getLDAP.ou(List(user.text)).get(user.text);
+					info <- getLDAP.info(List(user.text)).get(user.text)
 				) yield CASStateData(true,user.text,groups,info)
 				state match{
 					case List(newState@CASStateData(true,fetchedUsername,_,_))=> {

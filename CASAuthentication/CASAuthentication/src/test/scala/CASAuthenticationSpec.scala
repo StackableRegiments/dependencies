@@ -1,5 +1,6 @@
 package com.metl.cas
 
+import com.metl.ldap._
 import com.metl.utils._
 import javax.servlet.http.HttpServletRequest
 
@@ -7,7 +8,7 @@ import net.liftweb.common.{Box, Full, Empty}
 import net.liftweb.mocks.MockHttpServletRequest
 import net.liftweb.mockweb.MockWeb
 import net.liftweb.mockweb.WebSpec
-import net.liftweb.http.{LiftRules, LiftRulesMocker, S, SessionVar}
+import net.liftweb.http.{LiftRules, LiftRulesMocker, S, SessionVar, RedirectResponse}
 
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
@@ -28,31 +29,14 @@ import org.specs.runner.{JUnitSuiteRunner, JUnit}
 class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
     import net.liftweb.mockweb.MockWeb._
-    "create a CASAuthenticator" in {
 
-        val auth = new CASAuthenticator("realm",() => false, (cs:CASStateData) => 
-        {
-            println("CASAuthenticator::loginHandler")
-        })
-        assert(auth != null)
-    }
-
-    "check whether already logged in returns false when not logged in" in {
-
-        val auth = new CASAuthenticator("realm",() => false, (cs:CASStateData) => 
-        {
-            println("CASAuthenticator::loginHandler")
-        })
-
-        auth.checkWhetherAlreadyLoggedIn must_== false
-    }
-
-    val testSession = MockWeb.testS("http://test.metl.edu/test") {
+    val testUrl = "http://test.metl.edu/test"
+    def testSession = MockWeb.testS(testUrl) {
       S.session
     }
 
     case class F(connMgr: ClientConnectionManager, client: CleanHttpClient, conn: ManagedClientConnection, connRequest: ClientConnectionRequest)
-    def testClient = {
+    private def testClient = {
 
         val connMgr = mock[ClientConnectionManager]
         val client = new CleanHttpClient(connMgr)
@@ -66,60 +50,112 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
         F(connMgr, client, conn, connRequest)
     }
 
-    //val mockReq = new MockHttpServletRequest("http://test.metl.edu/test/login?ticket=foo", "/test")
+    private def testLDAP = {
+        mock[IMeTLLDAP]
+    }
 
-    object TestVar extends SessionVar[CASStateData](CASStateDataForbidden)
+    private def buildLDAPOutput(names: Seq[String], data: Seq[Tuple2[String,String]]) : Map[String, Seq[(String,String)]] = {
+        Map(names.map{n=> (n,data)} : _*)
+    }
 
-    "user log in unsuccessful with invalid request" in {
+    "create a CASAuthenticator" in {
+
+        var onSuccess = false
+        val auth = new CASAuthenticator("realm", () => false, (cs:CASStateData) => 
+        {
+            onSuccess = true
+        })
+
+        auth must notBeNull
+        onSuccess mustBe false
+    }
+
+    "check whether already logged in returns false when not logged in" in {
+
+        var onSuccess = false
+        val auth = new CASAuthenticator("realm",() => false, (cs:CASStateData) => 
+        {
+            onSuccess = true
+        })
+
+        auth.checkWhetherAlreadyLoggedIn mustBe false
+        onSuccess mustBe false
+    }
+
+    "user login unsuccessful with invalid request" withSFor(testUrl, testSession) in {
         testReq("http://test.metl.edu/test/this?foo=hbar", "/test") {
 
             req => {
 
              val httpClient = testClient
-             val auth = new CASAuthenticator("realm", Some(httpClient.client), () => { println("CASAuthenticator::alreadyLoggedIn"); false }, (cs:CASStateData) => 
-             {
-                // onSuccess 
-                println("onSuccess called")
+             var onSuccess = false
+             val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => 
+             { 
+               onSuccess = true
              })
 
-             auth.checkReqForCASCookies(req) must_== false
+             auth.checkReqForCASCookies(req) mustBe false
+             auth.checkWhetherAlreadyLoggedIn mustBe false
+             onSuccess mustBe false
            }
         }
     }
 
-    "student user log in successful with valid request" in {
+    "student user login successful with valid request" withSFor(testUrl, testSession) in {
       testReq("http://test.metl.edu/test/login?ticket=foo", "/test") {
 
         req => {
-         val httpClient = testClient
+           val httpClient = testClient
+           val ldap = testLDAP
 
-         val response = new BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "OK")
-         val authenticatedCasResponse = <cas:serviceResponse>
-                                           <cas:authenticationSuccess>
-                                              <cas:user>jpjor1</cas:user>
-                                           </cas:authenticationSuccess>
-                                        </cas:serviceResponse>
-         response.setEntity(new StringEntity(authenticatedCasResponse.toString))
-         response.setStatusCode(HttpStatus.SC_OK)
+           val user = Seq("test1")
+           val ou = List(("ou","Unrestricted"), ("uid","test1"), ("ou","Student"), ("monashenrolledsubject","mth2021"), 
+             ("monashenrolledsubject","phs2011"), ("monashenrolledsubject","mth2032"), ("monashenrolledsubject","phs2022"), 
+             ("monashenrolledsubject","mth2010"), ("monashenrolledsubject","fit2002"))
 
-         when(httpClient.conn.receiveResponseHeader).thenReturn(response)
+           val info = List(("sn","Tester"), ("givenname","Testy Test"), ("givenname","Testy"), ("initials","T T"), 
+             ("mail","test1@student.monash.edu"), ("cn","Testy Test Tester"), ("cn","Testy Tester"), ("gender","Male"), ("personaltitle","Mr"), ("employeenumber","21444480"))
 
-         val auth = new CASAuthenticator("realm", Some(httpClient.client), () => false, (cs:CASStateData) => { })
+           when(ldap.ou(user)).thenReturn(buildLDAPOutput(user, ou))
+           when(ldap.info(user)).thenReturn(buildLDAPOutput(user, info))
 
-         auth.checkReqForCASCookies(req) must_== true
+           val response = new BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "OK")
+           val authenticatedCasResponse = <cas:serviceResponse>
+                                             <cas:authenticationSuccess>
+                                                <cas:user>test1</cas:user>
+                                             </cas:authenticationSuccess>
+                                          </cas:serviceResponse>
+           response.setEntity(new StringEntity(authenticatedCasResponse.toString))
+           response.setStatusCode(HttpStatus.SC_OK)
+
+           when(httpClient.conn.receiveResponseHeader).thenReturn(response)
+
+           var onSuccess = false
+           val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(ldap), () => false, (cs:CASStateData) => { onSuccess = true })
+
+           auth.checkReqForCASCookies(req) mustBe true
+           auth.checkWhetherAlreadyLoggedIn mustBe true
+           onSuccess mustBe true
        }
       }
     }
 
-    "user log in successful with valid request" in {
+    "user login successful with valid request" withSFor(testUrl, testSession) in {
       testReq("http://test.metl.edu/test/login?ticket=foo", "/test") {
 
         req => {
-         //TestVar(CASStateData(true, "Harry", List(("ou", "Unrestricted"), ("uid", "AuthenticatedHarry"), ("ou", "Staff")), 
-         // List(("givenname", "Harry"), ("sn", "Henderson"),("mail", "harry.henderson@monash.edu"))))
-
          val httpClient = testClient
+         val ldap = testLDAP
 
+         val user = Seq("eecrole")
+         val ou = List(("monashmetacn","monashmetacn: EEC Role"), ("ou","Unrestricted"), ("uid","eecrole"), ("ou","Staff"), ("ou","Administration"), 
+           ("ou", "Office of the Deputy Vice-Chancellor (Education)"))
+
+         val info = List(("sn","Role"), ("givenname","EEC"), ("initials","E"), ("mail","EEC.Role@monash.edu"), ("cn","EEC Role"), ("personaltitle","ROLE"))
+
+         when(ldap.ou(user)).thenReturn(buildLDAPOutput(user, ou))
+         when(ldap.info(user)).thenReturn(buildLDAPOutput(user, info))
+         
          val response = new BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "OK")
          val authenticatedCasResponse = <cas:serviceResponse>
                                            <cas:authenticationSuccess>
@@ -131,14 +167,17 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
          when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
-         val auth = new CASAuthenticator("realm", Some(httpClient.client), () => false, (cs:CASStateData) => { })
+         var onSuccess = false
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(ldap), () => false, (cs:CASStateData) => { onSuccess = true })
 
-         auth.checkReqForCASCookies(req) must_== true
+         auth.checkReqForCASCookies(req) mustBe true
+         auth.checkWhetherAlreadyLoggedIn mustBe true
+         onSuccess mustBe true
        }
       }
     }
 
-    "user log in unsuccessful with valid request" in {
+    "user login unsuccessful with valid request" withSFor(testUrl, testSession) in {
       testReq("http://test.metl.edu/test/login?ticket=foo", "/test") {
 
         req => {
@@ -155,51 +194,38 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
          when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
-         val auth = new CASAuthenticator("realm", Some(httpClient.client), () => false, (cs:CASStateData) => { })
+         var onSuccess = false
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { onSuccess = true })
 
-         auth.checkReqForCASCookies(req) must_== false
+         auth.checkReqForCASCookies(req) mustBe false
+         auth.checkWhetherAlreadyLoggedIn mustBe false
+         onSuccess mustBe false
        }
       }
     }
-    /*private val testSession = MockWeb.testS("http://test.metl.edu/test/") {
-        S.session
-    }*/
 
-    /*"properly set up a Req with a HttpServletRequest" withReqFor(testReq) in {
-        _.uri must_== "/this"
-    }*/
+    "redirect returns expected redirectresponse" withSFor(testUrl, testSession) in {
+      testReq("http://test.metl.edu/test/login?ticket=foo", "/test") {
 
-    //private val mockLiftRules = new LiftRules()
+          req => {
+             val httpClient = testClient
 
-    /*"attach to an authenticator" in {
-        LiftRulesMocker.devTestLiftRulesInstance.doWith(mockLiftRules) {
-            val auth = new CASAuthenticator("realm",() => { println("alreadyLoggedIn"); false }, (cs:CASStateData) => 
-            {
-                println("loginHandler")
-                //Globals.casState(cs)
-                //Globals.currentUser(cs.username)
-            })
+             val response = new BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "OK")
+             val authenticatedCasResponse = <cas:serviceResponse>
+                                               <cas:authenticationFailure>
+                                                  <cas:reason>Unknown authcate</cas:reason>
+                                               </cas:authenticationFailure>
+                                            </cas:serviceResponse>
+             response.setEntity(new StringEntity(authenticatedCasResponse.toString))
+             response.setStatusCode(HttpStatus.SC_OK)
 
-            CASAuthentication.attachCASAuthenticator(auth)
-        }
-    }*/
+             when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
-    /*"properly set a plain text body" withReqFor("http://test.metl/test/casauthentication") withPost("This is a test") in {
-        val auth = new CASAuthenticator("realm",() => { println("alreadyLoggedIn"); false }, (cs:CASStateData) => 
-        {
-            println("loginHandler")
-            //Globals.casState(cs)
-            //Globals.currentUser(cs.username)
-        })
+             var onSuccess = false
+             val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { onSuccess = true })
 
-        CASAuthentication.attachCASAuthenticator(auth)
-
-        req =>
-            req.contentType must_== Full("text/plain")
-            req.post_? must_== true
-            req.body match {
-                case Full(body) => (new String(body)) must_== "This is a test"
-                case _ => fail("No body set")
-            }
-    }*/
+             auth.CASRedirect must haveClass[RedirectResponse]
+          }
+      }
+    }
 }
