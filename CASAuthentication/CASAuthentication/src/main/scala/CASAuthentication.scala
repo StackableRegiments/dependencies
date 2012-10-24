@@ -47,7 +47,7 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: 
     }
 
     private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
-    private def getLDAP: IMeTLLDAP = ldap.getOrElse(LDAP)
+    private val getLDAP: IMeTLLDAP = ldap.getOrElse(new LDAP(LDAPProdConfig))
 
 	println("starting up CAS Authenticator for realm: %s".format(realm))
 	def getCasState = InSessionCASState.is

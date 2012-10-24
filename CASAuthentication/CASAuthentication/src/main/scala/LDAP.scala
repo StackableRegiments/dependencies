@@ -17,63 +17,21 @@ trait IMeTLLDAP {
 	
 	def getEligibleGroups(id:String):Option[Seq[Tuple2[String,String]]] 
 	def getInformationGroups(id:String):Option[Seq[Tuple2[String,String]]] 
-	def withLDAP(searchTerm:String,action:(List[SearchResult])=>Unit):Unit
 
     def ou(names: Seq[String]): Map[String, Seq[(String,String)]] 
     def info(names: Seq[String]): Map[String, Seq[(String,String)]]  
     def humanNames(names: Seq[String]): Map[String, String] 
 }
 
-object LDAP extends IMeTLLDAP {
-    val groups = Seq("ou","monashenrolledsubject","monashteachingcommitment","o","c")
-    val infoGroups = Seq("sn","givenname","initials","mail","cn","jpegphoto","gender","personaltitle","employeenumber")
+trait LDAPSearch {
 
-	override def simpleQuery(attrName:String,attrValue:String,returnType:String):List[String] = Stopwatch.time("LDAP.simpleQuery", () => {
-		var output = List.empty[String]
-		val func = (n:List[SearchResult]) => {
-			output = n.map(ne => tryo(namingEnumerationToSeq(returnType,ne.getAttributes().get(returnType).getAll).map(a => a._2)).openOr(List.empty[String]).toList).flatten
-		}
-		withLDAP("(%s=%s)".format(attrName,attrValue),func)
-		output
-	})
+    def withLDAP(searchTerm:String,action:(List[SearchResult])=>Unit):Unit
+}
 
-	override def getAuthcateFromId(id:String):List[String] = Stopwatch.time("LDAP.getAuthcateFromId", () => simpleQuery("employeenumber",id,"uid"))
-	override def getIdFromAuthcate(id:String):List[String] = Stopwatch.time("LDAP.getIdFromAuthcate", () => simpleQuery("uid",id,"employeenumber"))
-	override def getTeachersForSubject(unitCode:String):List[String] = Stopwatch.time("LDAP.getTeachersForSubject", () => simpleQuery("monashteachingcommitment",unitCode,"uid"))
-	override def getStudentsForSubject(unitCode:String):List[String] = Stopwatch.time("LDAP.getStudentsForSubject", () => simpleQuery("monashenrolledsubject",unitCode,"uid"))
-	
-	override def getEligibleGroups(id:String):Option[Seq[Tuple2[String,String]]] = Stopwatch.time("LDAP.getEligibleGroups", () => {
-		var output:Option[Seq[Tuple2[String,String]]] = None
-		val func = (n:List[SearchResult]) => {
-			output = n.headOption.map(net => {
-				val ne = net.asInstanceOf[SearchResult]
-				val attributes = ne.getAttributes()	
-				val metacn = Option(attributes.get("monashmetacn")) match {
-                  case Some(cn) => List(("monashmetacn", cn.toString))
-                  case None => List.empty
-                }
-				metacn ::: List(("ou","Unrestricted"),("uid",id)) ::: groups.map(group => (group, attributes.get(group))).filter{case (name,attr) => attr != null}.map{ case (name:String,attrib:Attribute) => namingEnumerationToSeq(name,attrib.getAll)}.flatten.toList
-			})
-		}
-		withLDAP("(uid=%s)".format(id),func)
-		output
-	})	
+class LDAPSearchService extends LDAPSearch {
 
-	override def getInformationGroups(id:String):Option[Seq[Tuple2[String,String]]] = Stopwatch.time("LDAP.getInformationGroups", () => {
-		var output:Option[Seq[Tuple2[String,String]]] = None
-        val otherRestrictions = Seq(("ou","Unrestricted"),("uid",id))
-		val func = (n:List[SearchResult]) => {
-			output = n.headOption.map(net => {
-                val ne = net.asInstanceOf[SearchResult]
-        infoGroups.map(group => (group,ne.getAttributes().get(group))).filter{case (name,attr) => attr != null}.map{case (name:String,attrib:Attribute) => namingEnumerationToSeq(name,attrib.getAll)}.flatten
-			})
-		}
-		withLDAP("(uid=%s)".format(id),func)
-		output
-	})
-
-	override def withLDAP(searchTerm:String,action:(List[SearchResult])=>Unit):Unit = Stopwatch.time("LDAP.withLDAP", () => {
-		var env = new java.util.Hashtable[String,String]();
+  def withLDAP(searchTerm:String, action:(List[SearchResult])=> Unit): Unit = Stopwatch.time("LDAP.withLDAP", () => {
+		var env = new java.util.Hashtable[String,String]()
 		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory")
 		env.put(Context.PROVIDER_URL,"ldap://hybrid.monash.edu.au")
 		env.put(Context.SECURITY_AUTHENTICATION,"simple")
@@ -100,6 +58,66 @@ object LDAP extends IMeTLLDAP {
 				e.printStackTrace
 			}
 		}
+	})
+}
+
+class LDAPService(env: { val ldapSearch: LDAPSearch }) {
+    def withLDAP(searchTerm: String, action: (List[SearchResult]) => Unit): Unit = {
+        env.ldapSearch.withLDAP(searchTerm, action)
+    }
+}
+
+object LDAPProdConfig {
+    lazy val ldapSearch = new LDAPSearchService
+    lazy val ldap = new LDAPService(this)
+}
+
+class LDAP(env : { val ldap: LDAPService }) extends IMeTLLDAP {
+    val groups = Seq("ou","monashenrolledsubject","monashteachingcommitment","o","c")
+    val infoGroups = Seq("sn","givenname","initials","mail","cn","jpegphoto","gender","personaltitle","employeenumber")
+
+	override def simpleQuery(attrName:String,attrValue:String,returnType:String):List[String] = Stopwatch.time("LDAP.simpleQuery", () => {
+		var output = List.empty[String]
+		val func = (n:List[SearchResult]) => {
+			output = n.map(ne => tryo(namingEnumerationToSeq(returnType,ne.getAttributes().get(returnType).getAll).map(a => a._2)).openOr(List.empty[String]).toList).flatten
+		}
+		env.ldap.withLDAP("(%s=%s)".format(attrName,attrValue),func)
+		output
+	})
+
+	override def getAuthcateFromId(id:String):List[String] = Stopwatch.time("LDAP.getAuthcateFromId", () => simpleQuery("employeenumber",id,"uid"))
+	override def getIdFromAuthcate(id:String):List[String] = Stopwatch.time("LDAP.getIdFromAuthcate", () => simpleQuery("uid",id,"employeenumber"))
+	override def getTeachersForSubject(unitCode:String):List[String] = Stopwatch.time("LDAP.getTeachersForSubject", () => simpleQuery("monashteachingcommitment",unitCode,"uid"))
+	override def getStudentsForSubject(unitCode:String):List[String] = Stopwatch.time("LDAP.getStudentsForSubject", () => simpleQuery("monashenrolledsubject",unitCode,"uid"))
+	
+	override def getEligibleGroups(id:String):Option[Seq[Tuple2[String,String]]] = Stopwatch.time("LDAP.getEligibleGroups", () => {
+		var output:Option[Seq[Tuple2[String,String]]] = None
+		val func = (n:List[SearchResult]) => {
+			output = n.headOption.map(net => {
+				val ne = net.asInstanceOf[SearchResult]
+				val attributes = ne.getAttributes()	
+				val metacn = Option(attributes.get("monashmetacn")) match {
+                  case Some(cn) => List(("monashmetacn", cn.toString))
+                  case None => List.empty
+                }
+				metacn ::: List(("ou","Unrestricted"),("uid",id)) ::: groups.map(group => (group, attributes.get(group))).filter{case (name,attr) => attr != null}.map{ case (name:String,attrib:Attribute) => namingEnumerationToSeq(name,attrib.getAll)}.flatten.toList
+			})
+		}
+		env.ldap.withLDAP("(uid=%s)".format(id),func)
+		output
+	})	
+
+	override def getInformationGroups(id:String):Option[Seq[Tuple2[String,String]]] = Stopwatch.time("LDAP.getInformationGroups", () => {
+		var output:Option[Seq[Tuple2[String,String]]] = None
+        val otherRestrictions = Seq(("ou","Unrestricted"),("uid",id))
+		val func = (n:List[SearchResult]) => {
+			output = n.headOption.map(net => {
+                val ne = net.asInstanceOf[SearchResult]
+        infoGroups.map(group => (group,ne.getAttributes().get(group))).filter{case (name,attr) => attr != null}.map{case (name:String,attrib:Attribute) => namingEnumerationToSeq(name,attrib.getAll)}.flatten
+			})
+		}
+		env.ldap.withLDAP("(uid=%s)".format(id),func)
+		output
 	})
 
     private def namingEnumerationToSeq(name:String,namingEnumeration:NamingEnumeration[_]):Seq[(String,String)]= Stopwatch.time("LDAP.namingEnumerationToSeq", () => {
