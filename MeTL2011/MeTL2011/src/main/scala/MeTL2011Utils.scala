@@ -24,4 +24,13 @@ class MeTL2011Utils(configName:String) {
 			case Nil => Empty
 		}
 	}
+	def deabsolutizeUri(uriString:String,serverConfig:ServerConfiguration):Box[String] ={
+		val uri =  new java.net.URI(uriString)
+		val path = uri.getRawPath
+		uri.getHost match {
+			case h if (h == serverConfig.host) => Full(path)
+			case s if (path.length > 0 && path.startsWith("/")) => Full(path)
+			case _ => Empty
+		}
+	}
 }
