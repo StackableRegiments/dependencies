@@ -112,7 +112,7 @@ class LDAP(env : { val ldap: LDAPService }) extends IMeTLLDAP {
         val otherRestrictions = Seq(("ou","Unrestricted"),("uid",id))
 		val func = (n:List[SearchResult]) => {
 			output = n.headOption.map(net => {
-                val ne = net.asInstanceOf[SearchResult]
+            val ne = net.asInstanceOf[SearchResult]
         infoGroups.map(group => (group,ne.getAttributes().get(group))).filter{case (name,attr) => attr != null}.map{case (name:String,attrib:Attribute) => namingEnumerationToSeq(name,attrib.getAll)}.flatten
 			})
 		}
@@ -122,9 +122,10 @@ class LDAP(env : { val ldap: LDAPService }) extends IMeTLLDAP {
 
     private def namingEnumerationToSeq(name:String,namingEnumeration:NamingEnumeration[_]):Seq[(String,String)]= Stopwatch.time("LDAP.namingEnumerationToSeq", () => {
         var mySeq = List.empty[(String,String)] 
-        while(namingEnumeration.hasMore())
-              mySeq = (name,namingEnumeration.next.toString) :: mySeq
-              mySeq
+        while (namingEnumeration.hasMoreElements()) {
+            Option(namingEnumeration.nextElement).foreach( v => mySeq = (name, v.toString) :: mySeq )
+        }
+        mySeq
     })
 
     override def ou(names: Seq[String]): Map[String, Seq[(String,String)]] = Stopwatch.time("LDAP.ou", () => {
@@ -136,6 +137,6 @@ class LDAP(env : { val ldap: LDAPService }) extends IMeTLLDAP {
     })
   
     override def humanNames(names: Seq[String]): Map[String, String] = Stopwatch.time("LDAP.humanNames", () => {
-      Map(names.map{n=> (n, getInformationGroups(n).getOrElse(List.empty[(String,String)]).filter{case (name,attr) => name.startsWith("cn")}.first)._2} : _*)
+      Map(names.map{ n => (n, getInformationGroups(n).getOrElse(List.empty[(String,String)]).filter{ case (name, attr) => name.startsWith("cn") }.first._2)} : _*) 
     })
 }
