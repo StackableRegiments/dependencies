@@ -12,7 +12,7 @@ import java.util.Date
 import Privacy._
 
 case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:Double = 0,yOffset:Double = 0) {
-  protected def createHistory(jid:String,xScale:Double,yScale:Double,xOffset:Double,yOffset:Double) = History(jid)
+  protected def createHistory(jid:String,xScale:Double,yScale:Double,xOffset:Double,yOffset:Double) = History(jid,xScale,yScale,xOffset,yOffset)
   protected var lastModifiedTime:Long = 0L
   protected var lastVisuallyModifiedTime:Long = 0L
   protected var latestTimestamp = 0L
