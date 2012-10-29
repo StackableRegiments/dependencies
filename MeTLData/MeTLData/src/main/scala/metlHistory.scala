@@ -388,20 +388,35 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     })
   })
 
-  def until(before:Long):History = Stopwatch.time("History.until", () => {
-    filter(i => i.timestamp < before)
-  })
-  def filter(filterFunc:(MeTLStanza) => Boolean):History = Stopwatch.time("History.filter", () => {
+	def until(before:Long):History = Stopwatch.time("History.until", () => {
+		filter(i => i.timestamp < before)
+	})
+/*	private def printComparison(other:History):Unit = {
+		println("")
+		println("FILTERING: %s".format(jid))
+		println("")
+		println("OLD")
+		println("---")
+		getAll.foreach(println)
+		println("---")
+		println("NEW")
+		other.getAll.foreach(println)
+		println("---")
+		println("")
+	}
+*/
+	def filter(filterFunc:(MeTLStanza) => Boolean):History = Stopwatch.time("History.filter", () => {
     val newHistory = createHistory(jid,xScale,yScale,xOffset,yOffset)
-    getAll.filter(filterFunc).foreach(i => newHistory.addStanza(i))
-    newHistory
-  })
-  def filterCanvasContents(filterFunc:(MeTLCanvasContent) => Boolean, includeNonCanvasContents:Boolean = true):History = Stopwatch.time("History.filterCanvasContents", () => {
-    filter(i => i match {
-      case cc:MeTLCanvasContent => filterFunc(cc)
-      case _ => includeNonCanvasContents
-    })
-  })
+		getAll.filter(filterFunc).foreach(i => newHistory.addStanza(i))
+//		printComparison(newHistory)
+		newHistory
+	})
+	def filterCanvasContents(filterFunc:(MeTLCanvasContent) => Boolean, includeNonCanvasContents:Boolean = true):History = Stopwatch.time("History.filterCanvasContents", () => {
+		filter(i => i match {
+			case cc:MeTLCanvasContent => filterFunc(cc)
+			case _ => includeNonCanvasContents
+		})
+	})
 
   def filterCanvasContentsForMoveDelta(md:MeTLMoveDelta):History = Stopwatch.time("History.filterCanvasContentForMoveDelta", () => {
     filter(i => i match {

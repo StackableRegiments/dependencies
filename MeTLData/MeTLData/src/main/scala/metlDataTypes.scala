@@ -301,15 +301,13 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 	}
 	def adjustIndividualContent(cc:MeTLCanvasContent,shouldTestPrivacy:Boolean = true):MeTLCanvasContent = {
 		cc match {
-			case i:MeTLInk if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)//.generateNewIdentity("adjustedBy(%s)".format(identity))
-			case t:MeTLText if (isDirtierFor(t,shouldTestPrivacy)) => t.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)//.generateNewIdentity("adjustedBy(%s)".format(identity))
-			case i:MeTLImage if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)//.generateNewIdentity("adjustedBy(%s)".format(identity))
+			case i:MeTLInk if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case t:MeTLText if (isDirtierFor(t,shouldTestPrivacy)) => t.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case i:MeTLImage if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
 			case _ => cc
 		}
 	}
 	def generateChanges(rawPublicHistory:History,rawPrivateHistory:History):Tuple2[List[MeTLStanza],List[MeTLStanza]] = Stopwatch.time("MeTLMoveDelta.generateChanges", () => {
-		//val privateHistory = rawPrivateHistory.filterCanvasContents(cc => cc.timestamp < timestamp && (isDirtierFor(cc,false) || ),false)
-		//val publicHistory = rawPublicHistory.filterCanvasContents(cc => cc.timestamp < timestamp && (isDirtierFor(cc,false) || ),false)
 		val privateHistory = rawPrivateHistory.filterCanvasContentsForMoveDelta(this)
 		val publicHistory = rawPublicHistory.filterCanvasContentsForMoveDelta(this)
 		val (publicTexts,publicHighlighters,publicInks,publicImages) = publicHistory.getRenderableGrouped
@@ -329,7 +327,7 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 					case true => List(replaceIds(publicInks.map(i=>i.identity) ::: publicHighlighters.map(i => i.identity),publicTexts.map(i=>i.identity),publicImages.map(i=>i.identity),p))
 					case _ => List.empty[MeTLStanza]
 				}
-				(publicAdjuster ::: privateInksToPublicize ::: privateTextsToPublicize ::: privateImagesToPublicize, privateDirtier)
+				(publicAdjuster ::: privateInksToPublicize ::: privateHighlightersToPublicize ::: privateTextsToPublicize ::: privateImagesToPublicize, privateDirtier)
 			}
 			case p:Privacy if p == Privacy.PRIVATE => {
 				val notP = Privacy.PUBLIC
@@ -337,7 +335,7 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 				val publicHighlightersToPrivatize = publicHighlighters.map(i => adjustIndividualContent(i,false).generateNewIdentity("adjustedBy(%s)".format(identity)))
 				val publicTextsToPrivatize = publicTexts.map(i => adjustIndividualContent(i,false).generateNewIdentity("adjustedBy(%s)".format(identity)))
 				val publicImagesToPrivatize = publicImages.map(i => adjustIndividualContent(i,false).generateNewIdentity("adjustedBy(%s)".format(identity)))
-				val publicDirtiers = ((publicInks ::: publicTexts ::: publicImages).length > 0) match {
+				val publicDirtiers = ((publicInks ::: publicHighlighters ::: publicTexts ::: publicImages).length > 0) match {
 					case true => List(generateDirtier(publicInks.map(i => i.identity) ::: publicHighlighters.map(i => i.identity),publicTexts.map(i => i.identity),publicImages.map(i => i.identity),notP))
 					case _ => List.empty[MeTLStanza]
 				}
