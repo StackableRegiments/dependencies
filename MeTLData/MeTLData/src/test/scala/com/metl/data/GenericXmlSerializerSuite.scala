@@ -9,6 +9,8 @@ import org.scalatest.prop.TableDrivenPropertyChecks._
 import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => the, any, anyInt}
 
+import scala.xml._
+
 class GenericXmlSerializerSuite extends FunSuite with MockitoSugar {
 
     test("extract privacy of private from content") {
@@ -219,5 +221,70 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar {
         val result = XmlUtils.getIntByName(content, "id")
 
         assert(result === -1)
+    }
+
+    test("extract list of strings by name within container") {
+        val content = <ink>
+                        <strokes>
+                          <strokeId>1</strokeId>
+                          <strokeId>2</strokeId>
+                          <strokeId>3</strokeId>
+                          <strokeId>4</strokeId>
+                          <strokeId>5</strokeId>
+                        </strokes>
+                      </ink>
+
+       val result = XmlUtils.getListOfStringsByNameWithin(content, "strokeId", "strokes") 
+
+       assert(result === List("1", "2", "3", "4", "5"))
+    }
+
+    test("extract value of element by name") {
+        val content = <ink><coordX>pants</coordX></ink>
+        val result = XmlUtils.getValueOfNode(content, "coordX")
+
+        assert(result === "pants")
+    }
+
+    test("extract value of element by name returns only first value") {
+        val content = <ink><coordX>pants</coordX><coordX>hats</coordX><coordX>shirts</coordX></ink>
+        val result = XmlUtils.getValueOfNode(content, "coordX")
+
+        assert(result === "pants")
+    }
+
+    test("extract xml by name") {
+        val content = <ink><coordX>pants</coordX></ink>
+        val result = XmlUtils.getXmlByName(content, "coordX")
+
+        assert(result.toString === <coordX>pants</coordX>.toString)
+    }
+
+    test("extract xml deep by name") {
+        val content = <ink><id>2345</id><attributes><coordX>345</coordX><isHighlighter>false</isHighlighter><color>blue</color></attributes></ink>
+        val result = XmlUtils.getXmlByName(content, "attributes")
+
+        assert(result.toString === <attributes><coordX>345</coordX><isHighlighter>false</isHighlighter><color>blue</color></attributes>.toString)
+    }
+
+    test("extract non-existant xml by name") {
+        val content = <something>some value</something>
+        val result = XmlUtils.getXmlByName(content, "cat")
+
+        assert(result === NodeSeq.Empty)
+    }
+
+    test("extract attribute of node") {
+        val content = <ink><color tip="true">black</color></ink>
+        val result = XmlUtils.getAttributeOfNode(content, "color", "tip")
+
+        assert(result === "true")
+    }
+
+    test("extract non-existant attribute of node") {
+        val content = <ink><color alpha="50%">black</color></ink>
+        val result = XmlUtils.getAttributeOfNode(content, "color", "tip")
+
+        assert(result === "")
     }
 }
