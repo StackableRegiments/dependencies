@@ -366,18 +366,21 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
         val content = <message>
                         <ink>
                           <author>eecrole</author>
-                          <target>testtarget</target>
+                          <target>test</target>
                           <privacy>private</privacy>
                           <slide>4</slide>
                           <identity>eecrole:223445834582</identity>
                           <checksum>234235.234234</checksum>
                           <startingSum>233453.1498</startingSum>
-                          <points>
-                            <point>123.34 234 23</point>                            
-                          </points>
+                          <points>123.34 234 23</points>
+                          <color>#ffff0000</color>
+                          <thickness>40.0</thickness>
+                          <highlight>false</highlight>
                         </ink>
                       </message>
+
         val result = xmlSerializer.toMeTLStanza(content)
-        assert(result === MeTLInk)
+        assert(result === MeTLInk(ServerConfiguration.empty, "eecrole", -1L, 234235.234234, 233453.1498,List(Point(123.34,234,23)), 
+            Color(255, 255, 0, 0), 40.0, false, "test", Privacy.PRIVATE, "4", "eecrole:223445834582"))
     }
 }
