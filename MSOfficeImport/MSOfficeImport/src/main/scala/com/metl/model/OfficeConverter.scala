@@ -1,5 +1,4 @@
-package com.metl.model
-// TODO: Change namespace to MSOfficeImport specific
+package com.metl.officeimport
 
 import net.liftweb.common._
 import scala.xml._
@@ -14,6 +13,9 @@ import org.apache.poi.xslf.usermodel._
 import java.awt.{Dimension, RenderingHints}
 import java.awt.image.BufferedImage
 import java.awt.geom._
+
+import com.metl.data._
+import com.metl.utils._
 
 /*
 object ExportFidelity extends Enumeration {
@@ -37,7 +39,7 @@ trait OCType {
 }
 */
 
-object OfficeConverter {
+object OfficeImporter {
     def apply(fileName: String/*, exportFidelity: ExportFidelity*/) = {
       val converter = new OfficeConverter
       converter.fileName = fileName
@@ -45,17 +47,17 @@ object OfficeConverter {
     }
 }
 
-class OfficeConverter {
+class OfficeImporter {
     private var fileName = ""
 
 	val b64 = new sun.misc.BASE64Encoder
-	def convert(file:String):Node = Stopwatch.time("OfficeConverter.convert",() => {
+	def convert(file:String):Presentation = Stopwatch.time("OfficeConverter.convert",() => {
 		file.split('.').reverse.take(1)(0) match {
 			case "ppt" => convertDoc(file)
 			case "pptx" => convertDocX(file)
 		}
 	})
-    def convertAndDump(file:String):Node = Stopwatch.time("OfficeConverter.convertAndDump",() => {
+    def convertAndDump(file:String):Presentation = Stopwatch.time("OfficeConverter.convertAndDump",() => {
         val xml = convert(file)
         try {
             val xmlOutput = new FileOutputStream(file.split('.')(0) + ".xml")
@@ -304,6 +306,7 @@ class OfficeConverter {
 					case org.apache.poi.hslf.model.Picture.WMF => "wmf"
 					case other => "unknown: "+other	
 				}
+                
 				<pictureData>
 					<type>{pictureType}</type>
 					<bytes>{b64.encode(pictureData.getData).replace("\n","").replace("\r","").replace(" ","")}</bytes>

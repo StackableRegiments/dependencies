@@ -123,7 +123,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
       <isDeleted>{input.isDeleted}</isDeleted>
     ))
   })
-  override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLImage", () => {
+  override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLInk", () => {
     val m = utils.parseMeTLContent(input)
     val c = utils.parseCanvasContent(input)
     val checksum = utils.getDoubleByName(input,"checksum")

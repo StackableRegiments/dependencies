@@ -55,7 +55,7 @@ object ColorConverter{
     val b = convert2AfterN(h,7)
     Color(clamp(a),clamp(r),clamp(g),clamp(b))
   }
-  def asSplit(l:String):Color = {
+  private def asSplit(l:String):Color = {
     val parts = l.split(" ").map(_.toInt).toList
     val a = parts(3)
     val r = parts(0)

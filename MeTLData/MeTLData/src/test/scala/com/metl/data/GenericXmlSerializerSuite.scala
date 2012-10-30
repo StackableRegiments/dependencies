@@ -2,16 +2,22 @@ package com.metl.data
 
 import org.scalatest._
 import org.scalatest.FunSuite
+import org.scalatest.BeforeAndAfter
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.OptionValues._
-import org.scalatest.prop.TableDrivenPropertyChecks._
 
 import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => the, any, anyInt}
 
 import scala.xml._
 
-class GenericXmlSerializerSuite extends FunSuite with MockitoSugar {
+class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAndAfter {
+
+    var xmlSerializer: GenericXmlSerializer = _
+
+    before {
+      xmlSerializer = new GenericXmlSerializer("empty")
+    }
 
     test("extract privacy of private from content") {
         val content = <ink><color>blue</color><privacy>private</privacy></ink>
@@ -286,5 +292,92 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar {
         val result = XmlUtils.getAttributeOfNode(content, "color", "tip")
 
         assert(result === "")
+    }
+
+    test("extract canvas content") {
+        val content = <content>
+                          <target>presentationSpace</target> 
+                          <privacy>Private</privacy>
+                          <slide>3</slide>
+                          <identity>eecrole</identity>
+                      </content>
+
+        val result = XmlUtils.parseCanvasContent(content)
+
+        assert(result === ParsedCanvasContent("presentationSpace", Privacy.PRIVATE, "3", "eecrole"))
+    }
+
+    test("extract different depth canvas content") {
+      val content = <conversation>
+                      <canvas render="main">
+                        <content>
+                          Lots of content
+                        </content>
+                      </canvas>
+                      <canvas render="notepad">
+                        <identity>eecrole</identity>
+                        <target>presentationSpace</target>
+                        <privacy>Private</privacy>
+                        <slides>
+                          <slide>3</slide>
+                        </slides>
+                      </canvas> 
+                      <metadata>
+                        <timestamp>334534</timestamp>
+                      </metadata>
+                    </conversation>
+
+        val result = XmlUtils.parseCanvasContent(content)
+
+        assert(result === ParsedCanvasContent("presentationSpace", Privacy.PRIVATE, "3", "eecrole"))
+    }
+
+    test("deconstruct parsed canvas content to xml") {
+        val parsed = ParsedCanvasContent("target", Privacy.PUBLIC, "12", "eecrole")
+
+        val result = XmlUtils.parsedCanvasContentToXml(parsed)
+
+        assert(result === List(<target>target</target>, <privacy>public</privacy>, <slide>12</slide>, <identity>eecrole</identity>))
+    }
+
+    test("extract metl content from xml") {
+        val content = <metldata><author>eecrole</author><metlmetadata><timestamp>234234534634</timestamp></metlmetadata></metldata>
+
+        val result = XmlUtils.parseMeTLContent(content)
+        info("timestamp is ignored")
+        assert(result === ParsedMeTLContent("eecrole", -1L))
+    }
+
+    test("deconstruct metl content to xml") {
+        val parsed = ParsedMeTLContent("eecrole", 235245290623L)
+        val result = XmlUtils.parsedMeTLContentToXml(parsed)
+
+        info("timestamp is ignored")
+        assert(result === List(<author>eecrole</author>))
+    }
+
+    test("construct generic xml serializer with empty server configuration") {
+
+       assert(xmlSerializer.config === EmptyBackendAdaptor) 
+    }
+    
+    test("extract metl ink from xml") {
+
+        val content = <message>
+                        <ink>
+                          <author>eecrole</author>
+                          <target>testtarget</target>
+                          <privacy>private</privacy>
+                          <slide>4</slide>
+                          <identity>eecrole:223445834582</identity>
+                          <checksum>234235.234234</checksum>
+                          <startingSum>233453.1498</startingSum>
+                          <points>
+                            <point>123.34 234 23</point>                            
+                          </points>
+                        </ink>
+                      </message>
+        val result = xmlSerializer.toMeTLStanza(content)
+        assert(result === MeTLInk)
     }
 }
