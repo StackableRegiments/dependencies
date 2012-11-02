@@ -917,11 +917,7 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
         result should have (
             server (ServerConfiguration.empty),
             author ("eecrole"),
-            timestamp (-1L),
-            target ("test"),
-            privacy (Privacy.PUBLIC),
-            slide ("4"),
-            identity ("metlQuiz")
+            timestamp (-1L)
         )
     }
 }
