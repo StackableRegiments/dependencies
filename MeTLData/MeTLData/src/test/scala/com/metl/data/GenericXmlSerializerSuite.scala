@@ -899,5 +899,29 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
         )
     }
 
-    test("extract metl quiz from xml") (pending)
+    test("extract metl quiz from xml") {
+
+        val content = <message>
+                        <quiz>
+                          <author>eecrole</author>
+                          <target>test</target>
+                          <privacy>public</privacy>
+                          <slide>4</slide>
+                          <identity>metlQuiz</identity>
+                          <!-- -->
+                        </quiz>
+                      </message>
+
+        val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLQuiz]
+
+        result should have (
+            server (ServerConfiguration.empty),
+            author ("eecrole"),
+            timestamp (-1L),
+            target ("test"),
+            privacy (Privacy.PUBLIC),
+            slide ("4"),
+            identity ("metlQuiz")
+        )
+    }
 }
