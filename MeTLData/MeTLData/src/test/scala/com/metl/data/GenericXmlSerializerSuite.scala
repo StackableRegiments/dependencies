@@ -904,11 +904,8 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
         val content = <message>
                         <quiz>
                           <author>eecrole</author>
-                          <target>test</target>
-                          <privacy>public</privacy>
-                          <slide>4</slide>
                           <identity>metlQuiz</identity>
-                          <!-- -->
+                          <!-- quiz specific information -->
                         </quiz>
                       </message>
 
