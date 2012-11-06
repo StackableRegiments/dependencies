@@ -37,7 +37,13 @@ object ColorConverter{
     case s:String if (s.length == 9 && s.startsWith("#")) => fromHexString(s)
     case s:String if (s.split(" ").length == 3) => asSplit(s+ " 255")
     case s:String if (s.split(" ").length == 4) => asSplit(s)
-    case _ => Color.default
+    case s:String if (s.startsWith("Color(")) => {
+      asSplit(s.drop("Color(".length).takeWhile(c => c != ')').split(',').drop(1).mkString(" ") + " 255")
+
+    }
+    case s => {
+      Color.default
+    }
   }
   private def hexToInt(h:String):Int = tryo(Integer.parseInt(h,16)).openOr(0)
   private       def convert2AfterN(h:String,n:Int):Int = hexToInt(h.drop(n).take(2).mkString)
