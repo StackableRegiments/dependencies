@@ -450,6 +450,7 @@ case class MeTLQuiz(override val server:ServerConfiguration,override val author:
 	def addOption(newO:QuizOption) = MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options ::: List(newO.adjustName(QuizOption.nextName(options))))
 	def replaceImage(newImageUrl:Box[String]) = MeTLQuiz(server,author,timestamp,created,question,id,newImageUrl,Empty,isDeleted,options)
 	def replaceOption(optionName:String,newText:String) = options.find(o => o.name == optionName).map(or => MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options.filterNot(o => o == or) ::: List(or.adjustText(newText)))).getOrElse(MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options))
+	def removeOption(optionName:String) = options.find(o => o.name == optionName).map(or => MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options.filterNot(o => o == or).foldLeft(List.empty[QuizOption])((os,o)=> o.adjustName(QuizOption.nextName(os)) :: os))).getOrElse(MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options))
 	def delete = MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,true,options)
 }
 object MeTLQuiz{
@@ -497,7 +498,10 @@ object QuizOption{
 		name.toLowerCase.toArray[Char].foldLeft(0)((a,i) => (a * 26) + i - 'a' + 1)
 	}
 	def nextName(options:List[QuizOption] = List.empty[QuizOption]) = {
-		numberToName(options.map(o => nameToNumber(o.name)).distinct.max + 1)
+		options match {
+			case l:List[QuizOption] if (l.length > 0) => numberToName(options.map(o => nameToNumber(o.name)).distinct.max + 1)
+			case _ => "A"
+		}
 	}
 }
 
