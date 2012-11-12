@@ -23,6 +23,9 @@ object Stopwatch{
 		}
 	}
 	def time[T](label:String,action:()=>T) = {
+		//for prod
+		//action()
+		//for dev
 		val timer = Stopwatch.start(label)
 		val result = action()
 		timer()

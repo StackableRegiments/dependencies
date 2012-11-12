@@ -276,7 +276,10 @@ object SlideRenderer {
 				g.fill(new Rectangle(0,0,width.toInt,height.toInt))
 				val scaleApplier = scaleFactor
 				val scaledHistory = (scaleFactor != h.xScale || scaleFactor != h.yScale || h.xOffset != 0 || h.yOffset != 0) match {
-					case true => h.adjustToVisual(contentXOffset,contentYOffset,scaleApplier,scaleApplier)
+					case true => {
+						println("scaling history to: %s (+%s,%s)".format(scaleFactor,h.xOffset,h.yOffset))
+						h.adjustToVisual(contentXOffset,contentYOffset,scaleApplier,scaleApplier)
+					}
 					case false => h
 				}
 

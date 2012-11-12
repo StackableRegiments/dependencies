@@ -74,10 +74,10 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getRenderableGrouped:Tuple4[List[MeTLText],List[MeTLInk],List[MeTLInk],List[MeTLImage]] = Stopwatch.time("History.getRenderableGrouped", () => {
     getRenderable.foldLeft((List.empty[MeTLText],List.empty[MeTLInk],List.empty[MeTLInk],List.empty[MeTLImage]))((acc,item) => item match {
       case t:MeTLText => (acc._1 ::: List(t),acc._2,acc._3,acc._4)
-        case h:MeTLInk if h.isHighlighter => (acc._1,acc._2 ::: List(h),acc._3,acc._4)
-          case s:MeTLInk => (acc._1,acc._2,acc._3 ::: List(s),acc._4)
-            case i:MeTLImage => (acc._1,acc._2,acc._3,acc._4 ::: List(i))
-              case _ => acc
+      case h:MeTLInk if h.isHighlighter => (acc._1,acc._2 ::: List(h),acc._3,acc._4)
+      case s:MeTLInk => (acc._1,acc._2,acc._3 ::: List(s),acc._4)
+      case i:MeTLImage => (acc._1,acc._2,acc._3,acc._4 ::: List(i))
+      case _ => acc
     })
   })
 
@@ -434,7 +434,12 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     getAll.foreach(i => newHistory.addStanza(i))
     newHistory
   })
-  def resetToOriginalVisual = adjustToVisual(xOffset * -1, yOffset * -1, 1 / xScale, 1 / yScale)
+  def resetToOriginalVisual = Stopwatch.time("History.resetToOriginalVisual", () => {
+		val newHistory = createHistory(jid)
+		getAll.foreach(i => newHistory.addStanza(i))
+		newHistory
+		//adjustToVisual(xOffset * -1, yOffset * -1, 1 / xScale, 1 / yScale)
+	}
   def adjustToVisual(xT:Double,yT:Double,xS:Double,yS:Double) = Stopwatch.time("History.adjustVisual",() => {
     val newHistory = createHistory(jid,xS * xScale,yS * yScale,xT + xOffset,yT + yOffset)
     getAll.foreach(i => newHistory.addStanza(i))
