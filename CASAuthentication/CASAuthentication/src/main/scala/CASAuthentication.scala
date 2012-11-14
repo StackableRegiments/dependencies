@@ -80,8 +80,8 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: 
        case _ => acc
      })
    newParams.length match {
-     case 0 => "%s://%s:%s/".format(originalRequest.request.scheme, url,port)
-     case _ => "%s://%s:%s/%s%s".format(originalRequest.request.scheme, url,port, path, newParams)
+     case 0 => "%s://%s:%s/%s".format(originalRequest.request.scheme,url,port,path)
+     case _ => "%s://%s:%s/%s%s".format(originalRequest.request.scheme,url,port,path,newParams)
    }
   })
   private def verifyCASTicket(req:Req) : CASStateData = Stopwatch.time("CASAuthenticator.verifyCASTicket", () => {
