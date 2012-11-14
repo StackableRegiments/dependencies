@@ -16,6 +16,10 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   protected var lastModifiedTime:Long = 0L
   protected var lastVisuallyModifiedTime:Long = 0L
   protected var latestTimestamp = 0L
+  private val defaultXScale:Double = 1.0
+  private val defaultYScale:Double = 1.0
+  private val defaultXOffset:Double = 0.0
+  private val defaultYOffset:Double = 0.0
   protected def update(visual:Boolean) = {
     val now = new Date().getTime
     lastModifiedTime = now
@@ -359,7 +363,6 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getTop = top
   def getBottom = bottom
 
-
   protected def growBounds(sLeft:Double,sRight:Double,sTop:Double,sBottom:Double) = Stopwatch.time("History.growBounds", () => {
     if (!sLeft.isNaN)
       left = Math.min(left,sLeft)
@@ -435,11 +438,11 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     newHistory
   })
   def resetToOriginalVisual = Stopwatch.time("History.resetToOriginalVisual", () => {
-		val newHistory = createHistory(jid)
+		val newHistory = createHistory(jid, defaultXOffset, defaultYOffset, defaultXScale, defaultYScale)
 		getAll.foreach(i => newHistory.addStanza(i))
 		newHistory
 		//adjustToVisual(xOffset * -1, yOffset * -1, 1 / xScale, 1 / yScale)
-	}
+	})
   def adjustToVisual(xT:Double,yT:Double,xS:Double,yS:Double) = Stopwatch.time("History.adjustVisual",() => {
     val newHistory = createHistory(jid,xS * xScale,yS * yScale,xT + xOffset,yT + yOffset)
     getAll.foreach(i => newHistory.addStanza(i))
