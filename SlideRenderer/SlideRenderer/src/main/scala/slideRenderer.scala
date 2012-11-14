@@ -13,6 +13,8 @@ import java.io.ByteArrayInputStream
 import com.bric.geom.BasicVectorizer
 import net.liftweb.util.Helpers._
 
+case class Dimensions(left:Double,top:Double,right:Double,bottom:Double,width:Double,height:Double)
+
 object SlideRenderer {
 
 	private val JAVA_DEFAULT_DPI = 72.0
@@ -54,41 +56,57 @@ object SlideRenderer {
 			image
 		}).openOr(emptyImage)
 	})
+	private val defaultObserver:Graphics2D = {
+		val tempImage = new BufferedImage(1,1,BufferedImage.TYPE_3BYTE_BGR)
+		tempImage.createGraphics.asInstanceOf[Graphics2D]
+	}
+	def measureImage(metlImage:MeTLImage):Dimensions = measureImage(metlImage,defaultObserver)
+	private def measureImage(metlImage:MeTLImage,g:Graphics2D):Dimensions = Stopwatch.time("SlideRenderer.measureImage", () => {
+		val x = metlImage.x
+		val y = metlImage.y
+		val errorSize = Dimensions(x,y,x,y,0.0,0.0)
+		try {
+			val image:Image = getImageFor(metlImage)
+			(metlImage.height,metlImage.width) match {
+				case (h:Double,w:Double) if (h.isNaN || w.isNaN) => {
+					val imageObserver = new Canvas(g.getDeviceConfiguration)
+					val internalHeight = h match {
+						case d:Double if (d.isNaN) => {
+							val observedHeight = image.getHeight(imageObserver)
+							observedHeight * metlImage.scaleFactorY
+						}
+						case d:Double => d
+						case _ => 0.0
+					}
+					val internalWidth = w match {
+						case d:Double if (d.isNaN) => {
+							val observedWidth = image.getWidth(imageObserver)
+							observedWidth * metlImage.scaleFactorX
+						}
+						case d:Double => d
+						case _ => 0.0
+					}
+					Dimensions(x,y,x+internalWidth,y+internalHeight,internalWidth,internalHeight)
+				}
+				case (h:Double,w:Double) => Dimensions(x,y,x+w,y+h,w,h)
+				case _ => errorSize	
+			}
+		} catch {
+			case e:Throwable => {
+				e.printStackTrace
+				println("failed to measure image: %s with exception %s".format(metlImage,e.getMessage))
+				errorSize
+			}
+		}
+	})
 	private def renderImage(metlImage:MeTLImage,g:Graphics2D):Unit = Stopwatch.time("SlideRenderer.renderImage", () => {
 		try {
-			metlImage match {
-				case m:MeTLImage => {
-					val image:Image = getImageFor(metlImage)
-					val (finalHeight,finalWidth) = (metlImage.height,metlImage.width) match {
-						case (h:Double,w:Double) if (h.isNaN || w.isNaN) => {
-							val imageObserver = new Canvas(g.getDeviceConfiguration)
-							val internalHeight = h match {
-								case d:Double if (d.isNaN) => {
-									val observedHeight = image.getHeight(imageObserver)
-									observedHeight * metlImage.scaleFactorY
-								}
-								case d:Double => d
-								case _ => 0.0
-							}
-							val internalWidth = w match {
-								case d:Double if (d.isNaN) => {
-									val observedWidth = image.getWidth(imageObserver)
-									observedWidth * metlImage.scaleFactorX
-								}
-								case d:Double => d
-								case _ => 0.0
-							}
-							(internalHeight,internalWidth)
-						}
-						case (h:Double,d:Double) => (h,d)
-						case _ => (0.0,0.0)	
-					}
-					image match {
-						case i:Image if (finalHeight == 0.0 || finalWidth == 0.0) => {}
-						case i:Image => g.drawImage(image,m.left.toInt,m.top.toInt,finalWidth.toInt,finalHeight.toInt,null)
-						case _ => {}
-					}
-				}
+			val image:Image = getImageFor(metlImage)
+			val dimensions = measureImage(metlImage,g)
+			val (finalWidth,finalHeight) = (dimensions.width,dimensions.height)
+			image match {
+				case i:Image if (finalHeight == 0.0 || finalWidth == 0.0) => {}
+				case i:Image => g.drawImage(image,metlImage.left.toInt,metlImage.top.toInt,finalWidth.toInt,finalHeight.toInt,null)
 				case _ => {}
 			}
 		} catch {
@@ -118,8 +136,18 @@ object SlideRenderer {
 	})
 
 	case class PreparedTextLine(text:String,layout:TextLayout,x:Float,y:Float,width:Float,height:Float,color:Color)
-
-	private def measureText(metlText:MeTLText,g:Graphics2D):List[PreparedTextLine] = Stopwatch.time("SlideRenderer.measureText", () => {
+	def measureText(metlText:MeTLText):Dimensions = measureText(metlText,defaultObserver)
+	private def measureText(metlText:MeTLText,g:Graphics2D):Dimensions = Stopwatch.time("SlideRenderer.measureText", () => {
+		val (l,r,t,b) = measureTextLines(metlText,g).foldLeft((metlText.x,metlText.y,metlText.x,metlText.y))((internalAcc,internalItem) => {
+			val newLeft = Math.min(internalAcc._1,internalItem.x)
+			val newRight = Math.max(internalAcc._2,internalItem.x+internalItem.width)
+			val newTop = Math.min(internalAcc._3,internalItem.y)
+			val newBottom = Math.max(internalAcc._4,internalItem.y+internalItem.height)
+			(newLeft,newRight,newTop,newBottom)
+		})
+		Dimensions(l,t,r,b,r-l,b-t)
+	})
+	private def measureTextLines(metlText:MeTLText,g:Graphics2D):List[PreparedTextLine] = Stopwatch.time("SlideRenderer.measureTextLines", () => {
 		val frc = g.getFontRenderContext()
 
 		val font = new Font(metlText.family, metlText.weight match{
@@ -224,26 +252,20 @@ object SlideRenderer {
 		val (texts,highlighters,inks,images) = h.getRenderableGrouped	
 		h.shouldRender match {
 			case true => {
-				val tempImage = new BufferedImage(1,1,BufferedImage.TYPE_3BYTE_BGR)
-				val tempG = tempImage.createGraphics.asInstanceOf[Graphics2D]
-				val nativeScalePreparedTextLines = filterAccordingToTarget[MeTLText](target,texts).map(t => measureText(t,tempG))
-
-				val (left,right,top,bottom) = nativeScalePreparedTextLines.foldLeft((h.getLeft,h.getRight,h.getTop,h.getBottom))((acc,item) => {
-					item.foldLeft(acc)((internalAcc,internalItem) => {
-						val newLeft = Math.min(internalAcc._1,internalItem.x)
-						val newRight = Math.max(internalAcc._2,internalItem.x+internalItem.width)
-						val newTop = Math.min(internalAcc._3,internalItem.y)
-						val newBottom = Math.max(internalAcc._4,internalItem.y+internalItem.height)
-						(newLeft,newRight,newTop,newBottom)
-					})
+				val nativeScaleTextBoxes = filterAccordingToTarget[MeTLText](target,texts).map(t => measureText(t))
+				val td = nativeScaleTextBoxes.foldLeft(Dimensions(h.getLeft,h.getTop,h.getRight,h.getBottom,0.0,0.0))((acc,item) => {
+					val newLeft = Math.min(acc.left,item.left)
+					val newTop = Math.min(acc.top,item.top)
+					val newRight = Math.max(acc.right,item.right)
+					val newBottom = Math.max(acc.bottom,item.bottom)
+					Dimensions(newLeft,newTop,newRight,newBottom,0.0,0.0)
 				})
-				val contentWidth = (right - left)
-				val contentHeight = (bottom - top)
-				val contentXOffset = left * -1
-				val contentYOffset = top * -1
+				val dimensions = Dimensions(td.left,td.top,td.right,td.bottom,td.right - td.left,td.bottom - td.top)
+				val contentWidth = dimensions.width
+				val contentHeight = dimensions.height
+				val contentXOffset = dimensions.left * -1
+				val contentYOffset = dimensions.top * -1
 				val historyRatio = tryo(contentHeight/contentWidth).openOr(ratioConst)
-				
-
 				val (renderWidth,renderHeight,scaleFactor) = (historyRatio >= ratioConst) match {
 					case true => {
 						val initialWidth = Math.max(1.0,width)
@@ -266,14 +288,12 @@ object SlideRenderer {
 						(renderWidth,renderHeight,renderHeight/contentHeight)
 					}
 				}
-
-
 				val unscaledImage = new BufferedImage(width.toInt,height.toInt,BufferedImage.TYPE_3BYTE_BGR)
 				val g = unscaledImage.createGraphics.asInstanceOf[Graphics2D]
 				g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 				g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 				g.setPaint(AWTColor.white)
-				g.fill(new Rectangle(0,0,width.toInt,height.toInt))
+				g.fill(new Rectangle(0,0,dimensions.width.toInt,dimensions.height.toInt))
 				val scaleApplier = scaleFactor
 				val scaledHistory = (scaleFactor != h.xScale || scaleFactor != h.yScale || h.xOffset != 0 || h.yOffset != 0) match {
 					case true => {
@@ -282,17 +302,13 @@ object SlideRenderer {
 					}
 					case false => h
 				}
-
 				val (scaledTexts,scaledHighlighters,scaledInks,scaledImages) = scaledHistory.getRenderableGrouped	
-			
 				filterAccordingToTarget[MeTLImage](target,scaledImages).foreach(img => renderImage(img,g))
 				filterAccordingToTarget[MeTLInk](target,scaledHighlighters).foreach(renderInk(_,g))
-				filterAccordingToTarget[MeTLText](target,scaledTexts).foreach(t => renderText(measureText(t,g),g))
+				filterAccordingToTarget[MeTLText](target,scaledTexts).foreach(t => renderText(measureTextLines(t,g),g))
 				filterAccordingToTarget[MeTLInk](target,scaledInks).foreach(renderInk(_,g))
-
 				imageToByteArray(unscaledImage)
 			}
-
 			case false => imageToByteArray(makeBlankImage(width.toInt,height.toInt))
 		}
 	})
