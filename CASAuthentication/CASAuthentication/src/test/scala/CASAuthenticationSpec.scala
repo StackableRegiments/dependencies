@@ -30,8 +30,13 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
     import net.liftweb.mockweb.MockWeb._
 
-    val testUrl = "http://test.metl.edu/test"
+    val testUrl = "http://test.metl.edu/test/this"
     def testSession = MockWeb.testS(testUrl) {
+      S.session
+    }
+
+    val testUrlWithParams = "http://test.metl.edu/test/this?testing=true&foo=hbar"
+    def testSessionWithParams = MockWeb.testS(testUrlWithParams) {
       S.session
     }
 
@@ -205,27 +210,44 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
     }
 
     "redirect returns expected redirectresponse" withSFor(testUrl, testSession) in {
-      testReq("http://test.metl.edu/test/login?ticket=foo", "/test") {
+         val httpClient = testClient
 
-          req => {
-             val httpClient = testClient
+         val response = new BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "OK")
+         val authenticatedCasResponse = <cas:serviceResponse>
+                                           <cas:authenticationFailure>
+                                              <cas:reason>Unknown authcate</cas:reason>
+                                           </cas:authenticationFailure>
+                                        </cas:serviceResponse>
+         response.setEntity(new StringEntity(authenticatedCasResponse.toString))
+         response.setStatusCode(HttpStatus.SC_OK)
 
-             val response = new BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "OK")
-             val authenticatedCasResponse = <cas:serviceResponse>
-                                               <cas:authenticationFailure>
-                                                  <cas:reason>Unknown authcate</cas:reason>
-                                               </cas:authenticationFailure>
-                                            </cas:serviceResponse>
-             response.setEntity(new StringEntity(authenticatedCasResponse.toString))
-             response.setStatusCode(HttpStatus.SC_OK)
+         when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
-             when(httpClient.conn.receiveResponseHeader).thenReturn(response)
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { false })
 
-             var onSuccess = false
-             val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { onSuccess = true })
+         val redirect = auth.CASRedirect 
+         redirect must haveClass[RedirectResponse]
+         redirect.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis")
+    }
 
-             auth.CASRedirect must haveClass[RedirectResponse]
-          }
-      }
+    "redirect returns expected redirectresponse" withSFor(testUrlWithParams, testSessionWithParams) in {
+         val httpClient = testClient
+
+         val response = new BasicHttpResponse(HttpVersion.HTTP_1_1, HttpStatus.SC_OK, "OK")
+         val authenticatedCasResponse = <cas:serviceResponse>
+                                           <cas:authenticationFailure>
+                                              <cas:reason>Unknown authcate</cas:reason>
+                                           </cas:authenticationFailure>
+                                        </cas:serviceResponse>
+         response.setEntity(new StringEntity(authenticatedCasResponse.toString))
+         response.setStatusCode(HttpStatus.SC_OK)
+
+         when(httpClient.conn.receiveResponseHeader).thenReturn(response)
+
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { false })
+
+         val redirect = auth.CASRedirect 
+         redirect must haveClass[RedirectResponse]
+         redirect.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis%3Ffoo%3Dhbar%26testing%3Dtrue")
     }
 }
