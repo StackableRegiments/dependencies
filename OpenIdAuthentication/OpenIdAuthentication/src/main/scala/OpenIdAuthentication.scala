@@ -26,14 +26,17 @@ object OpenIdEndpoint {
 	def getAll:List[OpenIdEndpoint] = endpoints.values.toList
 	List(
 		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty),
-		OpenIdEndpoint("google",(s) => "https://www.google.com/profiles/~%s".format(s),"http://certainToFail.com",Full("google profile name")),
+		OpenIdEndpoint("GoogleProfile",(s) => "http://www.google.com/profiles/%s".format(s),"http://certainToFail.com",Full("google profile name")),
 		OpenIdEndpoint("yahoo",(s) => "https://me.yahoo.com","http://certainToFail.com",Empty),
-		OpenIdEndpoint("aol",(s) => "https://www.aol.com/","http://certainToFail.com",Empty),
-		OpenIdEndpoint("aolOpenId",(s) => "http://openid.aol.com/%s".format(s),"http://certainToFail.com",Full("aol screen name")),
+		OpenIdEndpoint("MyOpenID",(s) => "http://%s.myopenid.com".format(s),"http://certainToFail.com",Full("MyOpenID username")),
+		//OpenIdEndpoint("aol",(s) => "https://www.aol.com/","http://certainToFail.com",Empty),
+		OpenIdEndpoint("AOL",(s) => "http://openid.aol.com/%s".format(s),"http://certainToFail.com",Full("AOL screen name")),
 		OpenIdEndpoint("LiveJournal",(s) => "http://%s.livejournal.com/".format(s),"http://certainToFail.com",Full("LiveJournal username")),
-		OpenIdEndpoint("Wordpress",(s) => "http://%s.wordpress.com/".format(s),"http://certainToFail.com",Full("Worldpress account name")),
-		OpenIdEndpoint("Blogger",(s) => "http://%s.blogspot.com/".format(s),"http://certainToFail.com",Full("Blog name")),
-		OpenIdEndpoint("ClickPass",(s) => "http://clickpass.com/public/%s".format(s),"http://certainToFail.com",Full("ClickPass username"))
+		OpenIdEndpoint("Wordpress",(s) => "http://%s.wordpress.com/".format(s),"http://certainToFail.com",Full("Worldpress.com username")),
+		OpenIdEndpoint("Blogger",(s) => "http://%s.blogspot.com/".format(s),"http://certainToFail.com",Full("Bloger account")),
+		OpenIdEndpoint("Verisign",(s) => "http://%s.pip.verisignlabs.com/".format(s),"http:certainToFail.com",Full("Verisign username")),
+		OpenIdEndpoint("ClickPass",(s) => "http://clickpass.com/public/%s".format(s),"http://certainToFail.com",Full("ClickPass username")),
+		OpenIdEndpoint("ClaimID",(s) => "http://claimid.com/%s".format(s),"http://certainToFail.com",Full("ClaimID username"))
 	).foreach(e => add(e))	
 }
 
@@ -116,44 +119,27 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:CASState
 				we.usernameDescriptor match {
 					case Full(argDesc) => {
 						val pathName = "/openIdGoTo/"+choice
-						var usernameString = ""
-					  S.session.map(sess => {
-							val xml = sess.processSurroundAndInclude("/openIdGoTo/"+choice,
-								<html xmlns="http://www.w3.org/1999/xhtml">
-									<head>
-										<script src="/static/javascript/stable/jquery-1.8.2.min.js"></script>
-									</head>
-									<body>
-										<div>
-											<div>You are attempting to use {we.name} to authenticate.</div>
-											<div>{we.name} requires a {argDesc}.</div>
-											<div>Please enter your {argDesc}.</div>
-												{
-												ajaxForm(Noop,
-													<div>
-													{
-														text("",(t:String) => {
-															usernameString = t
-														})
-													}
-													</div>
-													<div>
-													{
-														ajaxSubmit("submit",()=> RedirectTo("/openIdGoTo/%s/%s".format(we.name,usernameString)))
-													}
-													</div>
-												)
-											}
-										</div>
-											{
-												Script(net.liftweb.http.js.ScriptRenderer.ajaxScript)
-											}
-									</body>
-								</html>).theSeq.head
-							new XhtmlResponse(xml,Full("html"),Nil,Nil,200,true){
-								override def includeXmlVersion = false
+						val usernameParamName = "username"
+						r.param(usernameParamName) match {
+							case Full(u) => {
+								attemptInProgress(true)
+								OpenIDObject.is.authRequest(we.generateUrlWithUsername(u), "/"+PathRoot+"/"+ResponsePath)
 							}
-						}).openOr(RedirectResponse("/openIdGoTo/"+choice))
+							case _ => {
+								val xml = <html xmlns="http://www.w3.org/1999/xhtml">
+									<body>
+										<div>You are authenticating via openId.</div>
+										<div>{we.name} needs a {argDesc} to continue.</div>
+										<div>Please provide your {argDesc}.</div>
+										<form action={pathName} method="post" accept-charset="utf-8">
+											<input name={usernameParamName} type="text"/>
+											<input type="submit" value="submit"/>
+										</form>
+									</body>
+								</html>
+								XhtmlResponse(xml,Empty,Nil,Nil,200,true)
+							}
+						}	
 					}
 					case _ => {
 						attemptInProgress(true)
