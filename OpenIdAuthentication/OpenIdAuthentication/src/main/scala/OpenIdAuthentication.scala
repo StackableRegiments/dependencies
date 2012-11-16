@@ -26,7 +26,7 @@ object OpenIdEndpoint {
 	def getAll:List[OpenIdEndpoint] = endpoints.values.toList
 	List(
 		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty),
-		OpenIdEndpoint("GoogleProfile",(s) => "http://www.google.com/profiles/%s".format(s),"http://certainToFail.com",Full("google profile name")),
+	//	OpenIdEndpoint("GoogleProfile",(s) => "http://www.google.com/profiles/%s".format(s),"http://certainToFail.com",Full("google profile name")),
 		OpenIdEndpoint("yahoo",(s) => "https://me.yahoo.com","http://certainToFail.com",Empty),
 		OpenIdEndpoint("MyOpenID",(s) => "http://%s.myopenid.com".format(s),"http://certainToFail.com",Full("MyOpenID username")),
 		//OpenIdEndpoint("aol",(s) => "https://www.aol.com/","http://certainToFail.com",Empty),
