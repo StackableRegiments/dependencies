@@ -249,8 +249,8 @@ class GenericXmlSerializer(configName:String) extends Serializer{
     val url = utils.getStringByName(input,"url")
     val imageBytes = Full(config.getResource(url))
     val blacklist = utils.getXmlByName(input,"blacklist").map(bl => {
-      val username = utils.getStringByName(input,"username")
-      val highlight = utils.getColorByName(input,"highlight")
+      val username = utils.getStringByName(bl,"username")
+      val highlight = utils.getColorByName(bl,"highlight")
       SubmissionBlacklistedPerson(username,highlight)
     }).toList
     MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity)
