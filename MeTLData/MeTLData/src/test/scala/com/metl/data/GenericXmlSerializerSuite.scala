@@ -4,6 +4,7 @@ import org.scalatest._
 import org.scalatest.FunSuite
 import org.scalatest.BeforeAndAfter
 import org.scalatest.matchers.{ShouldMatchers, HavePropertyMatcher, HavePropertyMatchResult}
+import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.OptionValues._
 
@@ -485,14 +486,72 @@ trait MeTLQuizResponseMatchers extends MeTLStanzaMatchers {
 	  }
 }
 
-class MeTLMoveDeltaExtractorSuite extends FunSuite with MockitoSugar with BeforeAndAfter with ShouldMatchers with MeTLMoveDeltaMatchers {
+trait MeTLCommandMatchers extends MeTLStanzaMatchers {
 
+	def command(expectedValue: String) =
+	  new HavePropertyMatcher[MeTLCommand, String] {
+		def apply(stanza: MeTLCommand) =
+		  HavePropertyMatchResult(
+			stanza.command == expectedValue,
+			"command",
+			expectedValue,
+			stanza.command
+		  )
+	  }
+
+	def commandParameters(expectedValue: List[String]) =
+	  new HavePropertyMatcher[MeTLCommand, List[String]] {
+		def apply(stanza: MeTLCommand) =
+		  HavePropertyMatchResult(
+			stanza.commandParameters == expectedValue,
+			"commandParameters",
+			expectedValue,
+			stanza.commandParameters
+		  )
+	  }
+}
+
+class MeTLMoveDeltaExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLMoveDeltaMatchers {
+
+	import org.scalacheck._
+	import Gen._
+	import Arbitrary.arbitrary
+	import Privacy._
+	import net.liftweb.util.Helpers._
+	
 	var xmlSerializer: GenericXmlSerializer = _
 
 	before {
 	  xmlSerializer = new GenericXmlSerializer("empty")
 	}
 	
+	val genPrivacy = for {
+		p <- Gen.oneOf(Privacy.PRIVATE, Privacy.PUBLIC, Privacy.NOT_SET)
+	} yield p
+
+	val genIdList = for {
+		i <- Gen.containerOf[List, String](Gen.alphaStr)
+	} yield i
+
+	val genMoveDelta = for {
+		author <- Gen.alphaStr 
+		timestamp <- arbitrary[Long]
+		target <- Gen.alphaStr 
+		privacy <- genPrivacy
+		slide <- Gen.numStr 
+		identity <- Gen.alphaStr 
+		inkIds <- genIdList
+		textIds <- genIdList
+		imageIds <- genIdList
+		xTrans <- arbitrary[Double]
+		yTrans <- arbitrary[Double]
+		xScale <- arbitrary[Double]
+		yScale <- arbitrary[Double]
+		newPrivacy <- genPrivacy
+		isDeleted <- arbitrary[Boolean]
+	} yield MeTLMoveDelta(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, 
+				inkIds, textIds, imageIds, xTrans, yTrans, xScale, yScale, newPrivacy, isDeleted)
+
 	test("extract metl move delta from xml") {
 
 		val content = <message>
@@ -546,6 +605,31 @@ class MeTLMoveDeltaExtractorSuite extends FunSuite with MockitoSugar with Before
 			newPrivacy (Privacy.PRIVATE),
 			isDeleted (false)
 		)
+	}
+
+	test("serialize MeTLMoveDelta to xml") {
+		forAll (genMoveDelta) { (genMoveDelta: MeTLMoveDelta) =>
+		
+			val xml = xmlSerializer.fromMeTLMoveDelta(genMoveDelta)
+
+			genMoveDelta should have (
+				server (ServerConfiguration.empty),
+				author ((xml \\ "author").text),
+				target ((xml \\ "target").text),
+				privacy (Privacy.parse((xml \\ "privacy").text)),
+				slide ((xml \\ "slide").text),
+				identity ((xml \\ "identity").text),
+				inkIds ((xml \\ "inkId").map(_.text)),
+				textIds ((xml \\ "textId").map(_.text)),
+				imageIds ((xml \\ "imageId").map(_.text)),
+				xTranslate (tryo((xml \\ "xTranslate").text.toDouble).openOr(0.0)),
+				yTranslate (tryo((xml \\ "yTranslate").text.toDouble).openOr(0.0)),
+				xScale (tryo((xml \\ "xScale").text.toDouble).openOr(0.0)),
+				yScale (tryo((xml \\ "yScale").text.toDouble).openOr(0.0)),
+				newPrivacy (Privacy.parse((xml \\ "newPrivacy").text)),
+				isDeleted (tryo((xml \\ "isDeleted").text.toBoolean).openOr(false))
+			)
+		}
 	}
 }
 
@@ -776,6 +860,38 @@ class MeTLSubmissionExtractorSuite extends FunSuite with MockitoSugar with Befor
 			imageBytes (Full(Array.empty[Byte])),
 			blacklist (List(SubmissionBlacklistedPerson("eecrole", Color(0xff, 0xff, 0xff, 0xff)), SubmissionBlacklistedPerson("jasonp", Color(0xff, 0xff, 0xff, 0x00)))),
 			target ("submission")
+		)
+	}
+}
+
+class MeTLCommandExtractorSuite extends FunSuite with MockitoSugar with BeforeAndAfter with ShouldMatchers with MeTLCommandMatchers {
+
+	var xmlSerializer: GenericXmlSerializer = _
+
+	before {
+	  xmlSerializer = new GenericXmlSerializer("empty")
+	}
+
+	test("extract command from xml") {
+
+		val content = <message>
+						<body>
+							<author>eecrole</author>
+							<command>GO_TO_SLIDE</command>
+							<parameters>
+								<parameter>2234234</parameter>
+							</parameters>
+						</body>
+					  </message>
+
+		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLCommand]
+
+		result should have (
+			server (ServerConfiguration.empty),
+			author ("eecrole"),
+			timestamp (-1L),
+			command ("GO_TO_SLIDE"),
+			commandParameters (List("2234234"))
 		)
 	}
 }
@@ -1014,6 +1130,24 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
 	   assert(result === List("1", "2", "3", "4", "5"))
 	}
 
+	test("extract embedded author and message stanza") {
+		
+		val content =	<message>
+							<author>eecrole</author>
+							<metlMetaData>
+								<timestamp>3453463456234</timestamp>
+							</metlMetaData>
+						</message>
+
+		val result = xmlSerializer.toMeTLStanza(content)
+
+		result should have (
+			server (ServerConfiguration.empty),
+			author ("eecrole"),
+			timestamp (3453463456234L)
+		)
+	}
+
 	test("extract value of element by name") {
 		val content = <ink><coordX>pants</coordX></ink>
 		val result = XmlUtils.getValueOfNode(content, "coordX")
@@ -1076,6 +1210,25 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
 		assert(result === ParsedCanvasContent("presentationSpace", Privacy.PRIVATE, "3", "eecrole"))
 	}
 
+	test("canvas content to xml") {
+		
+		val content = ParsedCanvasContent("presentationSpace", Privacy.PRIVATE, "3", "eecrole")
+
+		val result = XmlUtils.parsedCanvasContentToXml(content)
+
+		result should equal(<target>presentationSpace</target><privacy>private</privacy><slide>3</slide><identity>eecrole</identity>)
+	}
+
+	test("metl content to xml") {
+		
+		val content = ParsedMeTLContent("eecrole", -1L)	
+
+		val result = XmlUtils.parsedMeTLContentToXml(content)
+
+		result should equal(<author>eecrole</author>)
+	}
+
+
 	test("extract different depth canvas content") {
 	  val content = <conversation>
 					  <canvas render="main">
@@ -1106,7 +1259,7 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
 
 		val result = XmlUtils.parsedCanvasContentToXml(parsed)
 
-		assert(result === List(<target>target</target>, <privacy>public</privacy>, <slide>12</slide>, <identity>eecrole</identity>))
+		result should equal(<target>target</target><privacy>public</privacy><slide>12</slide><identity>eecrole</identity>)
 	}
 
 	test("extract metl content from xml") {
@@ -1122,7 +1275,7 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
 		val result = XmlUtils.parsedMeTLContentToXml(parsed)
 
 		info("timestamp is ignored")
-		assert(result === List(<author>eecrole</author>))
+		result should equal(<author>eecrole</author>)
 	}
 
 	test("construct generic xml serializer with empty server configuration") {
@@ -1151,6 +1304,10 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
 		val result = xmlSerializer.toMeTLStanza(content)
 		assert(result === MeTLInk(ServerConfiguration.empty, "eecrole", -1L, 234235.234234, 233453.1498,List(Point(123.34,234,23)), 
 			Color(255, 255, 0, 0), 40.0, false, "test", Privacy.PRIVATE, "4", "eecrole:223445834582"))
+	}
+
+	test("convert metl ink to xml") {
+			
 	}
 
 	test("extract metl text from xml") {
