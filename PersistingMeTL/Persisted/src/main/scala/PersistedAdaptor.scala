@@ -4,7 +4,6 @@ import com.metl.utils._
 import com.metl.data._
 
 abstract class PersistedAdaptor(name:String,host:String) extends ServerConfiguration(name,host){
-	protected val serializer:Serializer
 	protected val dbInterface:PersistenceInterface
 	protected val messageBusProvider = new PersistingMessageBusProvider(name,dbInterface)
 	protected val history = new PersistedHistory(name,dbInterface)
