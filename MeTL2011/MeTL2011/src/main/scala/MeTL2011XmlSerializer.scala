@@ -19,11 +19,11 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
 	override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLImage",() => {
 		val newSource = input.source.map(u => metlUtils.deabsolutizeUri(u,config)).getOrElse(Empty)
 		val newImage = MeTLImage(input.server,input.author,input.timestamp,input.tag,newSource,input.imageBytes,input.pngBytes,input.width,input.height,input.x,input.y,input.target,input.privacy,input.slide,input.identity,input.scaleFactorX,input.scaleFactorY)
-		println("serializing newImage for xmpp: %s".format(newImage))
+		//println("serializing newImage for xmpp: %s".format(newImage))
 		super.fromMeTLImage(newImage)
 	})
 	override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("MeTL2011XmlSerializer.toMeTLImage",() => {
-		println("deserializing image from xmpp: %s".format(input))
+		//println("deserializing image from xmpp: %s".format(input))
 		val m = utils.parseMeTLContent(input)
 		val c = utils.parseCanvasContent(input)
 		val tag = utils.getStringByName(input,"tag")
