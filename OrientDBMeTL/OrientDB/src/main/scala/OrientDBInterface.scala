@@ -7,12 +7,41 @@ import com.metl.persisted._
 import com.orientechnologies.orient._
 import com.orientechnologies.orient.core.db.document._
 import com.orientechnologies.orient.core.db._
+import com.orientechnologies.orient.core.record.impl._
 //import com.orientechnologies.orient.core.db.`object`._
 import com.orientechnologies.orient.core.sql.query._
 
-class OrientDBInterface(configName:String,serializer:Serializer,dbUri:String = "local:/temp/db",dbUser:String = "root",dbPass:String = "ThisIsA_TEST") extends PersistenceInterface{
+import java.util.Date
+
+import com.orientechnologies.orient.core.metadata.schema.OType
+
+class OrientDBSerializationHelper {
+	def fetchFieldByName(doc:ODocument,fieldName:String) = {
+		val fieldType = doc.fieldType(fieldName) match {
+			case o:OType => o
+			case _ => OType.STRING
+		}
+		doc.field(fieldName,fieldType)
+	}
+	def updateFieldByName(doc:ODocument,fieldName:String,fieldValue:Any):ODocument = {
+		val (fieldType,adjustedValue) = fieldValue match {
+			case v:Array[Byte] => (OType.BINARY,v)
+			case v:Boolean => (OType.BOOLEAN,v)
+			case v:Byte => (OType.BYTE,v)
+			case v:Date => (OType.DATETIME,v)
+			case v:Double => (OType.DOUBLE,v)
+			case v:Float => (OType.FLOAT,v)
+			case v:Long => (OType.LONG,v)
+			case v:String => (OType.STRING,v)
+			case v => (OType.STRING,v.toString)
+		}
+		doc.field(fieldName,adjustedValue,fieldType)
+		doc
+	}
+}
+
+class OrientDBInterface(configName:String,dbUri:String = "local:/temp/db",dbUser:String = "root",dbPass:String = "ThisIsA_TEST") extends PersistenceInterface{
 	var db: ODatabaseDocumentTx = null
-	//db.getEntityManager.registerEntityClasses("com.metl.orientDB.formats")
 
 	def withDb[T](transactionAction:(ODatabaseDocumentTx)=>T):Option[T] = withDb[Unit,T](d => {},(d,e) => transactionAction(d))
 	def withDb[A,T](preTransactionAction:(ODatabaseDocumentTx) => A, transactionAction:(ODatabaseDocumentTx,A)=> T):Option[T] = {
@@ -23,6 +52,7 @@ class OrientDBInterface(configName:String,serializer:Serializer,dbUri:String = "
 		if (db.isClosed){
 			if (!db.exists){
 				db.create()
+				//db.getEntityManager.registerEntityClasses("com.metl.orientDB.dbformats")
 			} else {
 				db.open(dbUser,dbPass)
 			}
@@ -44,32 +74,26 @@ class OrientDBInterface(configName:String,serializer:Serializer,dbUri:String = "
 		return res
 	}
 
+	def newDoc(docType:String):Option[ODocument] = withDb[ODocument,ODocument](d => new ODocument(docType),(d,e) => e)
+	def fetchByType(typeName:String):List[ODocument] = {
+		withDb[List[ODocument]](d => {
+			val iter = d.browseClass(typeName)
+			var res = List.empty[ODocument]
+			while (iter.hasNext){
+				res = res ::: List(iter.next)
+			}
+			res
+		}).getOrElse(List.empty[ODocument])
+	}
+
 	def query(sql:String) = new OSQLAsynchQuery(sql)
 
 	//stanzas table
 	def storeStanza(jid:String,stanza:MeTLStanza):Boolean = Stopwatch.time("H2Interface.storeStanza", () => {
 		false
-		
-/*
-		val serialized = serializer.fromStanza(stanza)
-		val s = db.newInstance(serialized.typeDescriptor)
-		db.jid(jid)
-		db.attach(serialized)
-		val saved = db.save(serialized)
-		db.detach(serialized)
-*/
 	})
 
 	def getHistory(jid:String):History = Stopwatch.time("H2Interface.getHistory",() => {
-/*
-		val newHistory = History(jid)
-		List(new OInk,new OText,new OImage,new ODirtyInk,new ODirtyText,new ODirtyImage,new OMoveDelta,new OSubmission,new OCommand,new OQuiz,new OQuizResponse).foreach(t => {
-			type T = t
-			db.queryBySql[T]("select from %s where jid=%s".format(t.classDescriptor,jid)).foreach(s => newHistory.addStanza(s))	
-			//db.queryBySql[t.class]("select from %s where jid=%s".format(t.classDescriptor,jid)).foreach(s => newHistory.addStanza(s))	
-		})
-		newHistory
-*/
 		History.empty
 	})
 
@@ -89,27 +113,9 @@ class OrientDBInterface(configName:String,serializer:Serializer,dbUri:String = "
 
 	//resources table
 	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource", () => {
-		//retrieve(RESOURCES, "SELECT * FROM %s WHERE IDENTITY = %s LIMIT 1".format(RESOURCES,identity))
 		Array.empty[Byte]
 	})
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource", () => {
-		//store(RESOURCES,null)
 		""
 	})
-/*
-	protected def store[T](table:String,dbStoreable:ODocument):Boolean = Stopwatch.time("H2Interface.store", () => {
-		db.newInstance(dbStoreable.typeDescriptor)
-		db.attach(dbStoreable)
-		val saved = db.save(dbStoreable)
-		db.detach(dbStoreable)
-
-		db.create(table)
-		dbStoreable.save()
-		false
-	})
-	protected def retrieve[T](table:String,query:String):List[ODocument] = Stopwatch.time("H2Interface.retrieve", () => {
-		db.queryBySql[table]
-		List.empty[ODocument]
-	})
-*/
 }
