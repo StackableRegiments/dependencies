@@ -369,11 +369,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
     Permissions(config,studentsCanOpenFriends,studentsCanPublish,usersAreCompulsorilySynced)
   })
   override def fromPermissions(input:Permissions):Node = Stopwatch.time("GenericXmlSerializer.fromPermissions",() => {
-    <permissions>
-      <studentCanOpenFriends>{input.studentsCanOpenFriends}</studentCanOpenFriends>,
-      <studentCanPublish>{input.studentsCanPublish}</studentCanPublish>,
-      <usersAreCompulsorilySynced>{input.usersAreCompulsorilySynced}</usersAreCompulsorilySynced>
-    </permissions>
+    <permissions><studentCanOpenFriends>{input.studentsCanOpenFriends}</studentCanOpenFriends><studentCanPublish>{input.studentsCanPublish}</studentCanPublish><usersAreCompulsorilySynced>{input.usersAreCompulsorilySynced}</usersAreCompulsorilySynced></permissions>
   })
   override def toColor(input:AnyRef):Color = Stopwatch.time("GenericXmlSerializer.toColor", () =>{
     Color.empty

@@ -148,7 +148,7 @@ class H2Conversation extends H2MeTLContent[H2Conversation]{
 	object jid extends MappedInt(this)
 	object title extends MappedString(this,512)
 	object created extends MappedString(this,64)
-	object permissions extends MappedString(this,64)
+	object permissions extends MappedString(this,256)
 	object blackList extends MappedText(this)
 	object slides extends MappedText(this)
 }
