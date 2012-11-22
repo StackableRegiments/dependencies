@@ -19,7 +19,7 @@ class PersistingLoopbackMessageBus(configName:String,d:MessageBusDefinition,dbIn
 		recieveStanzaFromRoom(newMessage)
 		true
 	})
-	private def storeStanzaInDB(stanza:MeTLStanza):Unit = Stopwatch.time("EmbeddedPersistingMessageBusProvider.storeStanzaInMongo", () => {
+	private def storeStanzaInDB(stanza:MeTLStanza):Unit = Stopwatch.time("EmbeddedPersistingMessageBusProvider.storeStanzaInDB", () => {
 		dbInterface.storeStanza(jid,stanza)
 	})
 }
