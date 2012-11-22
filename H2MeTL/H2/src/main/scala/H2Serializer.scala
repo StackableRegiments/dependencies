@@ -11,8 +11,8 @@ import Privacy._
 
 class H2Serializer(configName:String) extends Serializer {
 	override type T = Object
-	val xmlSerializer = new GenericXmlSerializer(configName)
-	val config = ServerConfiguration.configForName(configName)
+	lazy val xmlSerializer = new GenericXmlSerializer(configName)
+	lazy val config = ServerConfiguration.configForName(configName)
 
 	case class ParsedCanvasContent(target:String,identity:String,slide:String,privacy:Privacy,author:String,timestamp:Long)
 	case class ParsedMeTLContent(author:String,timestamp:Long)

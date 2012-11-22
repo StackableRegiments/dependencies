@@ -12,16 +12,18 @@ import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConn
 import _root_.java.sql.{Connection, DriverManager}
 
 class H2Interface(configName:String) extends PersistenceInterface{
-	val serializer = new H2Serializer(configName)
-	val config = ServerConfiguration.configForName(configName)
+	lazy val serializer = new H2Serializer(configName)
+	lazy val config = ServerConfiguration.configForName(configName)
 
+  private val vendor = new StandardDBVendor("org.h2.Driver", "jdbc:h2:lift_proto.db;AUTO_SERVER=TRUE",Empty,Empty)
   if (!DB.jndiJdbcConnAvailable_?) {
-      val vendor = new StandardDBVendor("org.h2.Driver", "jdbc:h2:lift_proto.db;AUTO_SERVER=TRUE",Empty,Empty)
 //			this right here?  This needs to be addressed.  Looks like I'm going to have to bring some lift libraries into this one.
 //      LiftRules.unloadHooks.append(vendor.closeAllConnections_! _)
 
       DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
   }
+
+	def shutdown = vendor.closeAllConnections_!
 
 	Schemifier.schemify(true,Schemifier.infoF _, 
 		List(
@@ -92,9 +94,9 @@ class H2Interface(configName:String) extends PersistenceInterface{
 	})
 
 	//conversations table
-	protected val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _)
-	protected val conversationMessageBus = config.getMessageBus(mbDef)
-	protected var conversationCache = scala.collection.mutable.Map(H2Conversation.findAll.map(c => (c.jid.is,serializer.toConversation(c))):_*)
+	protected lazy val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _)
+	protected lazy val conversationMessageBus = config.getMessageBus(mbDef)
+	protected lazy val conversationCache = scala.collection.mutable.Map(H2Conversation.findAll.map(c => (c.jid.is,serializer.toConversation(c))):_*)
 	protected def updateConversation(c:Conversation):Boolean = {
 		try {
 			conversationCache.update(c.jid,c)
@@ -114,8 +116,10 @@ class H2Interface(configName:String) extends PersistenceInterface{
 		case _ => 0
 	}
 	protected var maxJid = 0
-	updateMaxJid
 	protected def getNewJid = {
+		if (maxJid == 0){
+			updateMaxJid
+		}
 		val oldMax = maxJid
 		maxJid += 1000
 		maxJid 

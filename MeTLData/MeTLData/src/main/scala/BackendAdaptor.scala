@@ -33,6 +33,8 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	def getImage(jid:String,identity:String):MeTLImage
 	def getResource(url:String):Array[Byte]
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String
+	//shutdown is a function to be called when the serverConfiguration is to be disposed
+	def shutdown:Unit = {}
 }
 
 object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
