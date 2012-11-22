@@ -46,7 +46,7 @@ object ColorConverter{
     }
   }
   private def hexToInt(h:String):Int = tryo(Integer.parseInt(h,16)).openOr(0)
-  private       def convert2AfterN(h:String,n:Int):Int = hexToInt(h.drop(n).take(2).mkString)
+  private def convert2AfterN(h:String,n:Int):Int = hexToInt(h.drop(n).take(2).mkString)
   def fromHexString(h:String):Color = fromARGBHexString(h)
   def fromRGBHexString(h:String):Color = {
     val r = convert2AfterN(h,1)
@@ -99,12 +99,32 @@ object Presentation{
   def emtpy = Presentation(ServerConfiguration.empty,Conversation.empty)
 }
 
-case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions, blackList:List[String] = List.empty[String]) extends MeTLXml(server)
+case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions, blackList:List[String] = List.empty[String]) extends MeTLXml(server){
+	def delete = Conversation(server,author,new Date().getTime,slides,"deleted",tag,jid,title,created,permissions,blackList)
+	def rename(newTitle:String) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,newTitle,created,permissions,blackList)
+	def replacePermissions(newPermissions:Permissions) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,title,created,newPermissions,blackList)
+	def replaceSubject(newSubject:String) = Conversation(server,author,new Date().getTime,slides,newSubject,tag,jid,title,created,permissions,blackList)
+	def addSlideAtIndex(index:Int) = {
+		val oldSlides = slides.map(s => {
+			if (s.index >= index){
+				s.replaceIndex(s.index + 1)
+			} else {
+				s
+			}
+		})
+		val newId = slides.map(s => s.id).max + 1
+		val newSlides = Slide(server,author,newId,index) :: oldSlides
+		replaceSlides(newSlides)
+	}
+	def replaceSlides(newSlides:List[Slide]) = Conversation(server,author,new Date().getTime,newSlides,subject,tag,jid,title,created,permissions,blackList)
+}
 object Conversation{
   def empty = Conversation(ServerConfiguration.empty,"",0L,List.empty[Slide],"","",0,"","",Permissions.default(ServerConfiguration.empty))
 }
 
-case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE") extends MeTLXml(server)
+case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE") extends MeTLXml(server){
+	def replaceIndex(newIndex:Int) = Slide(server,author,id,newIndex,defaultHeight,defaultWidth,exposed,slideType)
+}
 object Slide{
   def empty = Slide(ServerConfiguration.empty,"",0,0)
 }
