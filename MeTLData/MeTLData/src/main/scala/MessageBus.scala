@@ -16,12 +16,20 @@ class MessageBusDefinition(val location:String, val feedbackName:String, val onR
 abstract class MessageBusProvider {
   def getMessageBus(definition:MessageBusDefinition):MessageBus
   def releaseMessageBus(definition:MessageBusDefinition):Unit = {}
+	def sendMessageToBus(busFilter:MessageBusDefinition => Boolean, message:MeTLStanza):Unit = {}
 }
 abstract class OneBusPerRoomMessageBusProvider extends MessageBusProvider {
   protected lazy val busses = new SynchronizedWriteMap[MessageBusDefinition,MessageBus](scala.collection.mutable.HashMap.empty[MessageBusDefinition,MessageBus],true,(k:MessageBusDefinition) => createNewMessageBus(k))
   protected def createNewMessageBus(definition:MessageBusDefinition):MessageBus
   override def getMessageBus(definition:MessageBusDefinition) = Stopwatch.time("OneBusPerRoomMessageBusProvider", () => busses.getOrElseUpdate(definition,createNewMessageBus(definition)))
   override def releaseMessageBus(definition:MessageBusDefinition) = Stopwatch.time("OneBusPerRoomMessageBusProvider", () => busses.remove(definition))
+	override def sendMessageToBus(busFilter:MessageBusDefinition => Boolean,message:MeTLStanza):Unit = {
+		busses.foreach(b => {
+			if (busFilter(b._1)){
+				b._2.recieveStanzaFromRoom(message)
+			}
+		})
+	}
 }
 class LoopbackMessageBusProvider extends OneBusPerRoomMessageBusProvider {
   override def createNewMessageBus(definition:MessageBusDefinition) = Stopwatch.time("LoopbackMessageBusProvider", () => new LoopbackBus(definition,this))
