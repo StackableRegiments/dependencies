@@ -8,9 +8,20 @@ import java.util.Date
 import net.liftweb.mapper._
 import net.liftweb.common._
 
+import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, StandardDBVendor}
+import _root_.java.sql.{Connection, DriverManager}
+
 class H2Interface(configName:String) extends PersistenceInterface{
 	val serializer = new H2Serializer(configName)
 	val config = ServerConfiguration.configForName(configName)
+
+  if (!DB.jndiJdbcConnAvailable_?) {
+      val vendor = new StandardDBVendor("org.h2.Driver", "jdbc:h2:lift_proto.db;AUTO_SERVER=TRUE",Empty,Empty)
+//			this right here?  This needs to be addressed.  Looks like I'm going to have to bring some lift libraries into this one.
+//      LiftRules.unloadHooks.append(vendor.closeAllConnections_! _)
+
+      DB.defineConnectionManager(DefaultConnectionIdentifier, vendor)
+  }
 
 	Schemifier.schemify(true,Schemifier.infoF _, 
 		List(
@@ -97,13 +108,17 @@ class H2Interface(configName:String) extends PersistenceInterface{
 			}
 		}
 	}
-	protected def updateMaxJid = maxJid = conversationCache.values.map(c => c.jid).max
+	protected def updateMaxJid = maxJid = try {
+		conversationCache.values.map(c => c.jid).max
+	} catch {
+		case _ => 0
+	}
 	protected var maxJid = 0
 	updateMaxJid
 	protected def getNewJid = {
 		val oldMax = maxJid
 		maxJid += 1000
-		oldMax 
+		maxJid 
 	}
 	protected def receiveConversationDetailsUpdated(m:MeTLStanza) = {
 		m match {

@@ -16,26 +16,23 @@ object H2Constants{
 	val privacy = 20
 }
 
-//think of switching MappedString(this,maxStanza) for MappedText(this).
-//this will have the result of moving from directly storing the text in a column in the db to storing it in the CLOB storage, with a reference on the row.
-
 trait H2MeTLContent[C <:H2MeTLContent[C]] extends LongKeyedMapper[C] with IdPK{
 	self: C =>
 	object metlType extends MappedString[C](this,13)
-	object room extends MappedStringIndex[C](this,H2Constants.room)
+	object room extends MappedString[C](this,H2Constants.room)
 }
 
 trait H2MeTLStanza[C <: H2MeTLStanza[C]] extends H2MeTLContent[C]{
 	self: C =>
 	object timestamp extends MappedLong[C](this)
-	object author extends MappedStringIndex[C](this,H2Constants.author)
+	object author extends MappedString[C](this,H2Constants.author)
 }
 
 trait H2MeTLCanvasContent[C <: H2MeTLCanvasContent[C]] extends H2MeTLStanza[C] {
 	self: C =>
-	object target extends MappedStringIndex[C](this,H2Constants.target)
-	object privacy extends MappedStringIndex[C](this,H2Constants.privacy)
-	object slide extends MappedStringIndex[C](this,H2Constants.room)
+	object target extends MappedString[C](this,H2Constants.target)
+	object privacy extends MappedString[C](this,H2Constants.privacy)
+	object slide extends MappedString[C](this,H2Constants.room)
 	object identity extends MappedString[C](this,H2Constants.identity)
 }
 
@@ -43,7 +40,6 @@ class H2Ink extends H2MeTLCanvasContent[H2Ink] {
 	def getSingleton = H2Ink
 	object checksum extends MappedDouble(this)
 	object startingSum extends MappedDouble(this)
-	//object points extends MappedString(this,H2Constants.maxStanza)
 	object points extends MappedText(this)
 	object color extends MappedString(this,H2Constants.color)
 	object thickness extends MappedDouble(this)
@@ -53,7 +49,6 @@ object H2Ink extends H2Ink with LongKeyedMetaMapper[H2Ink] {
 }
 class H2Text extends H2MeTLCanvasContent[H2Text] {
 	def getSingleton = H2Text
-	//object text extends MappedString(this,H2Constants.maxStanza)
 	object text extends MappedText(this)
 	object height extends MappedDouble(this)
 	object width extends MappedDouble(this)
@@ -98,9 +93,6 @@ object H2DirtyImage extends H2DirtyImage with LongKeyedMetaMapper[H2DirtyImage]{
 }
 class H2MoveDelta extends H2MeTLCanvasContent[H2MoveDelta]{
 	def getSingleton = H2MoveDelta
-	//object inkIds extends MappedString(this,H2Constants.maxStanza)
-	//object textIds extends MappedString(this,H2Constants.maxStanza)
-	//object imageIds extends MappedString(this,H2Constants.maxStanza)
 	object inkIds extends MappedText(this)
 	object textIds extends MappedText(this)
 	object imageIds extends MappedText(this)
@@ -116,12 +108,10 @@ object H2MoveDelta extends H2MoveDelta with LongKeyedMetaMapper[H2MoveDelta]{
 class H2Quiz extends H2MeTLStanza[H2Quiz]{
 	def getSingleton = H2Quiz
 	object created extends MappedLong(this)
-	//object question extends MappedString(this,H2Constants.maxStanza)
 	object question extends MappedText(this)
 	object quizId extends MappedString(this,H2Constants.identity)
 	object url extends MappedString(this,H2Constants.url)
 	object isDeleted extends MappedBoolean(this)
-	//object options extends MappedString(this,H2Constants.maxStanza)
 	object options extends MappedText(this)
 }
 object H2Quiz extends H2Quiz with LongKeyedMetaMapper[H2Quiz]{
@@ -137,7 +127,6 @@ object H2QuizResponse extends H2QuizResponse with LongKeyedMetaMapper[H2QuizResp
 class H2Command extends H2MeTLStanza[H2Command]{
 	def getSingleton = H2Command
 	object command extends MappedString(this,128)
-	//object commandParameters extends MappedString(this,H2Constants.maxStanza)
 	object commandParameters extends MappedText(this)
 }
 object H2Command extends H2Command with LongKeyedMetaMapper[H2Command]{
@@ -160,25 +149,11 @@ class H2Conversation extends H2MeTLContent[H2Conversation]{
 	object title extends MappedString(this,512)
 	object created extends MappedString(this,64)
 	object permissions extends MappedString(this,64)
-	//object blackList extends MappedString(this,H2Constants.maxStanza)
 	object blackList extends MappedText(this)
 	object slides extends MappedText(this)
 }
 object H2Conversation extends H2Conversation with LongKeyedMetaMapper[H2Conversation]{
 }
-/*class H2Slide extends H2MeTLContent[H2Slide]{
-	def getSingleton = H2Slide
-	object author extends MappedString(this,H2Constants.author)
-	object conversationJid extends MappedInt(this)
-	object slideId extends MappedInt(this)
-	object slideIndex extends MappedInt(this)
-	object defaultHeight extends MappedInt(this)
-	object defaultWidth extends MappedInt(this)
-	object exposed extends MappedBoolean(this)
-	object slideType extends MappedString(this,32) 
-}
-object H2Slide extends H2Slide with LongKeyedMetaMapper[H2Slide]{
-}*/
 class H2Resource extends H2MeTLContent[H2Resource]{
 	def getSingleton = H2Resource
 	object url extends MappedString(this,H2Constants.url)
