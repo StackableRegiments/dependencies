@@ -152,8 +152,9 @@ class H2Interface(configName:String) extends PersistenceInterface{
 	protected def findAndModifyConversation(jidString:String,adjustment:Conversation => Conversation):Conversation  = Stopwatch.time("H2Interface.findAndModifyConversation", () => {
 		try {
 			val jid = jidString.toInt
+			println("altering conversation in H2")
 			detailsOfConversation(jid) match {
-				case c:Conversation if (c.jid.toString == jid) => {
+				case c:Conversation if (c.jid == jid) => {
 					val updatedConv = adjustment(c)
 					if (updateConversation(updatedConv)){
 						updatedConv
@@ -165,6 +166,7 @@ class H2Interface(configName:String) extends PersistenceInterface{
 			}
 		} catch {
 			case e:Throwable => {
+				println("failed to alter conversation, throwing: %s".format(e.getMessage))
 				Conversation.empty
 			}
 		}
@@ -178,7 +180,11 @@ class H2Interface(configName:String) extends PersistenceInterface{
 
 	//resources table
 	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource", () => {
-		H2Resource.find(By(H2Resource.url,identity)).map(r => r.bytes.is).openOr(Array.empty[Byte])
+		H2Resource.find(By(H2Resource.url,identity)).map(r => {
+			val b = r.bytes.is
+			println("retrieved %s bytes for %s".format(b.length,identity))
+			b
+		}).openOr(Array.empty[Byte])
 	})
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource", () => {
 		val now = new Date().getTime.toString
@@ -189,7 +195,7 @@ class H2Interface(configName:String) extends PersistenceInterface{
 				postResource(jid,newUserProposedIdentity,data)
 			}
 			case _ => {
-				H2Resource.create.url(possibleNewIdentity).bytes(data).save
+				H2Resource.create.url(possibleNewIdentity).bytes(data).room(jid).save
 				possibleNewIdentity
 			}
 		}
