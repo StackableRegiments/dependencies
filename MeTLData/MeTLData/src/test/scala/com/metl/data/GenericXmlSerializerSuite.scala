@@ -7,550 +7,25 @@ import org.scalatest.matchers.{ShouldMatchers, HavePropertyMatcher, HaveProperty
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.mock.MockitoSugar
 import org.scalatest.OptionValues._
+import org.scalacheck._
+import Gen._
+import Arbitrary.arbitrary
 
 import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => the, any, anyInt}
 
+import net.liftweb.util.Helpers._
 import net.liftweb.common._
 import scala.xml._
 import Privacy._
 
-trait ArrayHelpers {
-
-	def compareBoxedArray[A](left: Box[Array[A]], right: Box[Array[A]]) : Boolean = 
-	  (left, right) match {
-		  case (Empty, Empty) => true  
-		  case (Full(x), Full(y)) => x.sameElements(y)
-		  case _ => false
-	  }
-}
-
-trait MeTLStanzaMatchers extends ArrayHelpers {
-
-	def server(expectedValue: ServerConfiguration) =
-	  new HavePropertyMatcher[MeTLStanza, ServerConfiguration] {
-		def apply(stanza: MeTLStanza) =
-		  HavePropertyMatchResult(
-			stanza.server == expectedValue,
-			"server",
-			expectedValue,
-			stanza.server
-		  )
-	  }
-
-	def author(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLStanza, String] {
-		def apply(stanza: MeTLStanza) =
-		  HavePropertyMatchResult(
-			stanza.author == expectedValue,
-			"author",
-			expectedValue,
-			stanza.author
-		  )
-	  }
-
-	def timestamp(expectedValue: Long) =
-	  new HavePropertyMatcher[MeTLStanza, Long] {
-		def apply(stanza: MeTLStanza) =
-		  HavePropertyMatchResult(
-			stanza.timestamp == expectedValue,
-			"timestamp",
-			expectedValue,
-			stanza.timestamp
-		  )
-	  }
-}
-
-trait MeTLSubmissionMatchers extends MeTLStanzaMatchers with MeTLCanvasContentMatchers {
-	
-	def title(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLSubmission, String] {
-		def apply(stanza: MeTLSubmission) =
-		  HavePropertyMatchResult(
-			stanza.title == expectedValue,
-			"title",
-			expectedValue,
-			stanza.title
-		  )
-	  }
-
-	def url(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLSubmission, String] {
-		def apply(stanza: MeTLSubmission) =
-		  HavePropertyMatchResult(
-			stanza.url == expectedValue,
-			"url",
-			expectedValue,
-			stanza.url
-		  )
-	  }
-
-	def imageBytes(expectedValue: Box[Array[Byte]]) =
-	  new HavePropertyMatcher[MeTLSubmission, Box[Array[Byte]]] {
-		def apply(stanza: MeTLSubmission) =
-		  HavePropertyMatchResult(
-			compareBoxedArray(stanza.imageBytes, expectedValue),
-			"imageBytes",
-			expectedValue,
-			stanza.imageBytes
-		  )
-	  }
-
-	def blacklist(expectedValue: List[SubmissionBlacklistedPerson]) =
-	  new HavePropertyMatcher[MeTLSubmission, List[SubmissionBlacklistedPerson]] {
-		def apply(stanza: MeTLSubmission) =
-		  HavePropertyMatchResult(
-			stanza.blacklist == expectedValue,
-			"blacklist",
-			expectedValue,
-			stanza.blacklist
-		  )
-	  }
-
-	def slideJid(expectedValue: Int) =
-	  new HavePropertyMatcher[MeTLSubmission, Int] {
-		def apply(stanza: MeTLSubmission) =
-		  HavePropertyMatchResult(
-			stanza.slideJid == expectedValue,
-			"slideJid",
-			expectedValue,
-			stanza.slideJid
-		  )
-	  }
-}
-
-trait MeTLMoveDeltaMatchers extends MeTLStanzaMatchers with MeTLCanvasContentMatchers {
-
-	  def inkIds(expectedValue: Seq[String]) =
-		new HavePropertyMatcher[MeTLMoveDelta, Seq[String]] {
-		  def apply(stanza: MeTLMoveDelta) =
-			HavePropertyMatchResult(
-			  stanza.inkIds == expectedValue,
-			  "inkIds",
-			  expectedValue,
-			  stanza.inkIds
-			)
-		}
-
-	  def imageIds(expectedValue: Seq[String]) =
-		new HavePropertyMatcher[MeTLMoveDelta, Seq[String]] {
-		  def apply(stanza: MeTLMoveDelta) =
-			HavePropertyMatchResult(
-			  stanza.imageIds == expectedValue,
-			  "imageIds",
-			  expectedValue,
-			  stanza.imageIds
-			)
-		}
-
-	  def textIds(expectedValue: Seq[String]) =
-		new HavePropertyMatcher[MeTLMoveDelta, Seq[String]] {
-		  def apply(stanza: MeTLMoveDelta) =
-			HavePropertyMatchResult(
-			  stanza.textIds == expectedValue,
-			  "textIds",
-			  expectedValue,
-			  stanza.textIds
-			)
-		}
-
-	def xTranslate(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLMoveDelta, Double] {
-		def apply(stanza: MeTLMoveDelta) =
-		  HavePropertyMatchResult(
-			stanza.xTranslate == expectedValue,
-			"xTranslate",
-			expectedValue,
-			stanza.xTranslate
-		  )
-	  }
-
-	def yTranslate(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLMoveDelta, Double] {
-		def apply(stanza: MeTLMoveDelta) =
-		  HavePropertyMatchResult(
-			stanza.yTranslate == expectedValue,
-			"yTranslate",
-			expectedValue,
-			stanza.yTranslate
-		  )
-	  }
-
-	def xScale(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLMoveDelta, Double] {
-		def apply(stanza: MeTLMoveDelta) =
-		  HavePropertyMatchResult(
-			stanza.xScale == expectedValue,
-			"xScale",
-			expectedValue,
-			stanza.xScale
-		  )
-	  }
-
-	def yScale(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLMoveDelta, Double] {
-		def apply(stanza: MeTLMoveDelta) =
-		  HavePropertyMatchResult(
-			stanza.yScale == expectedValue,
-			"yScale",
-			expectedValue,
-			stanza.yScale
-		  )
-	  }
-
-	def newPrivacy(expectedValue: Privacy) =
-	  new HavePropertyMatcher[MeTLMoveDelta, Privacy] {
-		def apply(stanza: MeTLMoveDelta) =
-		  HavePropertyMatchResult(
-			stanza.newPrivacy == expectedValue,
-			"newPrivacy",
-			expectedValue,
-			stanza.newPrivacy
-		  )
-	  }
-
-	def isDeleted(expectedValue: Boolean) =
-	  new HavePropertyMatcher[MeTLMoveDelta, Boolean] {
-		def apply(stanza: MeTLMoveDelta) =
-		  HavePropertyMatchResult(
-			stanza.isDeleted == expectedValue,
-			"isDeleted",
-			expectedValue,
-			stanza.isDeleted
-		  )
-	  }
-}
-
-trait MeTLCanvasContentMatchers {
-
-	def target(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLCanvasContent, String] {
-		def apply(stanza: MeTLCanvasContent) =
-		  HavePropertyMatchResult(
-			stanza.target == expectedValue,
-			"target",
-			expectedValue,
-			stanza.target
-		  )
-	  }
-
-	def privacy(expectedValue: Privacy) =
-	  new HavePropertyMatcher[MeTLCanvasContent, Privacy] {
-		def apply(stanza: MeTLCanvasContent) =
-		  HavePropertyMatchResult(
-			stanza.privacy == expectedValue,
-			"privacy",
-			expectedValue,
-			stanza.privacy
-		  )
-	  }
-
-	def slide(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLCanvasContent, String] {
-		def apply(stanza: MeTLCanvasContent) =
-		  HavePropertyMatchResult(
-			stanza.slide == expectedValue,
-			"slide",
-			expectedValue,
-			stanza.slide
-		  )
-	  }
-
-	def identity(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLCanvasContent, String] {
-		def apply(stanza: MeTLCanvasContent) =
-		  HavePropertyMatchResult(
-			stanza.identity == expectedValue,
-			"identity",
-			expectedValue,
-			stanza.identity
-		  )
-	  }
-
-	def scaleFactorX(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLCanvasContent, Double] {
-		def apply(stanza: MeTLCanvasContent) =
-		  HavePropertyMatchResult(
-			stanza.scaleFactorX == expectedValue,
-			"scaleFactorX",
-			expectedValue,
-			stanza.scaleFactorX
-		  )
-	  }
-
-	def scaleFactorY(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLCanvasContent, Double] {
-		def apply(stanza: MeTLCanvasContent) =
-		  HavePropertyMatchResult(
-			stanza.scaleFactorY == expectedValue,
-			"scaleFactorY",
-			expectedValue,
-			stanza.scaleFactorY
-		  )
-	  }
-}
-
-trait MeTLImageMatchers extends ArrayHelpers with MeTLStanzaMatchers with MeTLCanvasContentMatchers {
-
-	def tag(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLImage, String] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			stanza.tag == expectedValue,
-			"tag",
-			expectedValue,
-			stanza.tag
-		  )
-	  }
-
-	def source(expectedValue: Box[String]) =
-	  new HavePropertyMatcher[MeTLImage, Box[String]] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			stanza.source == expectedValue,
-			"source",
-			expectedValue,
-			stanza.source
-		  )
-	  }
-
-	def imageBytes(expectedValue: Box[Array[Byte]]) =
-	  new HavePropertyMatcher[MeTLImage, Box[Array[Byte]]] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			compareBoxedArray(stanza.imageBytes, expectedValue),
-			"imageBytes",
-			expectedValue,
-			stanza.imageBytes
-		  )
-	  }
-
-	def pngBytes(expectedValue: Box[Array[Byte]]) =
-	  new HavePropertyMatcher[MeTLImage, Box[Array[Byte]]] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			compareBoxedArray(stanza.pngBytes, expectedValue),
-			"pngBytes",
-			expectedValue,
-			stanza.pngBytes
-		  )
-	  }
-
-	def width(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLImage, Double] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			stanza.width == expectedValue,
-			"width",
-			expectedValue,
-			stanza.width
-		  )
-	  }
-
-	def height(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLImage, Double] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			stanza.height == expectedValue,
-			"height",
-			expectedValue,
-			stanza.height
-		  )
-	  }
-
-	def x(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLImage, Double] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			stanza.x == expectedValue,
-			"x",
-			expectedValue,
-			stanza.x
-		  )
-	  }
-
-	def y(expectedValue: Double) =
-	  new HavePropertyMatcher[MeTLImage, Double] {
-		def apply(stanza: MeTLImage) =
-		  HavePropertyMatchResult(
-			stanza.y == expectedValue,
-			"y",
-			expectedValue,
-			stanza.y
-		  )
-	  }
-}
-
-trait MeTLQuizMatchers extends ArrayHelpers with MeTLStanzaMatchers {
-
-	def isDeleted(expectedValue: Boolean) =
-	  new HavePropertyMatcher[MeTLQuiz, Boolean] {
-		def apply(stanza: MeTLQuiz) =
-		  HavePropertyMatchResult(
-			stanza.isDeleted == expectedValue,
-			"isDeleted",
-			expectedValue,
-			stanza.isDeleted
-		  )
-	  }
-
-	def question(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLQuiz, String] {
-		def apply(stanza: MeTLQuiz) =
-		  HavePropertyMatchResult(
-			stanza.question == expectedValue,
-			"question",
-			expectedValue,
-			stanza.question
-		  )
-	  }
-
-	def options(expectedValue: List[QuizOption]) =
-	  new HavePropertyMatcher[MeTLQuiz, List[QuizOption]] {
-		def apply(stanza: MeTLQuiz) = 
-		  HavePropertyMatchResult(
-			stanza.options == expectedValue,
-			"options",
-			expectedValue,
-			stanza.options
-		  )
-	  }
-
-	def imageBytes(expectedValue: Box[Array[Byte]]) = 
-	  new HavePropertyMatcher[MeTLQuiz, Box[Array[Byte]]] {
-		def apply(stanza: MeTLQuiz) = 
-		  HavePropertyMatchResult(
-			compareBoxedArray(stanza.imageBytes, expectedValue),
-			"imageBytes",
-			expectedValue,
-			stanza.imageBytes
-		  )
-	  }
-
-	def id(expectedValue: String) = 
-	  new HavePropertyMatcher[MeTLQuiz, String] {
-		def apply(stanza: MeTLQuiz) = 
-		  HavePropertyMatchResult(
-			stanza.id == expectedValue,
-			"id",
-			expectedValue,
-			stanza.id
-		  )
-	  }
-
-	def url(expectedValue: Box[String]) = 
-	  new HavePropertyMatcher[MeTLQuiz, Box[String]] {
-		def apply(stanza: MeTLQuiz) = 
-		  HavePropertyMatchResult(
-			stanza.url == expectedValue,
-			"url",
-			expectedValue,
-			stanza.url
-		  )
-	  }
-}
-
-trait MeTLQuizResponseMatchers extends MeTLStanzaMatchers {
-
-	def answer(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLQuizResponse, String] {
-		def apply(stanza: MeTLQuizResponse) =
-		  HavePropertyMatchResult(
-			stanza.answer == expectedValue,
-			"answer",
-			expectedValue,
-			stanza.answer
-		  )
-	  }
-
-	def answerer(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLQuizResponse, String] {
-		def apply(stanza: MeTLQuizResponse) =
-		  HavePropertyMatchResult(
-			stanza.answerer == expectedValue,
-			"answerer",
-			expectedValue,
-			stanza.answerer
-		  )
-	  }
-
-	def id(expectedValue: String) = 
-	  new HavePropertyMatcher[MeTLQuizResponse, String] {
-		def apply(stanza: MeTLQuizResponse) = 
-		  HavePropertyMatchResult(
-			stanza.id == expectedValue,
-			"id",
-			expectedValue,
-			stanza.id
-		  )
-	  }
-}
-
-trait MeTLCommandMatchers extends MeTLStanzaMatchers {
-
-	def command(expectedValue: String) =
-	  new HavePropertyMatcher[MeTLCommand, String] {
-		def apply(stanza: MeTLCommand) =
-		  HavePropertyMatchResult(
-			stanza.command == expectedValue,
-			"command",
-			expectedValue,
-			stanza.command
-		  )
-	  }
-
-	def commandParameters(expectedValue: List[String]) =
-	  new HavePropertyMatcher[MeTLCommand, List[String]] {
-		def apply(stanza: MeTLCommand) =
-		  HavePropertyMatchResult(
-			stanza.commandParameters == expectedValue,
-			"commandParameters",
-			expectedValue,
-			stanza.commandParameters
-		  )
-	  }
-}
-
-class MeTLMoveDeltaExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLMoveDeltaMatchers {
-
-	import org.scalacheck._
-	import Gen._
-	import Arbitrary.arbitrary
-	import Privacy._
-	import net.liftweb.util.Helpers._
+class MeTLMoveDeltaExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLMoveDeltaMatchers with MeTLDataGenerators {
 	
 	var xmlSerializer: GenericXmlSerializer = _
 
 	before {
 	  xmlSerializer = new GenericXmlSerializer("empty")
 	}
-	
-	val genPrivacy = for {
-		p <- Gen.oneOf(Privacy.PRIVATE, Privacy.PUBLIC, Privacy.NOT_SET)
-	} yield p
-
-	val genIdList = for {
-		i <- Gen.containerOf[List, String](Gen.alphaStr)
-	} yield i
-
-	val genMoveDelta = for {
-		author <- Gen.alphaStr 
-		timestamp <- arbitrary[Long]
-		target <- Gen.alphaStr 
-		privacy <- genPrivacy
-		slide <- Gen.numStr 
-		identity <- Gen.alphaStr 
-		inkIds <- genIdList
-		textIds <- genIdList
-		imageIds <- genIdList
-		xTrans <- arbitrary[Double]
-		yTrans <- arbitrary[Double]
-		xScale <- arbitrary[Double]
-		yScale <- arbitrary[Double]
-		newPrivacy <- genPrivacy
-		isDeleted <- arbitrary[Boolean]
-	} yield MeTLMoveDelta(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, 
-				inkIds, textIds, imageIds, xTrans, yTrans, xScale, yScale, newPrivacy, isDeleted)
 
 	test("extract metl move delta from xml") {
 
@@ -633,7 +108,7 @@ class MeTLMoveDeltaExtractorSuite extends FunSuite with GeneratorDrivenPropertyC
 	}
 }
 
-class MeTLImageExtractorSuite extends FunSuite with MockitoSugar with BeforeAndAfter with ShouldMatchers with MeTLImageMatchers {
+class MeTLImageExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLImageMatchers with MeTLDataGenerators {
 
 	var xmlSerializer: GenericXmlSerializer = _
 
@@ -678,6 +153,28 @@ class MeTLImageExtractorSuite extends FunSuite with MockitoSugar with BeforeAndA
 			slide ("4"),
 			identity ("metlImage")
 		)
+	}
+
+	test("serialize MeTLImage to xml") {
+		forAll (genImage) { (genImage: MeTLImage) =>
+		
+			val xml = xmlSerializer.fromMeTLImage(genImage)
+
+			genImage should have (
+				server (ServerConfiguration.empty),
+				author ((xml \\ "author").text),
+				target ((xml \\ "target").text),
+				privacy (Privacy.parse((xml \\ "privacy").text)),
+				slide ((xml \\ "slide").text),
+				identity ((xml \\ "identity").text),
+				tag ((xml \\ "tag").text),
+				source (Full((xml \\ "source").text)),
+				x (tryo((xml \\ "x").text.toDouble).openOr(0.0)),
+				y (tryo((xml \\ "y").text.toDouble).openOr(0.0)),
+				width (tryo((xml \\ "width").text.toDouble).openOr(0.0)),
+				height (tryo((xml \\ "height").text.toDouble).openOr(0.0))
+			)
+		}
 	}
 }
 
@@ -896,7 +393,142 @@ class MeTLCommandExtractorSuite extends FunSuite with MockitoSugar with BeforeAn
 	}
 }
 
-class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAndAfter with ShouldMatchers with MeTLStanzaMatchers with MeTLCanvasContentMatchers {
+class MeTLInkExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLInkMatchers with MeTLDataGenerators {
+	
+	var xmlSerializer: GenericXmlSerializer = _
+
+	before {
+	  xmlSerializer = new GenericXmlSerializer("empty")
+	}
+
+	test("convert metl ink to xml") {
+		forAll (genInk) { (genInk: MeTLInk) =>
+			
+			val xml = xmlSerializer.fromMeTLInk(genInk)
+
+			genInk should have (
+				server (ServerConfiguration.empty),
+				author ((xml \\ "author").text),
+				target ((xml \\ "target").text),
+				privacy (Privacy.parse((xml \\ "privacy").text)),
+				slide ((xml \\ "slide").text),
+				identity ((xml \\ "identity").text),
+				points (PointConverter.fromText((xml \\ "points").text)),
+				checksum (tryo((xml \\ "checksum").text.toDouble).openOr(0.0)),
+				startingSum (tryo((xml \\ "startingSum").text.toDouble).openOr(0.0)),
+				thickness (tryo((xml \\ "thickness").text.toDouble).openOr(0.0)),
+				color (ColorConverter.fromText((xml \\ "color").text)),
+				isHighlighter (tryo((xml \\ "highlight").text.toBoolean).openOr(false))
+			)
+		}
+	}
+
+	test("extract metl ink from xml") {
+
+		val content = <message>
+						<ink>
+						  <author>eecrole</author>
+						  <target>test</target>
+						  <privacy>private</privacy>
+						  <slide>4</slide>
+						  <identity>eecrole:223445834582</identity>
+						  <checksum>234235.234234</checksum>
+						  <startingSum>233453.1498</startingSum>
+						  <points>123.34 234 23</points>
+						  <color>#ffff0000</color>
+						  <thickness>40.0</thickness>
+						  <highlight>false</highlight>
+						</ink>
+					  </message>
+
+		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLInk]
+
+		result should have(
+			server (ServerConfiguration.empty),
+			author ("eecrole"),
+			target ("test"),
+			privacy (Privacy.PRIVATE),
+			slide ("4"),
+			identity ("eecrole:223445834582"),
+			checksum (234235.234234), 
+			startingSum (233453.1498),
+			points (List(Point(123.34,234,23))), 
+			color (Color(255, 255, 0, 0)),
+			thickness (40.0), 
+			isHighlighter (false)
+		)
+	}
+}
+
+class MeTLTextExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with QueryXml with MeTLTextMatchers with MeTLDataGenerators {
+
+	var xmlSerializer: GenericXmlSerializer = _
+
+	before {
+	  xmlSerializer = new GenericXmlSerializer("empty")
+	}
+
+	test("convert metl text to xml") {
+		forAll (genText) { (genText: MeTLText) =>
+			
+			implicit val xml = xmlSerializer.fromMeTLText(genText)
+
+			genText should have (
+				server (ServerConfiguration.empty),
+				author (queryXml[String]("author")),
+				target (queryXml[String]("target")),
+				privacy (queryXml[Privacy]("privacy")),
+				slide (queryXml[String]("slide")),
+				identity (queryXml[String]("identity")),
+				tag (queryXml[String]("tag")),
+				caret (queryXml[Int]("caret")), 
+				text (queryXml[String]("text")),
+				style (queryXml[String]("style")),
+				family (queryXml[String]("family")),
+				weight (queryXml[String]("weight")),
+				size (queryXml[Double]("size")),
+				decoration (queryXml[String]("decoration")),
+				color (queryXml[Color]("color")),
+				width (queryXml[Double]("width")),
+				height (queryXml[Double]("height")),
+				x (queryXml[Double]("x")),
+				y (queryXml[Double]("y"))
+			)
+		}
+	}
+
+	test("extract metl text from xml") {
+
+		val content = <message>
+						<textbox>
+						  <author>eecrole</author>
+						  <target>test</target>
+						  <privacy>private</privacy>
+						  <slide>4</slide>
+						  <identity>eecrole:223445834582</identity>
+						  <tag>eecrole:223445834582</tag>
+						  <caret>0</caret>
+						  <text>Hello World!</text>
+						  <style>Underline</style>
+						  <family>Helvetica</family>
+						  <weight>Bold</weight>
+						  <size>12.0</size>
+						  <decoration>Italics</decoration>
+						  <color>#ffff0000</color>
+						  <width>200</width>
+						  <height>100</height>
+						  <x>120</x>
+						  <y>300</y>
+						</textbox>
+					  </message>
+
+		val result = xmlSerializer.toMeTLStanza(content)
+		assert(result === MeTLText(ServerConfiguration.empty, "eecrole", -1L, "Hello World!", 100.0, 200.0, 0, 120.0, 300.0, "eecrole:223445834582",
+			"Underline", "Helvetica", "Bold", 12.0, "Italics", "eecrole:223445834582", "test", Privacy.PRIVATE, "4", Color(255, 255, 0, 0)))
+	}
+}
+
+class GenericXmlSerializerSuite extends FunSuite with BeforeAndAfter with ShouldMatchers with MeTLStanzaMatchers with MeTLCanvasContentMatchers {
 
 	var xmlSerializer: GenericXmlSerializer = _
 
@@ -1180,14 +812,14 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
 		val content = <something>some value</something>
 		val result = XmlUtils.getXmlByName(content, "cat")
 
-		assert(result === NodeSeq.Empty)
+		result should be(NodeSeq.Empty)
 	}
 
 	test("extract attribute of node") {
 		val content = <ink><color tip="true">black</color></ink>
 		val result = XmlUtils.getAttributeOfNode(content, "color", "tip")
 
-		assert(result === "true")
+		result should equal("true")
 	}
 
 	test("extract non-existant attribute of node") {
@@ -1283,62 +915,6 @@ class GenericXmlSerializerSuite extends FunSuite with MockitoSugar with BeforeAn
 	   assert(xmlSerializer.config === EmptyBackendAdaptor) 
 	}
 	
-	test("extract metl ink from xml") {
-
-		val content = <message>
-						<ink>
-						  <author>eecrole</author>
-						  <target>test</target>
-						  <privacy>private</privacy>
-						  <slide>4</slide>
-						  <identity>eecrole:223445834582</identity>
-						  <checksum>234235.234234</checksum>
-						  <startingSum>233453.1498</startingSum>
-						  <points>123.34 234 23</points>
-						  <color>#ffff0000</color>
-						  <thickness>40.0</thickness>
-						  <highlight>false</highlight>
-						</ink>
-					  </message>
-
-		val result = xmlSerializer.toMeTLStanza(content)
-		assert(result === MeTLInk(ServerConfiguration.empty, "eecrole", -1L, 234235.234234, 233453.1498,List(Point(123.34,234,23)), 
-			Color(255, 255, 0, 0), 40.0, false, "test", Privacy.PRIVATE, "4", "eecrole:223445834582"))
-	}
-
-	test("convert metl ink to xml") {
-			
-	}
-
-	test("extract metl text from xml") {
-
-		val content = <message>
-						<textbox>
-						  <author>eecrole</author>
-						  <target>test</target>
-						  <privacy>private</privacy>
-						  <slide>4</slide>
-						  <identity>eecrole:223445834582</identity>
-						  <tag>eecrole:223445834582</tag>
-						  <caret>0</caret>
-						  <text>Hello World!</text>
-						  <style>Underline</style>
-						  <family>Helvetica</family>
-						  <weight>Bold</weight>
-						  <size>12.0</size>
-						  <decoration>Italics</decoration>
-						  <color>#ffff0000</color>
-						  <width>200</width>
-						  <height>100</height>
-						  <x>120</x>
-						  <y>300</y>
-						</textbox>
-					  </message>
-
-		val result = xmlSerializer.toMeTLStanza(content)
-		assert(result === MeTLText(ServerConfiguration.empty, "eecrole", -1L, "Hello World!", 100.0, 200.0, 0, 120.0, 300.0, "eecrole:223445834582",
-			"Underline", "Helvetica", "Bold", 12.0, "Italics", "eecrole:223445834582", "test", Privacy.PRIVATE, "4", Color(255, 255, 0, 0)))
-	}
 
 	test("extract metl dirty ink from xml") {
 
