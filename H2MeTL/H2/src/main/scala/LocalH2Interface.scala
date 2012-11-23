@@ -59,21 +59,31 @@ class H2Interface(configName:String) extends PersistenceInterface{
 	val COMMANDS = "command"
 	
 	//stanzas table
-	def storeStanza(jid:String,stanza:MeTLStanza):Boolean = Stopwatch.time("H2Interface.storeStanza", () => {
-		stanza match {
-			case s:MeTLInk => serializer.fromMeTLInk(s).room(jid).save	
-			case s:MeTLText => serializer.fromMeTLText(s).room(jid).save
-			case s:MeTLImage => serializer.fromMeTLImage(s).room(jid).save
-			case s:MeTLDirtyInk => serializer.fromMeTLDirtyInk(s).room(jid).save
-			case s:MeTLDirtyText => serializer.fromMeTLDirtyText(s).room(jid).save
-			case s:MeTLDirtyImage => serializer.fromMeTLDirtyImage(s).room(jid).save
-			case s:MeTLCommand => serializer.fromMeTLCommand(s).room(jid).save
-			case s:MeTLQuiz => serializer.fromMeTLQuiz(s).room(jid).save
-			case s:MeTLQuizResponse => serializer.fromMeTLQuizResponse(s).room(jid).save
-			case s:MeTLSubmission => serializer.fromSubmission(s).room(jid).save
-			case s:MeTLMoveDelta => serializer.fromMeTLMoveDelta(s).room(jid).save
-			case _ => false
+	def storeStanza(jid:String,stanza:MeTLStanza):Option[MeTLStanza] = Stopwatch.time("H2Interface.storeStanza", () => {
+		val transformedStanza:Option[_ <: H2MeTLStanza[_]] = stanza match {
+			case s:MeTLInk => Some(serializer.fromMeTLInk(s).room(jid))	
+			case s:MeTLText => Some(serializer.fromMeTLText(s).room(jid))
+			case s:MeTLImage => Some(serializer.fromMeTLImage(s).room(jid))
+			case s:MeTLDirtyInk => Some(serializer.fromMeTLDirtyInk(s).room(jid))
+			case s:MeTLDirtyText => Some(serializer.fromMeTLDirtyText(s).room(jid))
+			case s:MeTLDirtyImage => Some(serializer.fromMeTLDirtyImage(s).room(jid))
+			case s:MeTLCommand => Some(serializer.fromMeTLCommand(s).room(jid))
+			case s:MeTLQuiz => Some(serializer.fromMeTLQuiz(s).room(jid))
+			case s:MeTLQuizResponse => Some(serializer.fromMeTLQuizResponse(s).room(jid))
+			case s:MeTLSubmission => Some(serializer.fromSubmission(s).room(jid))
+			case s:MeTLMoveDelta => Some(serializer.fromMeTLMoveDelta(s).room(jid))
+			case _ => None
+		} 
+		transformedStanza match {
+			case Some(s) => if (s.save){
+				Some(serializer.toMeTLStanza(s))
+			} else {
+				println("store in jid %s failed: %s".format(jid,stanza))
+				None
+			}
+			case _ => None
 		}
+
 	})
 
 	def getHistory(jid:String):History = Stopwatch.time("H2Interface.getHistory",() => {
@@ -184,18 +194,24 @@ class H2Interface(configName:String) extends PersistenceInterface{
 			val b = r.bytes.is
 			println("retrieved %s bytes for %s".format(b.length,identity))
 			b
-		}).openOr(Array.empty[Byte])
+		}).openOr({
+			println("failed to find bytes for %s".format(identity))
+			Array.empty[Byte]
+		})
+
 	})
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource", () => {
 		val now = new Date().getTime.toString
 		val possibleNewIdentity = "%s:%s:%s".format(jid,userProposedId,now)
 		H2Resource.find(By(H2Resource.url,possibleNewIdentity)) match {
 			case Full(r) => {
+				println("postResource: identityAlready exists for %s".format(userProposedId))
 				val newUserProposedIdentity = "%s_%s".format(userProposedId,now) 
 				postResource(jid,newUserProposedIdentity,data)
 			}
 			case _ => {
 				H2Resource.create.url(possibleNewIdentity).bytes(data).room(jid).save
+				println("postResource: saved %s bytes in %s at %s".format(data.length,jid,possibleNewIdentity))
 				possibleNewIdentity
 			}
 		}

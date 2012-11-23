@@ -11,6 +11,8 @@ import Privacy._
 
 class H2Serializer(configName:String) extends Serializer {
 	override type T = Object
+	//type A = _ <: Object
+	//override type T = A <: H2MeTLContent[A]
 	lazy val xmlSerializer = new GenericXmlSerializer(configName)
 	lazy val config = ServerConfiguration.configForName(configName)
 
@@ -31,22 +33,34 @@ class H2Serializer(configName:String) extends Serializer {
 	}
 	protected def incMeTLContent[A <: H2MeTLContent[A]](rec:A,s:MeTLXml,metlType:String):A = rec.metlType(metlType)
 	protected def incStanza[A <: H2MeTLStanza[A]](rec:A,s:MeTLStanza,metlType:String):A = incMeTLContent(rec,s,metlType).timestamp(s.timestamp).author(s.author)		
-	protected def incCanvasContent[A <: H2MeTLCanvasContent[A]](rec:A,cc:MeTLCanvasContent,metlType:String):A = incStanza(rec,cc,metlType).asInstanceOf[A].target(cc.target).privacy(fromPrivacy(cc.privacy)).slide(cc.slide).identity(cc.identity)
+	protected def incCanvasContent[A <: H2MeTLCanvasContent[A]](rec:A,cc:MeTLCanvasContent,metlType:String):A = incStanza(rec,cc,metlType).target(cc.target).privacy(fromPrivacy(cc.privacy)).slide(cc.slide).identity(cc.identity)
 
-  def toMeTLStanza[A <: H2MeTLCanvasContent[A]](i:A):MeTLStanza = i.metlType.is match {
-		case "ink" => toMeTLInk(i)
-		case "text" => toMeTLText(i)
-		case "image" => toMeTLImage(i)
-		case "dirtyInk" => toMeTLDirtyInk(i)
-		case "dirtyText" => toMeTLDirtyText(i)
-		case "dirtyImage" => toMeTLDirtyImage(i)
-		case "moveDelta" => toMeTLMoveDelta(i)
-		case "submission" => toSubmission(i)
-		case "command" => toMeTLCommand(i)
-		case "quiz" => toMeTLQuiz(i)
-		case "quizResponse" => toMeTLQuizResponse(i)
-		case _ => throw new SerializationNotImplementedException
-	}
+  override def toMeTLStanza(inputObject:T):MeTLStanza = internalToMeTLStanza(inputObject)
+  def internalToMeTLStanza[A <: H2MeTLStanza[A]](inputObject:T):MeTLStanza = Stopwatch.time("H2Serializer.toMeTLStanza",() => {
+		inputObject match {
+			case i:A => {
+				println("serializing to metlStanza (%s): %s".format(i.metlType.is,i))
+				i.metlType.is match {
+					case "ink" => toMeTLInk(i.asInstanceOf[H2Ink])
+					case "text" => toMeTLText(i.asInstanceOf[H2Text])
+					case "image" => toMeTLImage(i.asInstanceOf[H2Image])
+					case "dirtyInk" => toMeTLDirtyInk(i.asInstanceOf[H2DirtyInk])
+					case "dirtyText" => toMeTLDirtyText(i.asInstanceOf[H2DirtyText])
+					case "dirtyImage" => toMeTLDirtyImage(i.asInstanceOf[H2DirtyImage])
+					case "moveDelta" => toMeTLMoveDelta(i.asInstanceOf[H2MoveDelta])
+					case "submission" => toSubmission(i.asInstanceOf[H2Submission])
+					case "command" => toMeTLCommand(i.asInstanceOf[H2Command])
+					case "quiz" => toMeTLQuiz(i.asInstanceOf[H2Quiz])
+					case "quizResponse" => toMeTLQuizResponse(i.asInstanceOf[H2QuizResponse])
+					case _ => throw new SerializationNotImplementedException
+				}
+			}
+			case other => {
+				println("H2Serializer didn't know how to serialize: %s".format(other))
+				throw new SerializationNotImplementedException
+			}
+		}
+	})
   def toMeTLInk(i:H2Ink):MeTLInk = {
 		val cc = decCanvasContent(i)
 		MeTLInk(config,cc.author,cc.timestamp,i.checksum.is,i.startingSum.is,toPointList(i.points.is),toColor(i.color.is),i.thickness.is,i.isHighlighter.is,cc.target,cc.privacy,cc.slide,cc.identity)
