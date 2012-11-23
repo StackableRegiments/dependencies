@@ -144,4 +144,12 @@ trait MeTLDataGenerators {
         command <- Gen.alphaStr
         commandParams <- Gen.containerOf1[List, String](Gen.alphaStr)
     } yield MeTLCommand(ServerConfiguration.empty, author, timestamp, command, commandParams)
+
+    val genSubmission = for {
+        author <- Gen.alphaStr
+        timestamp <- validTimestamp
+        title <- Gen.alphaStr
+        slideJid <- arbitrary[Int] 
+        url <- Gen.alphaStr
+    } yield MeTLSubmission(ServerConfiguration.empty, author, timestamp, title, slideJid, url) 
 }

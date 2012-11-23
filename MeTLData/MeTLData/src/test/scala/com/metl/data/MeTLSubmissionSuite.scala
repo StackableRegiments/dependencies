@@ -12,7 +12,7 @@ import net.liftweb.common._
 import scala.xml._
 import Privacy._
 
-class MeTLSubmissionExtractorSuite extends FunSuite with BeforeAndAfter with ShouldMatchers with MeTLSubmissionMatchers {
+class MeTLSubmissionExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLDataGenerators with QueryXml with MeTLSubmissionMatchers {
 
 	var xmlSerializer: GenericXmlSerializer = _
 
@@ -58,4 +58,21 @@ class MeTLSubmissionExtractorSuite extends FunSuite with BeforeAndAfter with Sho
 			target ("submission")
 		)
 	}
+
+    test("serialize submission to xml") {
+        forAll (genSubmission) { (genSubmission: MeTLSubmission) =>
+
+            implicit val xml = xmlSerializer.fromSubmission(genSubmission)
+
+            genSubmission should have (
+                server (ServerConfiguration.empty),
+                author (queryXml[String]("author")),
+                slideJid (queryXml[Int]("slide")),
+                title (queryXml[String]("title")),
+                target (queryXml[String]("target")),
+                privacy (queryXml[Privacy]("privacy")),
+                url (queryXml[String]("url"))
+            )
+        }
+    }
 }
