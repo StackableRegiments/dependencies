@@ -110,4 +110,38 @@ trait MeTLDataGenerators {
 		height <- arbitrary[Double]
 	} yield MeTLText(ServerConfiguration.empty, author, timestamp, text, height, width, caret, x, y, tag, style, family, weight, size, decoration, identity, target, privacy,
       slide, color)
+
+	val genDirtyInk = for {
+        author <- Gen.alphaStr
+		timestamp <- validTimestamp
+		target <- Gen.alphaStr 
+		privacy <- genPrivacy
+		slide <- Gen.numStr 
+		identity <- Gen.alphaStr 
+	} yield MeTLDirtyInk(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity)
+
+	val genDirtyText = for {
+        author <- Gen.alphaStr
+		timestamp <- validTimestamp
+		target <- Gen.alphaStr 
+		privacy <- genPrivacy
+		slide <- Gen.numStr 
+		identity <- Gen.alphaStr 
+	} yield MeTLDirtyText(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity)
+
+	val genDirtyImage = for {
+        author <- Gen.alphaStr
+		timestamp <- validTimestamp
+		target <- Gen.alphaStr 
+		privacy <- genPrivacy
+		slide <- Gen.numStr 
+		identity <- Gen.alphaStr 
+	} yield MeTLDirtyImage(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity)
+
+    val genCommand = for {
+        author <- Gen.alphaStr
+        timestamp <- validTimestamp
+        command <- Gen.alphaStr
+        commandParams <- Gen.containerOf1[List, String](Gen.alphaStr)
+    } yield MeTLCommand(ServerConfiguration.empty, author, timestamp, command, commandParams)
 }
