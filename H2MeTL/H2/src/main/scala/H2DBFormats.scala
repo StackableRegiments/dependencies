@@ -3,6 +3,7 @@ package com.metl.h2.dbformats
 import net.liftweb.mapper._
 
 import com.metl.data._
+import net.liftweb.common._
 
 object H2Constants{
 	val maxStanza = 65565
@@ -16,16 +17,24 @@ object H2Constants{
 	val privacy = 20
 }
 
+trait H2MeTLIndexedString extends IndexedField[String]{
+	def convertKey(in:String):Box[String] = Box.legacyNullTest(in)
+	def convertKey(in:Int):Box[String] = Full(in.toString)
+	def convertKey(in:Long):Box[String] = Full(in.toString)
+	def convertKey(in:AnyRef):Box[String] = Box.legacyNullTest(in).map(_.toString)
+	def makeKeyJDBCFriendly(in:String) = in
+}
+
 trait H2MeTLContent[C <:H2MeTLContent[C]] extends LongKeyedMapper[C] with IdPK{
 	self: C =>
 	object metlType extends MappedString[C](this,13)
-	object room extends MappedString[C](this,H2Constants.room)
+	object room extends MappedString[C](this,H2Constants.room) with H2MeTLIndexedString
 }
 
 trait H2MeTLStanza[C <: H2MeTLStanza[C]] extends H2MeTLContent[C]{
 	self: C =>
 	object timestamp extends MappedLong[C](this)
-	object author extends MappedString[C](this,H2Constants.author)
+	object author extends MappedString[C](this,H2Constants.author) with H2MeTLIndexedString
 }
 
 trait H2MeTLCanvasContent[C <: H2MeTLCanvasContent[C]] extends H2MeTLStanza[C] {
