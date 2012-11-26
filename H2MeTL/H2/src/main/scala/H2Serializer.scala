@@ -85,7 +85,7 @@ class H2Serializer(configName:String) extends Serializer {
 		val cc = decCanvasContent(i)	
 		MeTLMoveDelta(config,cc.author,cc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,stringToStrings(i.inkIds.is),stringToStrings(i.textIds.is),stringToStrings(i.imageIds.is),i.xTranslate.is,i.yTranslate.is,i.xScale.is,i.yScale.is,toPrivacy(i.newPrivacy.is),i.isDeleted.is)
 	}
-	protected def stringToStrings(s:String):Seq[String] = s.split("_:_")
+	protected def stringToStrings(s:String):Seq[String] = s.split("_:_").filter(s => s != "")
 	protected def stringsToString(ls:Seq[String]):String = ls.foldLeft("")((acc,s) => {
 		acc match {
 			case other:String if other.length > 0 => "%s_:_%s".format(other,s)
