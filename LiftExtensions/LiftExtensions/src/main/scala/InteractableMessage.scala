@@ -25,7 +25,9 @@ import json.JsonAST._
 class ClientMessageBroker(messageTemplate:NodeSeq,messageSelector:String,labelSelector:String,contentSelector:String,closeSelector:String,onMessageArrival:(ClientMessage)=>Unit,onMessageRemoval:(ClientMessage)=>Unit) {
 	private var visibleMessages = List.empty[ClientMessage]
 	private def removeMessageFromVisible(cm:ClientMessage) = visibleMessages = visibleMessages.filterNot(m => m == cm)
-	private def addMessageToVisible(cm:ClientMessage) = cm :: visibleMessages
+	private def addMessageToVisible(cm:ClientMessage) = {
+		visibleMessages = cm :: visibleMessages
+	}
 	private def clearAllMessages = visibleMessages.map(vm => vm.done)
 	def repeatVisibleMessages = {
 		visibleMessages.foreach(vm => processMessage(vm))
@@ -90,7 +92,9 @@ abstract class ClientMessage(id:String, incomingRole:Box[String] = Empty, incomi
 	private type Doable = ()=>Unit
   private var doThese = List.empty[Doable]
   def done ={
-    doThese.foreach(doThis =>doThis())
+    doThese.foreach(doThis => {
+			doThis()
+		})
 		removeFromPageJs
   }
   def onDone(doThis:Doable){
