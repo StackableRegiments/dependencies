@@ -645,6 +645,17 @@ trait MeTLQuizMatchers extends ArrayHelpers with MeTLStanzaMatchers {
 		  )
 	  }
 
+	def created(expectedValue: Long) = 
+	  new HavePropertyMatcher[MeTLQuiz, Long] {
+		def apply(stanza: MeTLQuiz) = 
+		  HavePropertyMatchResult(
+			stanza.created == expectedValue,
+			"created",
+			expectedValue,
+			stanza.created
+		  )
+	  }
+
 	def url(expectedValue: Box[String]) = 
 	  new HavePropertyMatcher[MeTLQuiz, Box[String]] {
 		def apply(stanza: MeTLQuiz) = 

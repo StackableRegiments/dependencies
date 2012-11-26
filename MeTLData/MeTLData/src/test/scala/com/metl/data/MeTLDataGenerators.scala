@@ -152,4 +152,20 @@ trait MeTLDataGenerators {
         slideJid <- arbitrary[Int] 
         url <- Gen.alphaStr
     } yield MeTLSubmission(ServerConfiguration.empty, author, timestamp, title, slideJid, url) 
+
+    val genQuiz = for {
+        author <- Gen.alphaStr
+        timestamp <- validTimestamp
+        created <- arbitrary[Long]
+        question <- Gen.alphaStr
+        id <- Gen.numStr
+        isDeleted <- arbitrary[Boolean]
+        url <- Gen.alphaStr
+        options <- Gen.containerOf1[List, QuizOption](genQuizOption)
+    } yield MeTLQuiz(ServerConfiguration.empty, author, timestamp, created, question, id, Full(url), Empty, isDeleted, options)
+
+    val genQuizOption = for {
+        name <- Gen.alphaStr
+        text <- Gen.alphaStr
+    } yield QuizOption(name, text)
 }

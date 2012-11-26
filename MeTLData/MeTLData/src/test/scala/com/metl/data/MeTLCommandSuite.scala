@@ -43,14 +43,14 @@ class MeTLCommandSuite extends FunSuite with GeneratorDrivenPropertyChecks with 
 		)
 	}
 
-    ignore("serialize MeTLCommand to xml") {
+    test("serialize MeTLCommand to xml") {
         forAll (genCommand) { (genCommand: MeTLCommand) =>
 
             implicit val xml = xmlSerializer.fromMeTLCommand(genCommand)
 
             genCommand should have (
                author (queryXml[String]("author")),
-               command (queryXml[String]("command")),
+               command ((xml \ "command" \ "command").text),
                commandParameters (XmlUtils.getListOfStringsByNameWithin(xml, "parameter", "parameters"))
             )
         }

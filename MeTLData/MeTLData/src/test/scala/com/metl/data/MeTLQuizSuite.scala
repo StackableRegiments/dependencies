@@ -12,7 +12,7 @@ import net.liftweb.common._
 import scala.xml._
 import Privacy._
 
-class MeTLQuizSuite extends FunSuite with BeforeAndAfter with ShouldMatchers with MeTLQuizMatchers {
+class MeTLQuizSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with QueryXml with MeTLDataGenerators with MeTLQuizMatchers {
 
 	var xmlSerializer: GenericXmlSerializer = _
 
@@ -111,6 +111,23 @@ class MeTLQuizSuite extends FunSuite with BeforeAndAfter with ShouldMatchers wit
 			options (List(QuizOption("A", "Is it me you're looking for?", true, Color(0xff, 0xff, 0xff,0xff))))
 		)
 	}
+
+    test("serialise quiz to xml") {
+        forAll (genQuiz) { (genQuiz: MeTLQuiz) =>
+            
+            implicit val xml = xmlSerializer.fromMeTLQuiz(genQuiz)
+
+            genQuiz should have(
+               author (queryXml[String]("author")),
+               created (queryXml[Long]("created")),
+               question (queryXml[String]("question")),
+               id (queryXml[String]("id")),
+               isDeleted (queryXml[Boolean]("isDeleted")),
+               url (Full(queryXml[String]("url"))),
+               options (XmlUtils.getXmlByName(xml, "quizOption").map(qo => xmlSerializer.toQuizOption(qo)).toList)
+            )
+        }
+    }
 }
 
 class MeTLQuizReponseSuite extends FunSuite with BeforeAndAfter with ShouldMatchers with MeTLQuizResponseMatchers {
