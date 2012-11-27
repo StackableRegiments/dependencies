@@ -1,4 +1,4 @@
-package com.metl.data
+package com.metl.test
 
 import org.scalatest._
 import org.scalatest.FunSuite

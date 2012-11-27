@@ -1,10 +1,11 @@
-package com.metl.data
+package com.metl.test
 
 import org.scalatest._
 import org.scalatest.matchers.{HavePropertyMatcher, HavePropertyMatchResult}
 
 import net.liftweb.util.Helpers._
 import net.liftweb.common._
+import com.metl.data._
 import Privacy._
 
 trait ArrayHelpers {
@@ -728,3 +729,107 @@ trait MeTLCommandMatchers extends MeTLStanzaMatchers {
 		  )
 	  }
 }
+
+trait ConversationMatchers {
+
+	def author(expectedValue: String) =
+	  new HavePropertyMatcher[Conversation, String] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.author == expectedValue,
+			"author",
+			expectedValue,
+			stanza.author
+		  )
+	  }
+
+	def lastAccessed(expectedValue: Long) =
+	  new HavePropertyMatcher[Conversation, Long] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.lastAccessed == expectedValue,
+			"lastAccessed",
+			expectedValue,
+			stanza.lastAccessed
+		  )
+	  }
+
+	def slides(expectedValue: List[Slide]) =
+	  new HavePropertyMatcher[Conversation, List[Slide]] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.slides == expectedValue,
+			"slides",
+			expectedValue,
+			stanza.slides
+		  )
+	  }
+
+	def subject(expectedValue: String) =
+	  new HavePropertyMatcher[Conversation, String] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.subject == expectedValue,
+			"subject",
+			expectedValue,
+			stanza.subject
+		  )
+	  }
+
+	def tag(expectedValue: String) =
+	  new HavePropertyMatcher[Conversation, String] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.tag == expectedValue,
+			"tag",
+			expectedValue,
+			stanza.tag
+		  )
+	  }
+
+	def jid(expectedValue: Int) =
+	  new HavePropertyMatcher[Conversation, Int] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.jid == expectedValue,
+			"jid",
+			expectedValue,
+			stanza.jid
+		  )
+	  }
+
+	def title(expectedValue: String) =
+	  new HavePropertyMatcher[Conversation, String] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.title == expectedValue,
+			"title",
+			expectedValue,
+			stanza.title
+		  )
+	  }
+
+	def created(expectedValue: String) =
+	  new HavePropertyMatcher[Conversation, String] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.created == expectedValue,
+			"created",
+			expectedValue,
+			stanza.created
+		  )
+	  }
+
+	def permissions(expectedValue: Permissions) =
+	  new HavePropertyMatcher[Conversation, Permissions] {
+		def apply(stanza: Conversation) =
+		  HavePropertyMatchResult(
+			stanza.permissions == expectedValue,
+			"permissions",
+			expectedValue,
+			stanza.permissions
+		  )
+	  }
+}
+
+

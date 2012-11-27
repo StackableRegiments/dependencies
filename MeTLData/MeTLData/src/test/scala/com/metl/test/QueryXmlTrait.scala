@@ -1,4 +1,4 @@
-package com.metl.data
+package com.metl.test
 
 import scala.xml._
 

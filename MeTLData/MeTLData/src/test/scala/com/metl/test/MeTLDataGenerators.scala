@@ -1,4 +1,4 @@
-package com.metl.data
+package com.metl.test
 
 import org.scalacheck._
 import Gen._
@@ -168,4 +168,36 @@ trait MeTLDataGenerators {
         name <- Gen.alphaStr
         text <- Gen.alphaStr
     } yield QuizOption(name, text)
+
+    val genQuizResponse = for {
+        author <- Gen.alphaStr
+        timestamp <- validTimestamp
+        answer <- Gen.alphaStr
+        answerer <- Gen.alphaStr
+        id <- Gen.alphaStr
+    } yield MeTLQuizResponse(ServerConfiguration.empty, author, timestamp, answer, answerer, id)
+
+    val genConversation = for {
+        author <- Gen.alphaStr
+        lastAccessed <- arbitrary[Long]
+        subject <- Gen.alphaStr
+        tag <- Gen.alphaStr
+        jid <- arbitrary[Int]
+        title <- Gen.alphaStr
+        created <- Gen.numStr
+        permissions <- genPermissions
+        slides <- Gen.containerOf1[List, Slide](genSlide)
+    } yield Conversation(ServerConfiguration.empty, author, lastAccessed, slides, subject, tag, jid, title, created, permissions)
+
+    val genSlide = for {
+       author <- Gen.alphaStr
+       id <- arbitrary[Int]
+       index <- arbitrary[Int]
+    } yield Slide(ServerConfiguration.empty, author, id, index)
+
+    val genPermissions = for {
+        studentsCanOptionFriends <- arbitrary[Boolean] 
+        studentsCanPublish <- arbitrary[Boolean] 
+        usersAreCompulsorilySynced <- arbitrary[Boolean]
+    } yield Permissions(ServerConfiguration.empty, studentsCanOptionFriends, studentsCanPublish, usersAreCompulsorilySynced)
 }

@@ -1,4 +1,4 @@
-package com.metl.data
+package com.metl.test
 
 import org.scalatest._
 import org.scalatest.FunSuite
@@ -10,6 +10,7 @@ import org.scalatest.OptionValues._
 import net.liftweb.util.Helpers._
 import net.liftweb.common._
 import scala.xml._
+import com.metl.data._
 import Privacy._
 
 class MeTLSubmissionExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLDataGenerators with QueryXml with MeTLSubmissionMatchers {

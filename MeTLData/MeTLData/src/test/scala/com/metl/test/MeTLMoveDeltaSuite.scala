@@ -1,4 +1,4 @@
-package com.metl.data
+package com.metl.test
 
 import org.scalatest._
 import org.scalatest.FunSuite
@@ -13,6 +13,7 @@ import Arbitrary.arbitrary
 import net.liftweb.util.Helpers._
 import net.liftweb.common._
 import scala.xml._
+import com.metl.data._
 import Privacy._
 
 class MeTLMoveDeltaSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLMoveDeltaMatchers with MeTLDataGenerators {

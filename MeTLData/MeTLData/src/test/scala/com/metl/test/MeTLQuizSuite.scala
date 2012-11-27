@@ -1,4 +1,4 @@
-package com.metl.data
+package com.metl.test
 
 import org.scalatest._
 import org.scalatest.FunSuite
@@ -10,6 +10,7 @@ import org.scalatest.OptionValues._
 import net.liftweb.util.Helpers._
 import net.liftweb.common._
 import scala.xml._
+import com.metl.data._
 import Privacy._
 
 class MeTLQuizSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with QueryXml with MeTLDataGenerators with MeTLQuizMatchers {
@@ -130,7 +131,7 @@ class MeTLQuizSuite extends FunSuite with GeneratorDrivenPropertyChecks with Bef
     }
 }
 
-class MeTLQuizReponseSuite extends FunSuite with BeforeAndAfter with ShouldMatchers with MeTLQuizResponseMatchers {
+class MeTLQuizReponseSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with QueryXml with MeTLDataGenerators with MeTLQuizResponseMatchers {
 
 	var xmlSerializer: GenericXmlSerializer = _
 
@@ -162,4 +163,18 @@ class MeTLQuizReponseSuite extends FunSuite with BeforeAndAfter with ShouldMatch
 			answerer ("eecrole")
 		)
 	}
+
+    test("serialise quiz response to xml") {
+        forAll (genQuizResponse) { (genQuizResponse: MeTLQuizResponse) =>
+            
+            implicit val xml = xmlSerializer.fromMeTLQuizResponse(genQuizResponse)
+
+            genQuizResponse should have(
+               author (queryXml[String]("author")),
+               answer (queryXml[String]("answer")),
+               answerer (queryXml[String]("answerer")),
+               id (queryXml[String]("id"))
+            )
+        }
+    }
 }
