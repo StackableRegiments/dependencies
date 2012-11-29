@@ -30,16 +30,7 @@ object ExportFidelity extends Enumeration {
 }
 */
 
-// OCDriver will handle the file depending on it's type. Office2003 or Office2007 format
-// OCConverter will export the file depending on the converter requested via export fidelity
-/*
-trait OCType {
-  def driver: OCDriver
-  def converter: OCConverter
-}
-*/
-
-object OfficeImporter {
+object OfficeConverter {
     def apply(fileName: String/*, exportFidelity: ExportFidelity*/) = {
       val converter = new OfficeConverter
       converter.fileName = fileName
@@ -47,17 +38,17 @@ object OfficeImporter {
     }
 }
 
-class OfficeImporter {
+class OfficeConverter {
     private var fileName = ""
 
 	val b64 = new sun.misc.BASE64Encoder
-	def convert(file:String):Presentation = Stopwatch.time("OfficeConverter.convert",() => {
+	def convert(file:String):Node/*Presentation*/ = Stopwatch.time("OfficeConverter.convert",() => {
 		file.split('.').reverse.take(1)(0) match {
 			case "ppt" => convertDoc(file)
 			case "pptx" => convertDocX(file)
 		}
 	})
-    def convertAndDump(file:String):Presentation = Stopwatch.time("OfficeConverter.convertAndDump",() => {
+    def convertAndDump(file:String):Node/*Presentation*/ = Stopwatch.time("OfficeConverter.convertAndDump",() => {
         val xml = convert(file)
         try {
             val xmlOutput = new FileOutputStream(file.split('.')(0) + ".xml")
