@@ -4,6 +4,7 @@ import org.scalacheck._
 import Gen._
 import Arbitrary.arbitrary
 
+import scala.collection.mutable.WrappedArray
 import net.liftweb.util.Helpers._
 import net.liftweb.common._
 
@@ -30,7 +31,7 @@ trait MeTLDataGenerators {
 		i <- Gen.containerOf1[List, String](Gen.alphaStr)
 	} yield i
 
-	val validTimestamp = arbitrary[Long] suchThat (_ > 0)
+	val validTimestamp = new java.util.Date().getTime()
 
 	val genColor = for {
 		r <- Gen.choose(0, 255)
@@ -86,7 +87,9 @@ trait MeTLDataGenerators {
 		width <- arbitrary[Double]
 		height <- arbitrary[Double]
 		source <- Gen.alphaStr map { s => if (!s.isEmpty) Full(s) else Full("unknown") }
-	} yield MeTLImage(ServerConfiguration.empty, author, timestamp, tag, source, Full(Array.empty[Byte]), Empty, width, height, x, y, target, privacy, slide, identity)
+	} yield MeTLImage(ServerConfiguration.empty, author, timestamp, tag, source, Empty, Empty, 
+        width, height, x, y, target, privacy, slide, identity)
+    // WrappedArray.make[Byte]
 
 	val genText = for {
         author <- Gen.alphaStr

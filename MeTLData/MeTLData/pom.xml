@@ -129,19 +129,42 @@
         <version>2.15.0</version>
         <executions>
           <execution>
+		    <id>cmain</id>
             <goals>
               <goal>compile</goal>
+            </goals>
+            <configuration>
+              <args>
+                <arg>-make:transitive</arg>
+                <arg>-dependencyfile</arg>
+                <arg>${project.build.directory}/.main_scala_dependencies</arg>
+				<arg>-unchecked</arg>
+				<arg>-deprecation</arg>
+              </args>
+            </configuration>
+          </execution>
+          <execution>
+			<id>ctest</id>
+            <goals>
               <goal>testCompile</goal>
             </goals>
             <configuration>
               <args>
                 <arg>-make:transitive</arg>
                 <arg>-dependencyfile</arg>
-                <arg>${project.build.directory}/.scala_dependencies</arg>
+                <arg>${project.build.directory}/.test_scala_dependencies</arg>
+				<arg>-unchecked</arg>
+				<arg>-deprecation</arg>
               </args>
             </configuration>
           </execution>
         </executions>
+		<configuration>
+			<jvmArgs>
+				<jvmArg>-Xms64m</jvmArg>
+				<jvmArg>-Xmx1024m</jvmArg>
+			</jvmArgs>
+		</configuration>
       </plugin>
 	  <!-- disable surefire -->
       <plugin>

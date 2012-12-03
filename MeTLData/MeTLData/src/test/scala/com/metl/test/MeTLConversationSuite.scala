@@ -71,8 +71,6 @@ class MeTLConversationSuite extends FunSuite with GeneratorDrivenPropertyChecks 
 
 		val result = xmlSerializer.toConversation(content)
 
-          println("xml conversation: " + result)
-
 		result should have (
 			author ("eecrole"),
 			lastAccessed (234234234234L),
