@@ -87,7 +87,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:CASState
                      last <- attrs.get(LastName)) yield "%s%s".format(first,last) match {
                        case name =>{
                          println("identified ",name)
-                         val casData = CASStateData(true,name,List(("ou","sandbox")),List(("FirstName",first),("LastName",last)))
+                         val casData = CASStateData(true,name,List(("ou","sandbox"),("ou","unrestricted")),List(("FirstName",first),("LastName",last)))
                          isLoggedIn(true)
                          onSuccess(casData)
                        }
