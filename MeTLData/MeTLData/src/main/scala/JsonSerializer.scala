@@ -5,6 +5,7 @@ import com.metl.utils._
 import net.liftweb.common._
 import net.liftweb.util.Helpers._
 import Privacy._
+import net.liftweb.json.{Serialization, NoTypeHints, TypeInfo, Formats, MappingException}
 import net.liftweb.json.JsonAST._
 
 object ConversionHelper {
@@ -18,16 +19,35 @@ object ConversionHelper {
     }
   }
 }
+
+class PrivacySerializer extends net.liftweb.json.Serializer[Privacy] {
+    private val PrivacyClass = classOf[Privacy]
+
+    def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), Privacy] = {
+      case (TypeInfo(PrivacyClass, _), json) => json match {
+        case JString(p) => Privacy.parse(p)
+        case x => throw new MappingException("Can't convert " + x + " to Privacy")
+      }
+    }
+
+    def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {
+      case x: Privacy => JField("privacy", JString(x.toString.toLowerCase))
+    }
+}
+
 class JsonSerializerHelper {
-  def getStringByName(input:JObject,name:String) = input.values(name).asInstanceOf[String]
-  def getBooleanByName(input:JObject,name:String) = input.values(name).asInstanceOf[Boolean]
-  def getIntByName(input:JObject,name:String) = ConversionHelper.toDouble(input.values(name)).intValue
-  def getLongByName(input:JObject,name:String) = ConversionHelper.toDouble(input.values(name)).longValue
-  def getDoubleByName(input:JObject,name:String) = ConversionHelper.toDouble(input.values(name))
-  def getPrivacyByName(input:JObject,name:String) = Privacy.parse(input.values(name).asInstanceOf[String])
+
+  lazy implicit val formats = Serialization.formats(NoTypeHints) + new PrivacySerializer
+
+  def getStringByName(input:JObject,name:String) = (input \ name).extract[String]
+  def getBooleanByName(input:JObject,name:String) = (input \ name).extract[Boolean]
+  def getIntByName(input:JObject,name:String) = (input \ name).extract[Int]
+  def getLongByName(input:JObject,name:String) = (input \ name).extract[Long]
+  def getDoubleByName(input:JObject,name:String) = (input \ name).extract[Double]
+  def getPrivacyByName(input:JObject,name:String) = (input \ name).extract[Privacy]
   def getObjectByName(input:JObject,name:String) = input.values(name).asInstanceOf[JObject]
-  def getListOfDoublesByName(input:JObject,name:String) = input.values(name).asInstanceOf[List[AnyRef]].map(ConversionHelper.toDouble)
-  def getListOfStringsByName(input:JObject,name:String) = input.values(name).asInstanceOf[List[AnyRef]].map(i => i.asInstanceOf[String])
+  def getListOfDoublesByName(input:JObject,name:String) = (input \ name).extract[List[Double]]
+  def getListOfStringsByName(input:JObject,name:String) = (input \ name).extract[List[String]]
   def getListOfObjectsByName(input:JObject,name:String) = input.values(name).asInstanceOf[List[AnyRef]].map(i => i.asInstanceOf[JObject])
   def getColorByName(input:JObject,name:String) = input.values(name).asInstanceOf[List[Any]]
 }
@@ -36,6 +56,8 @@ class JsonSerializer(configName:String) extends Serializer{
   type T = JValue
   lazy val config = ServerConfiguration.configForName(configName)
   val utils = new JsonSerializerHelper
+
+  implicit val formats = Serialization.formats(NoTypeHints)
 
   protected def parseMeTLContent(input:MeTLStanza):List[JField] = {
     List(
@@ -52,7 +74,7 @@ class JsonSerializer(configName:String) extends Serializer{
     )
   }
   protected def parseJObjForMeTLContent(input:JObject):ParsedMeTLContent = {
-    val author = utils.getStringByName(input,"author")
+    val author = (input \ "author").extract[String] //utils.getStringByName(input,"author")
     val timestamp = utils.getLongByName(input,"timestamp")
     ParsedMeTLContent(author,timestamp)
   }
