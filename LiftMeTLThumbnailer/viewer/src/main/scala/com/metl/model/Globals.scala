@@ -16,23 +16,19 @@ import _root_.net.liftweb.sitemap.Loc._
 
 object WebMeTLServerConfiguration {
 	val empty = ServerConfiguration.empty
-	val serverConfigs = Map(List(
-		new MeTL2011BackendAdaptor("reifier","reifier.adm.monash.edu.au","http://meggle-prod.adm.monash.edu.au:8080/"),
-		new MeTL2011BackendAdaptor("deified","deified.adm.monash.edu.au","http://meggle-prod.adm.monash.edu.au:8080/"),
-		new MeTL2011BackendAdaptor("civic","civic.adm.monash.edu.au","http://meggle-ext.adm.monash.edu.au:8080/"),
-		new MeTL2011BackendAdaptor("madam","madam.adm.monash.edu.au","http://meggle-staging.adm.monash.edu.au:8080/")
-	).map(c => (c.name,c)):_*)
 	def initializeWebMeTLSystem = {
-		ServerConfiguration.setServerConfigurations(serverConfigs.values.toList)
-		ServerConfiguration.setDefaultServerConfiguration(() => ServerConfiguration.configForHost(tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr("reifier.adm.monash.edu.au")))
+		MeTL2011ServerConfiguration.initialize
+		ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml")
+		ServerConfiguration.getServerConfigurations.foreach(c => LiftRules.unloadHooks.append(c.shutdown _))
 	}
-	def configForName(name:String):ServerConfiguration = serverConfigs.values.find(c => c.name == name).getOrElse(empty)
-	def configForHost(host:String):ServerConfiguration = serverConfigs.values.find(c => c.host == host).getOrElse(empty)
-
-	def default:ServerConfiguration ={
+	def configForName(name:String):ServerConfiguration = ServerConfiguration.configForName(name)
+	def configForHost(host:String):ServerConfiguration = ServerConfiguration.configForHost(host)
+	def default:ServerConfiguration = ServerConfiguration.default
+/*{
 		val host = tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr("reifier.adm.monash.edu.au")
 		configForHost(host)
 	}
+*/
 }
 // I'll need to find out which of my packages are shadowing stuff
 case class SnapshotResolution(width:Int,height:Int)
