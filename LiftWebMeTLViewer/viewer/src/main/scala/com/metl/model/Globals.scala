@@ -27,16 +27,12 @@ object WebMeTLServerConfiguration {
 	})
 
 	val empty = WebMeTLServerConfiguration("empty",ServerConfiguration.empty,EmptyQuizResponseActor,EmptyLogActor)
-	val serverConfigs = Map(List(
-		empty,
-		WebMeTLServerConfiguration("reifier",new MeTL2011BackendAdaptor("reifier","reifier.adm.monash.edu.au","http://meggle-prod.adm.monash.edu.au:8080/"),new QuizResponseActor("reifier"),new LogActor("reifier.adm.monash.edu.au")),
-		WebMeTLServerConfiguration("deified",new MeTL2011BackendAdaptor("deified","deified.adm.monash.edu.au","http://meggle-prod.adm.monash.edu.au:8080/"),new QuizResponseActor("deified"),new LogActor("deified.adm.monash.edu.au")),
-		WebMeTLServerConfiguration("civic",new MeTL2011BackendAdaptor("civic","civic.adm.monash.edu.au","http://meggle-ext.adm.monash.edu.au:8080/"),new QuizResponseActor("civic"),new LogActor("civic.adm.monash.edu.au")),
-		WebMeTLServerConfiguration("madam",new MeTL2011BackendAdaptor("madam","madam.adm.monash.edu.au","http://meggle-staging.adm.monash.edu.au:8080/"),new QuizResponseActor("madam"),new LogActor("madam.adm.monash.edu.au"))
-	).map(c => (c.name,c)):_*)
+
+	MeTL2011ServerConfiguration.initialize
+	ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml")
+	val servers = ServerConfiguration.getServerConfigurations
+	val serverConfigs = Map(("empty",empty) :: servers.map(s => (s.name,WebMeTLServerConfiguration(s.name,s,new QuizResponseActor(s.host),new LogActor(s.host)))):_*)
 	def initializeWebMeTLSystem = {
-		ServerConfiguration.setServerConfigurations(serverConfigs.values.map(_.serverConfig).toList)
-		ServerConfiguration.setDefaultServerConfiguration(() => ServerConfiguration.configForHost(tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr("reifier.adm.monash.edu.au")))
 	  Props.mode match {
 	    case Props.RunModes.Production => Globals.isDevMode = false
   	  case _=> Globals.isDevMode = true
@@ -55,11 +51,10 @@ object WebMeTLServerConfiguration {
 	def configForHost(host:String):WebMeTLServerConfiguration = serverConfigs.values.find(c => c.host == host).getOrElse(empty)
 
 	def default:WebMeTLServerConfiguration ={
-		val host = tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr("reifier.adm.monash.edu.au")
+		val host = tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr(ServerConfiguration.default.host)
 		configForHost(host)
 	}
 }
-// I'll need to find out which of my packages are shadowing stuff
 case class SnapshotResolution(width:Int,height:Int)
 
 object SnapshotSize extends Enumeration {

@@ -23,14 +23,11 @@ object WebMeTLServerConfiguration {
 	}
 	def configForName(name:String):ServerConfiguration = ServerConfiguration.configForName(name)
 	def configForHost(host:String):ServerConfiguration = ServerConfiguration.configForHost(host)
-	def default:ServerConfiguration = ServerConfiguration.default
-/*{
-		val host = tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr("reifier.adm.monash.edu.au")
+	def default:ServerConfiguration = {
+		val host = tryo(xml.XML.loadString(Http.getClient.getAsString("http://metl.adm.monash.edu/server.xml")).text).openOr(ServerConfiguration.default.host)
 		configForHost(host)
 	}
-*/
 }
-// I'll need to find out which of my packages are shadowing stuff
 case class SnapshotResolution(width:Int,height:Int)
 
 object SnapshotSize extends Enumeration {

@@ -1,18 +1,40 @@
 package com.metl.data
 
 import com.metl.utils._
+import scala.xml._
 
 object ServerConfiguration{
 	val empty = EmptyBackendAdaptor
 	private var serverConfigs:List[ServerConfiguration] = List(EmptyBackendAdaptor)
 	def setServerConfigurations(sc:List[ServerConfiguration]) = serverConfigs = sc
+	def getServerConfigurations = serverConfigs
 	def setDefaultServerConfiguration(f:() => ServerConfiguration) = defaultConfigFunc = f
+	def addServerConfiguration(sc:ServerConfiguration) = serverConfigs = serverConfigs ::: List(sc)
 	def configForName(name:String) = serverConfigs.find(c => c.name == name).getOrElse(default)
 	def configForHost(host:String) = serverConfigs.find(c => c.host == host).getOrElse(default)	
 	private var defaultConfigFunc = () => serverConfigs(0)
 	def default = {
 		defaultConfigFunc()
 	}
+	protected var serverConfigurators:List[ServerConfigurator] = List(
+		EmptyBackendAdaptorConfigurator,
+		FrontendSerializationAdaptorConfigurator
+	)
+	def addServerConfigurator(sc:ServerConfigurator) = serverConfigurators = serverConfigurators ::: List(sc)
+	def loadServerConfigsFromFile(path:String) = {
+		val xml = XML.load(path)
+		(xml \\ "server").foreach(sc => interpret(sc))		
+		(xml \\ "defaultServerConfiguration").text match {
+			case s:String if (s.length > 0) => defaultConfigFunc = () => configForName(s)
+			case _ => {}
+		}	
+	}
+	protected def interpret(n:Node) = serverConfigurators.filter(sc => sc.matchFunction(n)).map(sc => sc.interpret(n).map(s => addServerConfiguration(s)))
+}
+
+class ServerConfigurator{
+	def matchFunction(e:Node) = false
+	def interpret(e:Node):Option[ServerConfiguration] = None
 }
 
 abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
@@ -56,6 +78,11 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 	override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = ""
 }
 
+object EmptyBackendAdaptorConfigurator extends ServerConfigurator{
+	override def matchFunction(e:Node) = (e \\ "type").text == "empty"
+	override def interpret(e:Node) = Some(EmptyBackendAdaptor)
+}
+
 object FrontendSerializationAdaptor extends ServerConfiguration("frontend","frontend"){
 	val serializer = new GenericXmlSerializer("frontend")
 	override def getMessageBus(d:MessageBusDefinition) = EmptyMessageBus
@@ -73,4 +100,9 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 	override def getImage(jid:String,identity:String) = MeTLImage.empty
 	override def getResource(url:String) = Array.empty[Byte]
 	override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = ""
+}
+
+object FrontendSerializationAdaptorConfigurator extends ServerConfigurator{
+	override def matchFunction(e:Node) = (e \\ "type").text == "frontend"
+	override def interpret(e:Node) = Some(FrontendSerializationAdaptor)
 }

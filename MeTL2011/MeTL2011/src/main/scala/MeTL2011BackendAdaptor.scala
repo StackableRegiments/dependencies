@@ -2,6 +2,14 @@ package com.metl.metl2011
 
 import com.metl.data._
 import com.metl.utils._
+import scala.xml._
+
+object MeTL2011ServerConfiguration{
+	def initialize = List(
+		MeTL2011BackendAdaptorConfigurator,
+		TransientMeTL2011BackendAdaptorConfigurator
+	).foreach(sc => ServerConfiguration.addServerConfigurator(sc))
+}
 
 class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
 	protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
@@ -27,6 +35,16 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) exten
 	override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = resourceProvider.postResource(jid,userProposedId,data)
 }
 
+object MeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
+	override def matchFunction(e:Node) = (e \\ "type").text == "MeTL2011"
+	override def interpret(e:Node) = {
+		val name = (e \\ "name").text
+		val host = (e \\ "host").text
+		val meggleUrl = (e \\ "meggleUrl").text
+		Some(new MeTL2011BackendAdaptor(name,host,meggleUrl))
+	}
+}
+
 class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
 	protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
 	protected val history = new MeTL2011History(name,http)
@@ -49,3 +67,15 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:Stri
 	override def getResource(url:String) = http.getClient.getAsBytes(url)
 	override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = "not yet implemented"
 }
+
+object TransientMeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
+	override def matchFunction(e:Node) = (e \\ "type").text == "TransientMeTL2011"
+	override def interpret(e:Node) = {
+		val name = (e \\ "name").text
+		val host = (e \\ "host").text
+		val meggleUrl = (e \\ "meggleUrl").text
+		Some(new TransientMeTL2011BackendAdaptor(name,host,meggleUrl))
+	}
+}
+
+
