@@ -8,19 +8,27 @@ import net.liftweb.util._
 import org.apache.commons.io.IOUtils
 
 class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
-  private val conversations = scala.collection.mutable.HashMap.empty[Int,Conversation]
+  val conversations = scala.collection.mutable.HashMap.empty[Int,Conversation]
 
   private def precacheConversations = {
     val stream = new ByteArrayInputStream(http.getClient.getAsBytes("%s/Structure/all.zip".format(rootAddress)))
-    val masterConversationList = Unzipper.unzip(stream).map(serializer.toConversation)
-    masterConversationList.map(c=>c.jid).map(super.detailsOf).map(c=>conversations.put(c.jid,c))
+    val masterConversationList = Unzipper.unzip(stream).map(x => {
+      serializer.toConversation(x)
+    })
+    masterConversationList.map(c=>c.jid).map(super.detailsOf).filterNot(_ == Conversation.empty).map(c=>conversations.put(c.jid,c))
   }
   precacheConversations
 
   override def search(query:String):List[Conversation] = Stopwatch.time("CachedConversations.search",() => {
-    conversations.filter{
-      case (jid,c)=>c.title.contains(query) || c.author == query
-    }.map(_._2).toList
+    if(query == null || query.length == 0) List.empty[Conversation]
+    else{
+      val lq = query.toLowerCase
+      conversations.filter{
+        case (jid,c)=>{
+          c.title.toLowerCase.contains(lq) || c.author.toLowerCase == lq
+        }
+      }.map(_._2).toList
+    }
   })
   override def detailsOf(conversationJid:Int) = conversations(conversationJid)
   override def receiveConversationDetailsUpdated(m:MeTLStanza):Option[Conversation] = {
@@ -71,7 +79,12 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
     }
   })
   override def detailsOf(jid:Int):Conversation = Stopwatch.time("Conversations.detailsOf",() => {
-    (scala.xml.XML.loadString(http.getClient.get("https://"+config.host+":1188/Structure/"+utils.stem(jid.toString)+"/"+jid.toString+"/details.xml")) \\ "conversation").headOption.map(c => serializer.toConversation(c)).getOrElse(Conversation.empty)
+    try{
+      (scala.xml.XML.loadString(http.getClient.get("https://"+config.host+":1188/Structure/"+utils.stem(jid.toString)+"/"+jid.toString+"/details.xml")) \\ "conversation").headOption.map(c => serializer.toConversation(c)).getOrElse(Conversation.empty)
+    }
+    catch{
+      case e:Exception => Conversation.empty
+    }
   })
   override def createConversation(title:String,author:String):Conversation = {
     val jid = getNewJid

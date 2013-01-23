@@ -382,4 +382,3 @@ class GenericXmlSerializer(configName:String) extends Serializer{
   }
   override def fromPoint(input:Point):AnyRef = "%s %s %s".format(input.x,input.y,input.thickness)
 }
-
