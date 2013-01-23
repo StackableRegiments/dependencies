@@ -43,6 +43,6 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
   })
   def dailyXmlToListOfStanzas(input:NodeSeq):List[MeTLStanza] = Stopwatch.time("History.dailyXmlToListOfStanzas", () => {
     val serializer = new MeTL2011XmlSerializer(serverName,true)
-    (input \\ "message").map(i => serializer.toMeTLStanza(i)).toList
+      (input \\ "message").map(i => serializer.toMeTLStanza(i)).toList
   })
 }

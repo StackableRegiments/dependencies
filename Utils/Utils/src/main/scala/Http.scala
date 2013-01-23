@@ -35,25 +35,25 @@ case class RetryException(message:String,exceptions:List[Throwable] = List.empty
 case class RedirectException(message:String,exceptions:List[Throwable] = List.empty[Throwable]) extends Exception(message){}
 
 trait IMeTLHttpClient {
-  def addAuthorization(domain:String,username:String,password:String):Unit 
+  def addAuthorization(domain:String,username:String,password:String):Unit
 
   def get(uri:String):String = get(uri,List.empty[(String,String)])
   def get(uri:String,additionalHeaders:List[(String,String)]): String
 
-  def getAsString(uri:String):String = getAsString(uri,List.empty[(String,String)]) 
-  def getAsString(uri:String,additionalHeaders:List[(String,String)]):String 
+  def getAsString(uri:String):String = getAsString(uri,List.empty[(String,String)])
+  def getAsString(uri:String,additionalHeaders:List[(String,String)]):String
 
   def getAsBytes(uri:String):Array[Byte] = getAsBytes(uri, List.empty[(String,String)])
   def getAsBytes(uri:String,additionalHeaders:List[(String,String)]):Array[Byte]
 
   def postBytes(uri:String,bytes:Array[Byte]): Array[Byte] = postBytes(uri, bytes, List.empty[(String,String)])
   def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)]):Array[Byte]
-  
+
   def postForm(uri:String,postItemList:List[(String,String)]):Array[Byte] = postForm(uri, postItemList, List.empty[(String,String)])
-  def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte] 
-  
+  def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte]
+
   def postUnencodedForm(uri:String,postItemList:List[(String,String)]):Array[Byte] = postUnencodedForm(uri, postItemList, List.empty[(String,String)])
-  def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte] 
+  def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)]):Array[Byte]
 
   def setCookies(cookies: Map[String,Header]): Unit
   def getCookies: Map[String,Header]
@@ -119,7 +119,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     else
       message.addHeader(new BasicHeader("Host","%s:%s".format(host,port)))
   }
-	private def withConn(uri:String,actOnConn:(ManagedClientConnection,String) => Unit,redirectNumber:Int = 0,retryNumber:Int = 0, exceptionsSoFar:List[Throwable] = List.empty[Throwable]):Array[Byte] = Stopwatch.time("Http.withConn", () => {
+  private def withConn(uri:String,actOnConn:(ManagedClientConnection,String) => Unit,redirectNumber:Int = 0,retryNumber:Int = 0, exceptionsSoFar:List[Throwable] = List.empty[Throwable]):Array[Byte] = Stopwatch.time("Http.withConn", () => {
     try {
       if (maxRedirects > 0 && redirectNumber > maxRedirects) throw new RedirectException("exceeded configured maximum number of redirects (%s) when requesting: %s".format(maxRedirects,uri),exceptionsSoFar)
       if (maxRetries > 0 && retryNumber > maxRetries) throw new RetryException("exceeded configured maximum number of retries (%s) when requesting: %s".format(maxRetries,uri),exceptionsSoFar)
@@ -140,27 +140,27 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
           val response = conn.receiveResponseHeader
           storeClientCookies(response.getHeaders("Set-Cookie").toList)
           val output = response.getStatusLine.getStatusCode match {
-              case 200 => {
-                  conn.receiveResponseEntity(response)
-                  val entity = response.getEntity
-                  val tempOutput = IOUtils.toByteArray(entity.getContent)
-                  EntityUtils.consume(entity)
-                  tempOutput
-              }
-              case 300 | 301 | 302 | 303 => {
-                  val newLoc = response.getHeaders("Location").first.getValue
-                  val oldLocUri = new URI(uri)
-                  val newLocUri = new URI(newLoc)
-                  val newLocString = if (newLocUri.getHost == null) oldLocUri.resolve(newLocUri).toString else newLoc
-                  conn.abortConnection
-                  withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber, exceptionsSoFar ::: List(new RedirectException("healthy redirect from: %s to %s".format(oldLocUri,newLocUri))))
-              }
-              case 400 => throw new Exception("bad request sent to %s".format(uri))
-              case 401 => throw new Exception("access to object at %s requires authentication".format(uri))
-              case 403 => throw new Exception("access forbidden to object at %s".format(uri))
-              case 404 => throw new Exception("object not found at %s".format(uri))
-              case 500 => throw new Exception("server error encountered at %s".format(uri))
-              case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
+            case 200 => {
+              conn.receiveResponseEntity(response)
+              val entity = response.getEntity
+              val tempOutput = IOUtils.toByteArray(entity.getContent)
+              EntityUtils.consume(entity)
+              tempOutput
+            }
+            case 300 | 301 | 302 | 303 => {
+              val newLoc = response.getHeaders("Location").first.getValue
+              val oldLocUri = new URI(uri)
+              val newLocUri = new URI(newLoc)
+              val newLocString = if (newLocUri.getHost == null) oldLocUri.resolve(newLocUri).toString else newLoc
+              conn.abortConnection
+              withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber, exceptionsSoFar ::: List(new RedirectException("healthy redirect from: %s to %s".format(oldLocUri,newLocUri))))
+            }
+            case 400 => throw new Exception("bad request sent to %s".format(uri))
+            case 401 => throw new Exception("access to object at %s requires authentication".format(uri))
+            case 403 => throw new Exception("access forbidden to object at %s".format(uri))
+            case 404 => throw new Exception("object not found at %s".format(uri))
+            case 500 => throw new Exception("server error encountered at %s".format(uri))
+            case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
           }
           connMgr.releaseConnection(conn,keepAliveTimeout,TimeUnit.SECONDS)
           output
@@ -186,81 +186,81 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         throw ex
       }
     }
-	})
-	private def displayMetrics(conn:ManagedClientConnection):Unit = {
-		val m = conn.getMetrics
-		println("sent: %s (%s bytes)".format(m.getRequestCount,m.getSentBytesCount))
+  })
+  private def displayMetrics(conn:ManagedClientConnection):Unit = {
+    val m = conn.getMetrics
+    println("sent: %s (%s bytes)".format(m.getRequestCount,m.getSentBytesCount))
 
-		println("rec'd:	%s (%s bytes)".format(m.getResponseCount,m.getReceivedBytesCount))
-	}
+    println("rec'd:     %s (%s bytes)".format(m.getResponseCount,m.getReceivedBytesCount))
+  }
   override def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.post[Array[Byte]]", () => {
     val correctlyFormedUrl = new URI(uri)
-		val bytePostingPost = (conn:ManagedClientConnection,path:String) => {
-			val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
-			val postEntity = new ByteArrayEntity(bytes)
-			applyDefaultHeaders(postMethod,correctlyFormedUrl)
-			addAdditionalHeaders(postMethod,additionalHeaders)
-			postMethod.setEntity(postEntity)
-			postMethod.addHeader(new BasicHeader("Content-Length",postEntity.getContentLength.toString))
-			conn.sendRequestHeader(postMethod)
+    val bytePostingPost = (conn:ManagedClientConnection,path:String) => {
+      val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
+      val postEntity = new ByteArrayEntity(bytes)
+      applyDefaultHeaders(postMethod,correctlyFormedUrl)
+      addAdditionalHeaders(postMethod,additionalHeaders)
+      postMethod.setEntity(postEntity)
+      postMethod.addHeader(new BasicHeader("Content-Length",postEntity.getContentLength.toString))
+      conn.sendRequestHeader(postMethod)
       conn.sendRequestEntity(postMethod)
       conn.flush
-		}
-		withConn(uri,bytePostingPost)
-	})
-	override def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.post[List[(String,String)]]", () => {
+    }
+    withConn(uri,bytePostingPost)
+  })
+  override def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.post[List[(String,String)]]", () => {
     val correctlyFormedUrl = new URI(uri)
-		val formPostingPost = (conn:ManagedClientConnection,path:String) => {
-			val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
-			val postForm = new ArrayList[NameValuePair]
-			for (postItem <- postItemList){
-				postForm.add(new BasicNameValuePair(postItem._1,postItem._2))
-			}
-			val postEntity = new UrlEncodedFormEntity(postForm,HTTP.UTF_8)
-			applyDefaultHeaders(postMethod,correctlyFormedUrl)
-			addAdditionalHeaders(postMethod,additionalHeaders)
-			postMethod.addHeader(new BasicHeader("Content-Type","""application/x-www-form-urlencoded"""))
-			postMethod.addHeader(new BasicHeader("Content-Length",postEntity.getContentLength.toString))
-			postMethod.setEntity(postEntity)
-			conn.sendRequestHeader(postMethod)
+    val formPostingPost = (conn:ManagedClientConnection,path:String) => {
+      val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
+      val postForm = new ArrayList[NameValuePair]
+      for (postItem <- postItemList){
+        postForm.add(new BasicNameValuePair(postItem._1,postItem._2))
+      }
+      val postEntity = new UrlEncodedFormEntity(postForm,HTTP.UTF_8)
+      applyDefaultHeaders(postMethod,correctlyFormedUrl)
+      addAdditionalHeaders(postMethod,additionalHeaders)
+      postMethod.addHeader(new BasicHeader("Content-Type","""application/x-www-form-urlencoded"""))
+      postMethod.addHeader(new BasicHeader("Content-Length",postEntity.getContentLength.toString))
+      postMethod.setEntity(postEntity)
+      conn.sendRequestHeader(postMethod)
       conn.sendRequestEntity(postMethod)
       conn.flush
-		}
-		withConn(uri,formPostingPost)
-	})
+    }
+    withConn(uri,formPostingPost)
+  })
   override def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postUnencodedForm", () => {
-		val correctlyFormedUrl = new URI(uri)
-		val unencodedFormPostingPost = (conn:ManagedClientConnection,path:String) => {
-			val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
-			val postForm = postItemList.map(postItem => postItem._1 +"="+postItem._2).mkString("&")
-			val postEntity = new StringEntity(postForm,HTTP.UTF_8)
-			applyDefaultHeaders(postMethod,correctlyFormedUrl)
-			addAdditionalHeaders(postMethod,additionalHeaders)
-			postMethod.addHeader(new BasicHeader("Content-Type","""application/x-www-form-urlencoded"""))
-			postMethod.addHeader(new BasicHeader("Content-Length",postEntity.getContentLength.toString))
-			postMethod.setEntity(postEntity)
-			conn.sendRequestHeader(postMethod)
-			conn.sendRequestEntity(postMethod)
-			conn.flush
-		}
-		withConn(uri,unencodedFormPostingPost)
+    val correctlyFormedUrl = new URI(uri)
+    val unencodedFormPostingPost = (conn:ManagedClientConnection,path:String) => {
+      val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
+      val postForm = postItemList.map(postItem => postItem._1 +"="+postItem._2).mkString("&")
+      val postEntity = new StringEntity(postForm,HTTP.UTF_8)
+      applyDefaultHeaders(postMethod,correctlyFormedUrl)
+      addAdditionalHeaders(postMethod,additionalHeaders)
+      postMethod.addHeader(new BasicHeader("Content-Type","""application/x-www-form-urlencoded"""))
+      postMethod.addHeader(new BasicHeader("Content-Length",postEntity.getContentLength.toString))
+      postMethod.setEntity(postEntity)
+      conn.sendRequestHeader(postMethod)
+      conn.sendRequestEntity(postMethod)
+      conn.flush
+    }
+    withConn(uri,unencodedFormPostingPost)
   })
   override def get(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.get", () => {
-		getAsString(uri,additionalHeaders)
-	})
+    getAsString(uri,additionalHeaders)
+  })
   override def getAsString(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.getAsString", () => {
-		IOUtils.toString(getAsBytes(uri,additionalHeaders))
-	})
+    IOUtils.toString(getAsBytes(uri,additionalHeaders))
+  })
   override def getAsBytes(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.getAsBytes", () => {
-		val correctlyFormedUrl = new URI(uri)
-		val bytesGettingGet = (conn:ManagedClientConnection,path:String) => {
-          val getMethod = new BasicHttpRequest("GET",path)
-          applyDefaultHeaders(getMethod,correctlyFormedUrl)
-          addAdditionalHeaders(getMethod,additionalHeaders)
-          conn.sendRequestHeader(getMethod)
-          conn.flush
-		}
-		withConn(uri,bytesGettingGet)
+    val correctlyFormedUrl = new URI(uri)
+    val bytesGettingGet = (conn:ManagedClientConnection,path:String) => {
+      val getMethod = new BasicHttpRequest("GET",path)
+      applyDefaultHeaders(getMethod,correctlyFormedUrl)
+      addAdditionalHeaders(getMethod,additionalHeaders)
+      conn.sendRequestHeader(getMethod)
+      conn.flush
+    }
+    withConn(uri,bytesGettingGet)
   })
 
   private def determinePort(uri:URI):Int = {
@@ -329,8 +329,8 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     request.addHeader(new BasicHeader("Cookie",cookieString))
   }
   private def storeClientCookies(newHeaders:List[Header]):Unit = {
-      val newCookies = newHeaders.map(header => header.getElements.toList.map(item => (item.getName, header)))
-      newCookies.foreach(newCookieList => newCookieList.foreach(newCookie => cookies = cookies.updated(newCookie._1,newCookie._2)))
+    val newCookies = newHeaders.map(header => header.getElements.toList.map(item => (item.getName, header)))
+    newCookies.foreach(newCookieList => newCookieList.foreach(newCookie => cookies = cookies.updated(newCookie._1,newCookie._2)))
   }
 }
 

@@ -22,18 +22,18 @@
   </properties>
 
   <repositories>
-<!--
+    <!--
+        <repository>
+        <id>scala-tools.org</id>
+        <name>Scala-Tools Maven2 Repository</name>
+        <url>http://scala-tools.org/repo-releases</url>
+        </repository>
+    -->
     <repository>
-      <id>scala-tools.org</id>
-      <name>Scala-Tools Maven2 Repository</name>
-      <url>http://scala-tools.org/repo-releases</url>
+      <id>eec-svn</id>
+      <name>eEducation Centre Maven Repository</name>
+      <url>svn:svn://refer.adm.monash.edu.au</url>
     </repository>
--->
-		<repository>
-			<id>eec-svn</id>
-			<name>eEducation Centre Maven Repository</name>
-			<url>svn:svn://refer.adm.monash.edu.au</url>
-		</repository>
   </repositories>
   <pluginRepositories>
     <pluginRepository>
@@ -44,61 +44,65 @@
   </pluginRepositories>
   <dependencies>
     <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+      <version>1.1</version>
+    </dependency>
+    <dependency>
       <groupId>org.scala-lang</groupId>
       <artifactId>scala-library</artifactId>
       <version>${scala.version}</version>
     </dependency>
-
-		<dependency>
-			<groupId>com.metl</groupId>
-			<artifactId>MeTLUtils</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>com.metl</groupId>
-			<artifactId>MeTLData</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>com.metl</groupId>
-			<artifactId>Xmpp</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
+    <dependency>
+      <groupId>com.metl</groupId>
+      <artifactId>MeTLUtils</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.metl</groupId>
+      <artifactId>MeTLData</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.metl</groupId>
+      <artifactId>Xmpp</artifactId>
+      <version>1.0-SNAPSHOT</version>
+    </dependency>
     <!-- Test -->
-<!--
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.8.1</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.8.1</artifactId>
-      <version>1.6.6</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scala-lang</groupId>
-      <artifactId>scala-compiler</artifactId>
-      <version>${scala.version}</version>
-      <scope>test</scope>
-    </dependency>
--->
-<!--
-    <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_${scala.version}</artifactId>
-      <version>1.6.6</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.scalatest</groupId>
-      <artifactId>scalatest</artifactId>
-      <version>1.2</version>
-      <scope>test</scope>
-    </dependency>
--->
+    <!--
+        <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>4.8.1</version>
+        <scope>test</scope>
+        </dependency>
+        <dependency>
+        <groupId>org.scala-tools.testing</groupId>
+        <artifactId>specs_2.8.1</artifactId>
+        <version>1.6.6</version>
+        <scope>test</scope>
+        </dependency>
+        <dependency>
+        <groupId>org.scala-lang</groupId>
+        <artifactId>scala-compiler</artifactId>
+        <version>${scala.version}</version>
+        <scope>test</scope>
+        </dependency>
+    -->
+    <!--
+        <dependency>
+        <groupId>org.scala-tools.testing</groupId>
+        <artifactId>specs_${scala.version}</artifactId>
+        <version>1.6.6</version>
+        <scope>test</scope>
+        </dependency>
+        <dependency>
+        <groupId>org.scalatest</groupId>
+        <artifactId>scalatest</artifactId>
+        <version>1.2</version>
+        <scope>test</scope>
+        </dependency>
+    -->
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
@@ -122,15 +126,15 @@
   </dependencies>
 
   <build>
-		<!-- start import maven svn wagon -->
-		<extensions>
-			<extension>
-				<groupId>com.google.code.maven-svn-wagon</groupId>
-				<artifactId>maven-svn-wagon</artifactId>
-				<version>1.4</version>
-			</extension>
-		</extensions>
-		<!-- end import maven svn wagon -->
+    <!-- start import maven svn wagon -->
+    <extensions>
+      <extension>
+        <groupId>com.google.code.maven-svn-wagon</groupId>
+        <artifactId>maven-svn-wagon</artifactId>
+        <version>1.4</version>
+      </extension>
+    </extensions>
+    <!-- end import maven svn wagon -->
 
     <sourceDirectory>src/main/scala</sourceDirectory>
     <testSourceDirectory>src/test/scala</testSourceDirectory>
@@ -172,10 +176,10 @@
       </plugin>
     </plugins>
   </build>
-	<distributionManagement>
-		<repository>
-			<id>eec-svn</id>
-			<url>svn:svn://refer.adm.monash.edu.au/maven2</url>
-		</repository>
-	</distributionManagement>
+  <distributionManagement>
+    <repository>
+      <id>eec-svn</id>
+      <url>svn:svn://refer.adm.monash.edu.au/maven2</url>
+    </repository>
+  </distributionManagement>
 </project>
