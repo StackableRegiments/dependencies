@@ -9,7 +9,6 @@ import org.apache.commons.io.IOUtils
 
 class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
   private val conversations = scala.collection.mutable.HashMap.empty[Int,Conversation]
-  private val serializer = new GenericXmlSerializer(configName)
 
   private def precacheConversations = {
     val stream = new ByteArrayInputStream(http.getClient.getAsBytes("%s/Structure/all.zip".format(rootAddress)))
@@ -24,11 +23,13 @@ class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvid
     }.map(_._2).toList
   })
   override def detailsOf(conversationJid:Int) = conversations(conversationJid)
-  override def receiveConversationDetailsUpdated(m:MeTLStanza):Unit = {
-    super.receiveConversationDetailsUpdated(m) match{
+  override def receiveConversationDetailsUpdated(m:MeTLStanza):Option[Conversation] = {
+    val optionC = super.receiveConversationDetailsUpdated(m)
+    optionC match{
       case Some(c) => conversations.put(c.jid,c)
       case _ => {}
     }
+    optionC
   }
 }
 
