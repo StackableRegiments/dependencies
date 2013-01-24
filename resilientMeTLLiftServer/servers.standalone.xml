@@ -14,6 +14,7 @@
 			<host>adm-web25-v02.adm.monash.edu.au</host>
 			<meggleUrl>unused</meggleUrl>
 			<xmppDomainName>metl.adm.monash.edu.au</xmppDomainName>
+		</server>
 		<server>
 			<type>transientLoopback</type>
 		</server>
