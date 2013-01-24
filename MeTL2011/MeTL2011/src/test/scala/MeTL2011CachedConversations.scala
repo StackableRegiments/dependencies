@@ -14,7 +14,7 @@ import com.metl.metl2011._
 case class MockHttpProvider(client:MockHttpClient) extends SimpleAuthedHttpProvider("user","password"){
   override def getClient = client
 }
-case class MockHttpClient(zipResponse:Array[Byte],xmlResponse:String) extends CleanHttpClient(null){
+case class MockHttpClient(zipResponse:Array[Byte],var xmlResponse:String) extends CleanHttpClient(null){
   override def getHttpHeaders = List.empty[Header]
   override def setHttpHeaders(headers:List[Header]) = {}
   override def getCookies = Map.empty[String,Header]
@@ -27,7 +27,6 @@ case class MockHttpClient(zipResponse:Array[Byte],xmlResponse:String) extends Cl
   override def get(uri:String,additionalHeaders:List[(String,String)]) = xmlResponse
   override def addAuthorization(domain:String,username:String,password:String) = {}
 }
-
 class StructuredMockHttpClient extends MockHttpClient(Array.empty[Byte],""){
   override def getAsBytes(uri:String) = DummyConversations.loadZip("snapshot/all.zip")
   override def getAsString(uri:String) = {
@@ -35,7 +34,13 @@ class StructuredMockHttpClient extends MockHttpClient(Array.empty[Byte],""){
     val localPath = "snapshot/%s".format(path.drop("/Structure/".length))
     DummyConversations.loadString(localPath)
   }
-  override def get(uri:String) = getAsString(uri)
+  override def get(uri:String) = {
+    if(uri.contains(":1188/primarykey.yaws")) {
+      println("getting a jid")
+      "12345"
+    }
+    else getAsString(uri)
+  }
 }
 
 class MockMessageBus extends MessageBus(null,null){
@@ -62,7 +67,10 @@ object DummyConversations {
       IOUtils.toString(getClass.getClassLoader.getResourceAsStream(filename))
     }
     catch{
-      case e:Exception => MALFORMED_STRING
+      case e:Exception => {
+      println(e)
+        MALFORMED_STRING
+      }
     }
   }
   val singleZip = loadZip("single.zip")
@@ -73,7 +81,7 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
   test("Universe is sane") {
     2 should equal(2)
   }
-
+ 
   test("Single conversation is parsed correctly") {
     val httpProvider = MockHttpProvider(MockHttpClient(DummyConversations.singleZip,DummyConversations.singleDetails))
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
@@ -100,12 +108,85 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     0 should equal(meggle.search("' DROP TABLE USERS;").size)
     0 should equal(meggle.search(null).size)
   }
+  test("System should correctly return multiple conversations if query finds multiple options") {
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    163 should equal(meggle.search("hagand").size)
 
-  test("System should correctly handle all conversations snapshotted before the February 2013 shutdown date") {
+  }
+    test("System should correctly handle all conversations snapshotted before the February 2013 shutdown date") {
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
     5695 should equal(meggle.conversations.size)//This is a frozen snapshot, and the number will not change
-    163 should equal(meggle.search("hagand").size)
   }
+  
+  test("System should correctly update conversation list when a new conversation is received") {
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    163 should equal(meggle.search("hagand").size)
+    meggle.createConversation("a new conversation", "hagand")
+    164 should equal(meggle.search("hagand").size)
+
+  }
+  test("system should update slide count on AddSlide") {
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    val conversation = meggle.createConversation("a new conversation", "hagand")
+    1 should equal(conversation.slides.size)
+    meggle.addSlideAtIndexOfConversation(conversation.jid.toString, 0)
+    2 should equal(meggle.detailsOf(conversation.jid).slides.size)
+  }
+  test("system should update on conversation delete"){
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    val conversation = meggle.createConversation("a new conversation", "hagand")
+    meggle.deleteConversation(conversation.jid.toString)
+    "deleted" should equal(meggle.detailsOf(conversation.jid).subject)
+  }
+  test("system should update on a conversation rename") {
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    val conversation = meggle.createConversation("a new conversation", "hagand")
+    meggle.renameConversation(conversation.jid.toString, "renamed conversation")
+    "renamed conversation" should equal(meggle.detailsOf(conversation.jid).title)
+  }
+  test("system should update on a change of permission") {
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    val conversation = meggle.createConversation("a new conversation", "hagand")
+    true should equal(conversation.permissions.studentsCanPublish)
+    meggle.changePermissions(conversation.jid.toString, new Permissions(ServerConfiguration.empty, false, false, false))
+    false should equal(meggle.detailsOf(conversation.jid).permissions.studentsCanPublish)
+  }
+
+  test("system should update on a change of subject"){
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    val conversation = meggle.createConversation("a new conversation", "hagand")
+    "unrestricted" should equal(conversation.subject)
+    meggle.updateSubjectOfConversation(conversation.jid.toString, "hagand")
+    "hagand" should equal(meggle.detailsOf(conversation.jid).subject)
+  }
+  test("system should update slide order on reorderSlidesOfConversation") {
+    val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
+    val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
+    val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    val conversation = meggle.createConversation("a new conversation", "hagand")
+    meggle.addSlideAtIndexOfConversation(conversation.jid.toString, 1)
+    val newConv = meggle.detailsOf(conversation.jid)
+    12347 should equal(newConv.slides(0).id)
+    12346 should equal(newConv.slides(1).id)
+    meggle.reorderSlidesOfConversation(conversation.jid.toString, newConv.slides.reverse)
+    12346 should equal(meggle.detailsOf(conversation.jid).slides(0).id)
+    12347 should equal(meggle.detailsOf(conversation.jid).slides(1).id)
+  }
+
 }

@@ -30,11 +30,27 @@ class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvid
       }.map(_._2).toList
     }
   })
-  override def detailsOf(conversationJid:Int) = conversations(conversationJid)
+  override def detailsOf(conversationJid:Int) = 
+  {
+    try {
+      conversations(conversationJid)
+    }
+    catch {
+      case e:NoSuchElementException => super.detailsOf(conversationJid)
+      case e:Throwable => Conversation.empty
+    }
+  }
+  override def pushConversationToServer(conversation:Conversation):Conversation = {
+    conversations.put(conversation.jid, conversation)
+    super.pushConversationToServer(conversation)
+  }
+
   override def receiveConversationDetailsUpdated(m:MeTLStanza):Option[Conversation] = {
     val optionC = super.receiveConversationDetailsUpdated(m)
     optionC match{
-      case Some(c) => conversations.put(c.jid,c)
+      case Some(c) => {
+        conversations.put(c.jid,c)
+      }
       case _ => {}
     }
     optionC
@@ -47,19 +63,19 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
   lazy val rootAddress = "https://%s:1188".format(config.host)
   val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _)
   val mb = messageBusProvider.getMessageBus(mbDef)
-  println("created MeTL2011 Conversation Provider with MessageBus: %s (%s)".format(mb,mbDef))
 
   def receiveConversationDetailsUpdated(m:MeTLStanza):Option[Conversation] = {
-    println("message on the global thread received: %s".format(m))
     m match {
       case c:MeTLCommand if c.command == "/UPDATE_CONVERSATION_DETAILS" && c.commandParameters.length == 1 => {
         try{
-          println("metlCommand comprehended on the global thread: %s".format(c))
           val conversation = detailsOf(c.commandParameters(0).toInt)
           onConversationDetailsUpdated(conversation)
           Some(conversation)
-        } catch {
-          case e:Throwable => None
+        } 
+        catch {
+          case e:Throwable =>{
+            None
+          }
         }
       }
       case _ => {
@@ -83,7 +99,9 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
       (scala.xml.XML.loadString(http.getClient.get("https://"+config.host+":1188/Structure/"+utils.stem(jid.toString)+"/"+jid.toString+"/details.xml")) \\ "conversation").headOption.map(c => serializer.toConversation(c)).getOrElse(Conversation.empty)
     }
     catch{
-      case e:Exception => Conversation.empty
+      case e:Exception => {
+        Conversation.empty
+      }
     }
   })
   override def createConversation(title:String,author:String):Conversation = {
@@ -102,7 +120,6 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
     val conv = detailsOf(jid.toInt)
     val now = new java.util.Date()
     val local = Conversation(config,conv.author,now.getTime,conv.slides,conv.subject,conv.tag,conv.jid,newTitle,conv.created,conv.permissions)
-    println("renamed conversation: %s -> %s".format(conv,local))
     pushConversationToServer(local)
   }
   override def changePermissions(jid:String,newPermissions:Permissions):Conversation = {
@@ -139,14 +156,12 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
     val local = Conversation(config,conv.author,now.getTime,newSlides,conv.subject,conv.tag,conv.jid,conv.title,conv.created,conv.permissions)
     pushConversationToServer(local)
   }
-  private def pushConversationToServer(conversation:Conversation):Conversation = {
+  protected def pushConversationToServer(conversation:Conversation):Conversation = {
     val jid = conversation.jid
     val bytes = serializer.fromConversation(conversation).toString.getBytes("UTF-8")
     val url = "%s/upload_nested.yaws?overwrite=true&path=%s&filename=details.xml".format(rootAddress,Helpers.urlEncode("Structure/%s/%s".format(utils.stem(jid.toString),jid.toString)))
-    println("pushing conversation: %s".format(conversation))
     http.getClient.postBytes(url,bytes)
     val remote = detailsOf(jid)
-    println("verifying upload: %s".format(remote))
     notifyXmpp(remote)
     remote
   }
