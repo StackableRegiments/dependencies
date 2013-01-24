@@ -17,7 +17,10 @@ class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvid
     })
     masterConversationList.map(c=>c.jid).map(super.detailsOf).filterNot(_ == Conversation.empty).map(c=>conversations.put(c.jid,c))
   }
-  precacheConversations
+  override lazy val isReady:Boolean = {
+    precacheConversations
+    true
+  }
 
   override def search(query:String):List[Conversation] = Stopwatch.time("CachedConversations.search",() => {
     if(query == null || query.length == 0) List.empty[Conversation]
