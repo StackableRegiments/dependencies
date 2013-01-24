@@ -11,7 +11,7 @@ import collection._
 
 abstract class ConversationRetriever(configName:String) {
 	lazy val config = ServerConfiguration.configForName(configName)
-	val isReady:Boolean = true
+	lazy val isReady:Boolean = true
 	def search(query:String):List[Conversation]
 	def conversationFor(slide:Int):Int
 	def detailsOf(jid:Int):Conversation 
