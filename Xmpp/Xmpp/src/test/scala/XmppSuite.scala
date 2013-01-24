@@ -20,7 +20,7 @@ import java.util.Date
 import com.metl.utils._ 
 import com.metl.xmpp._
 
-class TestXmppConnection(user: String, pass: String, res: String, host: String, xmppConn: Box[XMPPConnection]) extends XmppConnection[String](user, pass, res, host, xmppConn) {
+class TestXmppConnection(user: String, pass: String, res: String, host: String, xmppConn: Box[XMPPConnection]) extends XmppConnection[String](user, pass, res, host, host, xmppConn) {
 
 	override def onMessageRecieved(room:String, messageType:String, message:String) = {
 	}

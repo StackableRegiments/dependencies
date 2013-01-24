@@ -114,15 +114,19 @@ object XmppUtils {
 	}
 }
 
-abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String, xmppConnection: Box[XMPPConnection]) {
+abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Box[XMPPConnection]) {
 
     def this(incomingUsername: String, password: String, incomingResource: String, incomingHost: String) {
-        this(incomingUsername, password, incomingResource, incomingHost, xmppConnection = Empty)
+        this(incomingUsername, password, incomingResource, incomingHost, incomingHost, xmppConnection = Empty)
     }
+		def this(incomingUsername: String, password: String, incomingResource: String, incomingHost: String, incomingDomain:String) {
+				this(incomingUsername, password, incomingResource, incomingHost, incomingDomain, xmppConnection = Empty)
+		}
 
 	val host = incomingHost
 	val username = incomingUsername
 	val resource = incomingResource
+	val domain = incomingDomain
 	Packet.setDefaultXmlns(XmppUtils.ns)
 
 	def sendMessage(room:String,messageType:String,message:T):Unit = Stopwatch.time("XmppConnection.sendMessage", () => {			
@@ -164,7 +168,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	
 	private var conn:Box[XMPPConnection] = Empty
 	private val config:ConnectionConfiguration = {
-		val c = new ConnectionConfiguration(host,port)
+		val c = new ConnectionConfiguration(host,port,domain)
 		c.setRosterLoadedAtLogin(loadRosterAtLogin)
 		c.setSendPresence(sendPresence)
 		c.setSelfSignedCertificateEnabled(acceptSelfSignedCerts)
@@ -221,12 +225,12 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 
 	protected def mucFor(room:String):Box[MultiUserChat] = Stopwatch.time("Xmpp.mucFor", () => {
 		conn.map(c => {
-			val roomJid = "%s@conference.%s".format(room,host)
+			val roomJid = "%s@conference.%s".format(room,domain)
 			new MultiUserChat(c,roomJid)
 		})
 	})
 	def joinRoom(room:String):Box[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
-		val roomJid = "%s@conference.%s".format(room,host)
+		val roomJid = "%s@conference.%s".format(room,domain)
 		conn.map(c => {
 			val muc = new MultiUserChat(c,roomJid)
 			muc.join(resource)
