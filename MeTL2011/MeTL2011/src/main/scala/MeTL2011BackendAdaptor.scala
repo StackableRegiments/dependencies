@@ -17,6 +17,9 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) exten
   protected lazy val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred")
   protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,(c:Conversation) => {})
   lazy val serializer = new MeTL2011XmlSerializer(name)
+	override def isReady = {
+		conversations.isReady
+	}
   protected val resourceProvider = new MeTL2011Resources(name,http)
   override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
   override def getHistory(jid:String) = history.getMeTLHistory(jid)
