@@ -57,6 +57,7 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String
 	//shutdown is a function to be called when the serverConfiguration is to be disposed
 	def shutdown:Unit = {}
+	def isReady:Boolean = true
 }
 
 object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
