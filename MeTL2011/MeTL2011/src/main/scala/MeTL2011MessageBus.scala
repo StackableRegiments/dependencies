@@ -9,13 +9,13 @@ import net.liftweb.util.Helpers._
 import scala.xml._
 import java.util.Date
 
-class XmppProvider(configName:String,hostname:String,username:String,password:String) extends OneBusPerRoomMessageBusProvider{
+class XmppProvider(configName:String,hostname:String,username:String,password:String,domainName:String) extends OneBusPerRoomMessageBusProvider{
   override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
-    new XmppMessageBus(configName,hostname,username + new java.util.Date().getTime.toString,password,d,this)
+    new XmppMessageBus(configName,hostname,username + new java.util.Date().getTime.toString,password,domainName,d,this)
   })
 }
 
-class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLStanza](u,p,r,h){
+class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLStanza](u,p,r,h,d){
   protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
   private lazy val config = ServerConfiguration.configForName(configName)
 
@@ -46,9 +46,9 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,configName:String,bus
   })
 }
 
-class XmppMessageBus(configName:String,hostname:String,username:String,password:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
+class XmppMessageBus(configName:String,hostname:String,username:String,password:String,domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
   val jid = d.location
-  lazy val xmpp = new MeTL2011XmppConn(username,password,"metlxConnector_%s_%s".format(username, new Date().getTime.toString),hostname,configName,this)
+  lazy val xmpp = new MeTL2011XmppConn(username,password,"metlxConnector_%s_%s".format(username, new Date().getTime.toString),hostname,domain,configName,this)
   xmpp.joinRoom(jid)
   override def sendStanzaToRoom(stanza:MeTLStanza):Boolean = stanza match {
     case i:MeTLInk =>{
