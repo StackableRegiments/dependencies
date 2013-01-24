@@ -87,6 +87,7 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
 
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    meggle.isReady
     val conversations = meggle.conversations
     1 should equal(conversations.size)
     val conversation = conversations(12345)
@@ -98,6 +99,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
 
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     1 should equal(meggle.search("firstAuthor").size)
     0 should equal(meggle.search("secondAuthor").size)
     1 should equal(meggle.search("ati").size)
@@ -112,6 +115,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     163 should equal(meggle.search("hagand").size)
 
   }
@@ -119,6 +124,7 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+    meggle.isReady
     5695 should equal(meggle.conversations.size)//This is a frozen snapshot, and the number will not change
   }
   
@@ -126,6 +132,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     163 should equal(meggle.search("hagand").size)
     meggle.createConversation("a new conversation", "hagand")
     164 should equal(meggle.search("hagand").size)
@@ -135,6 +143,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     val conversation = meggle.createConversation("a new conversation", "hagand")
     1 should equal(conversation.slides.size)
     meggle.addSlideAtIndexOfConversation(conversation.jid.toString, 0)
@@ -144,6 +154,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     val conversation = meggle.createConversation("a new conversation", "hagand")
     meggle.deleteConversation(conversation.jid.toString)
     "deleted" should equal(meggle.detailsOf(conversation.jid).subject)
@@ -152,6 +164,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     val conversation = meggle.createConversation("a new conversation", "hagand")
     meggle.renameConversation(conversation.jid.toString, "renamed conversation")
     "renamed conversation" should equal(meggle.detailsOf(conversation.jid).title)
@@ -160,6 +174,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     val conversation = meggle.createConversation("a new conversation", "hagand")
     true should equal(conversation.permissions.studentsCanPublish)
     meggle.changePermissions(conversation.jid.toString, new Permissions(ServerConfiguration.empty, false, false, false))
@@ -170,6 +186,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     val conversation = meggle.createConversation("a new conversation", "hagand")
     "unrestricted" should equal(conversation.subject)
     meggle.updateSubjectOfConversation(conversation.jid.toString, "hagand")
@@ -179,6 +197,8 @@ class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatche
     val httpProvider = MockHttpProvider(new StructuredMockHttpClient)
     val messageBusProvider = MockMessageBusProvider(new MockMessageBus)
     val meggle = new MeTL2011CachedConversations("config",httpProvider,messageBusProvider,(c)=>{})
+
+    meggle.isReady
     val conversation = meggle.createConversation("a new conversation", "hagand")
     meggle.addSlideAtIndexOfConversation(conversation.jid.toString, 1)
     val newConv = meggle.detailsOf(conversation.jid)
