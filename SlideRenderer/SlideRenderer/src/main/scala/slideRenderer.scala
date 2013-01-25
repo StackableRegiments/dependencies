@@ -88,8 +88,12 @@ object SlideRenderer {
 					}
 					Dimensions(x,y,x+internalWidth,y+internalHeight,internalWidth,internalHeight)
 				}
-				case (h:Double,w:Double) => Dimensions(x,y,x+w,y+h,w,h)
-				case _ => errorSize	
+				case (h:Double,w:Double) => {
+					Dimensions(x,y,x+w,y+h,w,h)
+				}
+				case other => {
+					errorSize	
+				}
 			}
 		} catch {
 			case e:Throwable => {
@@ -105,8 +109,11 @@ object SlideRenderer {
 			val dimensions = measureImage(metlImage,g)
 			val (finalWidth,finalHeight) = (dimensions.width,dimensions.height)
 			image match {
-				case i:Image if (finalHeight == 0.0 || finalWidth == 0.0) => {}
-				case i:Image => g.drawImage(image,metlImage.left.toInt,metlImage.top.toInt,finalWidth.toInt,finalHeight.toInt,null)
+				case i:Image if (finalHeight == 0.0 || finalWidth == 0.0) => {
+				}
+				case i:Image => {
+					g.drawImage(image,metlImage.left.toInt,metlImage.top.toInt,finalWidth.toInt,finalHeight.toInt,null)
+				}
 				case _ => {}
 			}
 		} catch {
@@ -325,7 +332,6 @@ object SlideRenderer {
 		val scaleApplier = scaleFactor
 		val scaledHistory = (scaleFactor != h.xScale || scaleFactor != h.yScale || h.xOffset != 0 || h.yOffset != 0) match {
 			case true => {
-				println("scaling history to: %s (+%s,%s)".format(scaleFactor,h.xOffset,h.yOffset))
 				h.adjustToVisual(contentXOffset,contentYOffset,scaleApplier,scaleApplier)
 			}
 			case false => h
