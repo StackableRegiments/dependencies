@@ -73,9 +73,9 @@ object MeTLXConfiguration {
     }
     val prop = System.getProperty("metl.backend")
     println("startupParams: "+prop)
-    prop.toLowerCase match {
-      case "monash" => setupForMonash
-			case "standalone" => setupForStandalone
+    prop match {
+      case s:String if s.toLowerCase.trim == "monash" => setupForMonash
+			case s:String if s.toLowerCase.trim == "standalone" => setupForStandalone
       case _ => setupForExternal
     }
     // Setup RESTful endpoints (these are in view/Endpoints.scala)

@@ -11,11 +11,17 @@ class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvid
   val conversations = scala.collection.mutable.HashMap.empty[Int,Conversation]
 
   private def precacheConversations = {
-    val stream = new ByteArrayInputStream(http.getClient.getAsBytes("%s/Structure/all.zip".format(rootAddress)))
-    val masterConversationList = Unzipper.unzip(stream).map(x => {
-      serializer.toConversation(x)
-    })
-    masterConversationList.map(c=>c.jid).map(super.detailsOf).filterNot(_ == Conversation.empty).map(c=>conversations.put(c.jid,c))
+		try {
+			val directoryUrl = "%s/Structure/".format(rootAddress)
+			http.getClient.get(directoryUrl)
+			val stream = new ByteArrayInputStream(http.getClient.getAsBytes("%s/all.zip".format(directoryUrl)))
+			val masterConversationList = Unzipper.unzip(stream).map(x => {
+				serializer.toConversation(x)
+			})
+			masterConversationList.map(c=>c.jid).map(super.detailsOf).filterNot(_ == Conversation.empty).map(c=>conversations.put(c.jid,c))
+		} catch {
+			case e:Throwable => {}
+		}
   }
   override lazy val isReady:Boolean = {
     precacheConversations

@@ -33,6 +33,7 @@ import net.liftweb.util._
 
 case class RetryException(message:String,exceptions:List[Throwable] = List.empty[Throwable]) extends Exception(message){}
 case class RedirectException(message:String,exceptions:List[Throwable] = List.empty[Throwable]) extends Exception(message){}
+case class WebException(message:String,code:Int,path:String) extends Exception(message){}
 
 trait IMeTLHttpClient {
   def addAuthorization(domain:String,username:String,password:String):Unit
@@ -155,10 +156,10 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
               conn.abortConnection
               withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber, exceptionsSoFar ::: List(new RedirectException("healthy redirect from: %s to %s".format(oldLocUri,newLocUri))))
             }
-            case 400 => throw new Exception("bad request sent to %s".format(uri))
-            case 401 => throw new Exception("access to object at %s requires authentication".format(uri))
-            case 403 => throw new Exception("access forbidden to object at %s".format(uri))
-            case 404 => throw new Exception("object not found at %s".format(uri))
+            case 400 => throw new WebException("bad request sent to %s".format(uri),400,uri)
+            case 401 => throw new WebException("access to object at %s requires authentication".format(uri),401,uri)
+            case 403 => throw new WebException("access forbidden to object at %s".format(uri),403,uri)
+            case 404 => throw new WebException("object not found at %s".format(uri),404,uri)
             case 500 => throw new Exception("server error encountered at %s".format(uri))
             case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
           }
@@ -176,6 +177,9 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         case ex:RedirectException => {
           throw ex
         }
+				case ex:WebException => {
+					throw ex
+				}
         case ex:Throwable => {
           conn.abortConnection
           withConn(uri,actOnConn,redirectNumber,retryNumber + 1, exceptionsSoFar ::: List(ex))
