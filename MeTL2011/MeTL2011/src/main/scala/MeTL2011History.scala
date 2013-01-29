@@ -45,10 +45,10 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 					zipStream.close
 					Stopwatch.time("MeTL2011History.getMeTLHistory.makeHistory", () => makeHistory(jid.toString,messages))
 				}
-				case _ => History.empty
+				case _ => makeHistory(jid.toString,List.empty[MeTLStanza])
 			}
 		} catch {
-			case e:Throwable => History.empty
+			case e:Throwable => makeHistory(jid.toString,List.empty[MeTLStanza])
 		}
   })
   def dailyXmlToListOfStanzas(input:NodeSeq):List[MeTLStanza] = Stopwatch.time("History.dailyXmlToListOfStanzas", () => {
