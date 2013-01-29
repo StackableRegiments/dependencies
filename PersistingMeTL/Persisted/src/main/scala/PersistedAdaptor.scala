@@ -3,11 +3,11 @@ package com.metl.persisted
 import com.metl.utils._
 import com.metl.data._
 
-abstract class PersistedAdaptor(name:String,host:String) extends ServerConfiguration(name,host){
+abstract class PersistedAdaptor(name:String,host:String,onConversationUpdated:Conversation=>Unit) extends ServerConfiguration(name,host,onConversationUpdated){
 	protected val dbInterface:PersistenceInterface
 	protected val messageBusProvider = new PersistingMessageBusProvider(name,dbInterface)
 	protected val history = new PersistedHistory(name,dbInterface)
-	protected val conversations = new PersistedConversations(name,dbInterface)
+	protected val conversations = new PersistedConversations(name,dbInterface,onConversationUpdated)
 	protected val resourceProvider = new PersistedResourceProvider(name,dbInterface)
 	override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
 	override def getHistory(jid:String) = history.getMeTLHistory(jid)

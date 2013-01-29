@@ -156,7 +156,7 @@ class NoCacheRoom(configName:String,location:String,creator:RoomProvider) extend
 case object ThumbnailRenderRequest
 
 class HistoryCachingRoom(configName:String,location:String,creator:RoomProvider) extends MeTLRoom(configName,location,creator) {
-  val history = Stopwatch.time("MeTLRoom %s fetching history".format(location),() => {
+  lazy val history = Stopwatch.time("MeTLRoom %s fetching history".format(location),() => {
     showInterest
     config.getHistory(location).attachRealtimeHook((s) => super.sendToChildren(s))
   })

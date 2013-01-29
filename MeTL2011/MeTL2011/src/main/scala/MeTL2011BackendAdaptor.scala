@@ -11,11 +11,11 @@ object MeTL2011ServerConfiguration{
   ).foreach(sc => ServerConfiguration.addServerConfigurator(sc))
 }
 
-class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String,xmppDomainName:String) extends ServerConfiguration(name,hostname){
+class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,onConversationDetailsUpdated:Conversation=>Unit) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
   protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
   protected lazy val history = new MeTL2011History(name,http)
   protected lazy val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
-  protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,(c:Conversation) => {})
+  protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,onConversationDetailsUpdated)
   lazy val serializer = new MeTL2011XmlSerializer(name)
 	override def isReady = {
 		conversations.isReady
@@ -40,23 +40,22 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String,xmppDo
 
 object MeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
   override def matchFunction(e:Node) = (e \\ "type").text == "MeTL2011"
-  override def interpret(e:Node) = {
+  override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit) = {
     val name = (e \\ "name").text
     val host = (e \\ "host").text
-    val meggleUrl = (e \\ "meggleUrl").text
 		val xmppDomainName = (e \\ "xmppDomainName").text
 		xmppDomainName match {
-			case s:String if s.length > 0 => Some(new MeTL2011BackendAdaptor(name,host,meggleUrl,s))
-			case _ => Some(new MeTL2011BackendAdaptor(name,host,meggleUrl,host))
+			case s:String if s.length > 0 => Some(new MeTL2011BackendAdaptor(name,host,s,onConversationDetailsUpdated))
+			case _ => Some(new MeTL2011BackendAdaptor(name,host,host,onConversationDetailsUpdated))
 		}
   }
 }
 
-class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:String) extends ServerConfiguration(name,hostname){
+class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversationDetailsUpdated:Conversation=>Unit) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
   protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
   protected val history = new MeTL2011History(name,http)
   protected val messageBusProvider = new LoopbackMessageBusProvider
-  protected val conversations = new MeTL2011Conversations(name,meggleUrl,http,messageBusProvider,(c:Conversation) => {})
+  protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,onConversationDetailsUpdated)
   val serializer = new MeTL2011XmlSerializer(name)
   override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
   override def getHistory(jid:String) = history.getMeTLHistory(jid)
@@ -77,10 +76,10 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,meggleUrl:Stri
 
 object TransientMeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
   override def matchFunction(e:Node) = (e \\ "type").text == "TransientMeTL2011"
-  override def interpret(e:Node) = {
+  override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit) = {
     val name = (e \\ "name").text
     val host = (e \\ "host").text
     val meggleUrl = (e \\ "meggleUrl").text
-    Some(new TransientMeTL2011BackendAdaptor(name,host,meggleUrl))
+    Some(new TransientMeTL2011BackendAdaptor(name,host,onConversationDetailsUpdated))
   }
 }

@@ -9,11 +9,11 @@ object LocalH2ServerConfiguration{
 	def initialize = ServerConfiguration.addServerConfigurator(LocalH2ServerConfigurator) 
 }
 
-class LocalH2BackendAdaptor(name:String) extends PersistedAdaptor(name,"localhost"){
-	override lazy val dbInterface = new H2Interface(name)
+class LocalH2BackendAdaptor(name:String,onConversationDetailsUpdated:Conversation=>Unit) extends PersistedAdaptor(name,"localhost",onConversationDetailsUpdated){
+	override lazy val dbInterface = new H2Interface(name,onConversationDetailsUpdated)
 	override def shutdown = dbInterface.shutdown
 }
 object LocalH2ServerConfigurator extends ServerConfigurator{
 	override def matchFunction(e:Node) = (e \\ "type").text == "localH2"
-	override def interpret(e:Node) = Some(new LocalH2BackendAdaptor("localH2"))
+	override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit) = Some(new LocalH2BackendAdaptor("localH2",onConversationDetailsUpdated))
 }

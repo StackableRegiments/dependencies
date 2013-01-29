@@ -21,23 +21,23 @@ object ServerConfiguration{
 		FrontendSerializationAdaptorConfigurator
 	)
 	def addServerConfigurator(sc:ServerConfigurator) = serverConfigurators = serverConfigurators ::: List(sc)
-	def loadServerConfigsFromFile(path:String) = {
+	def loadServerConfigsFromFile(path:String,onConversationDetailsUpdated:Conversation=>Unit) = {
 		val xml = XML.load(path)
-		(xml \\ "server").foreach(sc => interpret(sc))		
+		(xml \\ "server").foreach(sc => interpret(sc,onConversationDetailsUpdated))		
 		(xml \\ "defaultServerConfiguration").text match {
 			case s:String if (s.length > 0) => defaultConfigFunc = () => configForName(s)
 			case _ => {}
 		}	
 	}
-	protected def interpret(n:Node) = serverConfigurators.filter(sc => sc.matchFunction(n)).map(sc => sc.interpret(n).map(s => addServerConfiguration(s)))
+	protected def interpret(n:Node,onConversationDetailsUpdated:Conversation=>Unit) = serverConfigurators.filter(sc => sc.matchFunction(n)).map(sc => sc.interpret(n,onConversationDetailsUpdated).map(s => addServerConfiguration(s)))
 }
 
 class ServerConfigurator{
 	def matchFunction(e:Node) = false
-	def interpret(e:Node):Option[ServerConfiguration] = None
+	def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit):Option[ServerConfiguration] = None
 }
 
-abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
+abstract class ServerConfiguration(incomingName:String,incomingHost:String,onConversationDetailsUpdated:Conversation=>Unit) {
 	val name = incomingName
 	val host = incomingHost
 	def getMessageBus(d:MessageBusDefinition):MessageBus
@@ -60,7 +60,7 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String) {
 	def isReady:Boolean = true
 }
 
-object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
+object EmptyBackendAdaptor extends ServerConfiguration("empty","empty",(c)=>{}){
 	val serializer = new PassthroughSerializer
 	override def getMessageBus(d:MessageBusDefinition) = EmptyMessageBus
 	override def getHistory(jid:String) = History.empty
@@ -81,10 +81,10 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty"){
 
 object EmptyBackendAdaptorConfigurator extends ServerConfigurator{
 	override def matchFunction(e:Node) = (e \\ "type").text == "empty"
-	override def interpret(e:Node) = Some(EmptyBackendAdaptor)
+	override def interpret(e:Node,o:Conversation=>Unit) = Some(EmptyBackendAdaptor)
 }
 
-object FrontendSerializationAdaptor extends ServerConfiguration("frontend","frontend"){
+object FrontendSerializationAdaptor extends ServerConfiguration("frontend","frontend",(c)=>{}){
 	val serializer = new GenericXmlSerializer("frontend")
 	override def getMessageBus(d:MessageBusDefinition) = EmptyMessageBus
 	override def getHistory(jid:String) = History.empty
@@ -105,5 +105,5 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 
 object FrontendSerializationAdaptorConfigurator extends ServerConfigurator{
 	override def matchFunction(e:Node) = (e \\ "type").text == "frontend"
-	override def interpret(e:Node) = Some(FrontendSerializationAdaptor)
+	override def interpret(e:Node,o:Conversation=>Unit) = Some(FrontendSerializationAdaptor)
 }

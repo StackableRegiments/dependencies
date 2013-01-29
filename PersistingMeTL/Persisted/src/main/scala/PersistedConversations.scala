@@ -3,7 +3,7 @@ package com.metl.persisted
 import com.metl.data._
 import com.metl.utils._
 
-class PersistedConversations(configName:String,dbInterface:PersistenceInterface) extends ConversationRetriever(configName) {
+class PersistedConversations(configName:String,dbInterface:PersistenceInterface,onConversationDetailsUpdated:Conversation=>Unit) extends ConversationRetriever(configName,onConversationDetailsUpdated) {
 	override def search(query:String) = dbInterface.searchForConversation(query)
 	override def conversationFor(slide:Int):Int = dbInterface.conversationFor(slide)
 	override def detailsOf(jid:Int) = dbInterface.detailsOfConversation(jid)

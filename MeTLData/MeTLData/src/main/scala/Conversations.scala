@@ -9,7 +9,7 @@ import util._
 import Helpers._
 import collection._
 
-abstract class ConversationRetriever(configName:String) {
+abstract class ConversationRetriever(configName:String,onConversationDetailsUpdated:(Conversation) => Unit) {
 	lazy val config = ServerConfiguration.configForName(configName)
 	lazy val isReady:Boolean = true
 	def search(query:String):List[Conversation]
@@ -24,7 +24,7 @@ abstract class ConversationRetriever(configName:String) {
 	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
 }
 
-object EmptyConversations extends ConversationRetriever("empty"){
+object EmptyConversations extends ConversationRetriever("empty",(c) => {}){
 	override def search(query:String) = List.empty[Conversation]
 	override def conversationFor(slide:Int):Int = 0
 	override def detailsOf(jid:Int) = Conversation.empty

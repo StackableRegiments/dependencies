@@ -11,7 +11,7 @@ import net.liftweb.common._
 import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, StandardDBVendor}
 import _root_.java.sql.{Connection, DriverManager}
 
-class H2Interface(configName:String) extends PersistenceInterface{
+class H2Interface(configName:String,onConversationDetailsUpdated:Conversation=>Unit) extends PersistenceInterface{
 	lazy val serializer = new H2Serializer(configName)
 	lazy val config = ServerConfiguration.configForName(configName)
 
@@ -110,9 +110,9 @@ class H2Interface(configName:String) extends PersistenceInterface{
 	protected def updateConversation(c:Conversation):Boolean = {
 		try {
 			conversationCache.update(c.jid,c)
-			conversationMessageBus.sendStanzaToRoom(MeTLCommand(config,c.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(c.jid.toString)))
 			updateMaxJid
 			serializer.fromConversation(c).save
+			conversationMessageBus.sendStanzaToRoom(MeTLCommand(config,c.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(c.jid.toString)))
 			true
 		} catch {
 			case e:Throwable => {
@@ -140,8 +140,10 @@ class H2Interface(configName:String) extends PersistenceInterface{
 				try{
 					println("metlCommand comprehended on the global thread: %s".format(c))
 					val jidToUpdate = c.commandParameters(0).toInt
-					conversationCache.update(jidToUpdate,detailsOfConversation(jidToUpdate))
+					val conversation = detailsOfConversation(jidToUpdate)
+					conversationCache.update(conversation.jid,conversation)
 					updateMaxJid
+					onConversationDetailsUpdated(conversation)
 				} catch {
 					case e:Throwable => println("exception while attempting to update conversation details")
 				}

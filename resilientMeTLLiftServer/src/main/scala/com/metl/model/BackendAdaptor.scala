@@ -21,6 +21,9 @@ import com.metl.h2._
 
 object MeTLXConfiguration {
   protected var configs:Map[String,Tuple2[ServerConfiguration,RoomProvider]] = Map.empty[String,Tuple2[ServerConfiguration,RoomProvider]]
+	val updateGlobalFunc = (c:Conversation) => {
+		getRoom("global",c.server.name) ! ServerToLocalMeTLStanza(MeTLCommand(c.server,c.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(c.jid.toString)))
+	}
 	def setupForStandalone = {
 		 val auth = new CASAuthenticator("metlx",() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
       println("loginHandler")
@@ -28,7 +31,7 @@ object MeTLXConfiguration {
       Globals.currentUser(cs.username)
     })
 		MeTL2011ServerConfiguration.initialize
-		ServerConfiguration.loadServerConfigsFromFile("servers.standalone.xml")
+		ServerConfiguration.loadServerConfigsFromFile("servers.standalone.xml",updateGlobalFunc)
 		val servers = ServerConfiguration.getServerConfigurations
     configs = Map(servers.map(c => (c.name,(c,new HistoryCachingRoomProvider(c.name)))):_*)
     Globals.isDevMode match {
@@ -43,7 +46,7 @@ object MeTLXConfiguration {
       Globals.currentUser(cs.username)
     })
 		LocalH2ServerConfiguration.initialize
-		ServerConfiguration.loadServerConfigsFromFile("servers.external.xml")
+		ServerConfiguration.loadServerConfigsFromFile("servers.external.xml",updateGlobalFunc)
 		val servers = ServerConfiguration.getServerConfigurations
     configs = Map(servers.map(c => (c.name,(c,new HistoryCachingRoomProvider(c.name)))):_*)
     Globals.isDevMode match {
@@ -58,7 +61,7 @@ object MeTLXConfiguration {
       Globals.currentUser(cs.username)
     })
 		MeTL2011ServerConfiguration.initialize
-		ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml")
+		ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml",updateGlobalFunc)
 		val servers = ServerConfiguration.getServerConfigurations
     configs = Map(servers.map(c => (c.name,(c,new HistoryCachingRoomProvider(c.name)))):_*)
     Globals.isDevMode match {
@@ -93,7 +96,7 @@ object MeTLXConfiguration {
   }
 }
 
-class TransientLoopbackAdaptor(configName:String) extends ServerConfiguration(configName,"no_host"){
+class TransientLoopbackAdaptor(configName:String,onConversationDetailsUpdated:Conversation=>Unit) extends ServerConfiguration(configName,"no_host",onConversationDetailsUpdated){
   val serializer = new PassthroughSerializer
   val messageBusProvider = new LoopbackMessageBusProvider
   override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
