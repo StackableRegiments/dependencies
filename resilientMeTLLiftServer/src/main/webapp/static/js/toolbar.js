@@ -560,7 +560,7 @@ var Modes = (function(){
                         }).css({
                             height:px("80")
                         }).appendTo(pkg);
-                        var thumbnail = $("<canvas />").appendTo(pkg);
+                        var thumbnail = $("<canvas />",{id:"imageUploadThumbnail"}).appendTo(pkg);
                         var p = progress().value(actionsCompleted).max(necessaryActions);
                         p.element.css({
                             margin:"auto"
@@ -642,7 +642,8 @@ var Modes = (function(){
                                             type: 'POST',
                                             success: function(e){
                                                 updateTracking(identity);
-                                                var thumbnail = $(thumbnail);
+//                                                var thumbnail = $(thumbnail);
+																								var thumbnail = $("#imageUploadThumbnail");
                                                 var loader = $("#upload");
                                                 var imageStanza = {
                                                     type:"image",
