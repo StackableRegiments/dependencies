@@ -216,7 +216,7 @@ var Conversations = (function(){
             DeviceConfiguration.setCurrentDevice("projector");
             return false;
         });
-        console.log(shareUrl,projectorUrl,$("#shareLink").text(),$("#projectorLink").text());
+        //console.log(shareUrl,projectorUrl,$("#shareLink").text(),$("#projectorLink").text());
     };
     var updateCurrentConversation = function(details){
         if (details.jid == currentConversation.jid){

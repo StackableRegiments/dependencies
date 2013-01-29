@@ -473,13 +473,15 @@ function scale(){
 }
 function prerenderImage(image) {
     var canvas = $("<canvas/>")[0];
+    image.canvas = canvas;
+		canvas.width = image.width;
+		canvas.height = image.height;
     var borderW = canvas.width * 0.10;
     var borderH = canvas.height * 0.10;
     canvas.width = image.width + borderW;
     canvas.height = image.height + borderH;
-    image.canvas = canvas;
     var context = canvas.getContext("2d");
-    context.drawImage(image.imageData,borderW / 2,borderH / 2);
+    context.drawImage(image.imageData,borderW / 2,borderH / 2,image.width, image.height);
     if(image.privacy.toUpperCase() == "PRIVATE"){
         context.globalAlpha = 0.2;
         context.fillStyle = "red";

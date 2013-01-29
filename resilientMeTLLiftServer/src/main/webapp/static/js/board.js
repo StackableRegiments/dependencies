@@ -386,11 +386,15 @@ function screenBounds(worldBounds){
 }
 function drawImage(image){
     try{
-        var sBounds = screenBounds(image.bounds);
-        visibleBounds.push(image.bounds);
-        var borderW = sBounds.screenWidth * 0.10;
-        var borderH = sBounds.screenHeight * 0.10;
-        boardContext.drawImage(image.canvas, sBounds.screenPos.x - (borderW / 2), sBounds.screenPos.y - (borderH / 2), sBounds.screenWidth + borderW ,sBounds.screenHeight + borderH);
+				if (image.canvas != undefined){
+					var sBounds = screenBounds(image.bounds);
+					visibleBounds.push(image.bounds);
+					var borderW = sBounds.screenWidth * 0.10;
+					var borderH = sBounds.screenHeight * 0.10;
+//					prerenderImage(image);
+//					boardContext.drawImage(image.canvas, 0, 0, image.canvas.width, image.canvas.height, sBounds.screenPos.x - (borderW / 2), sBounds.screenPos.y - (borderH / 2), sBounds.screenWidth + borderW ,sBounds.screenHeight + borderH);
+					boardContext.drawImage(image.canvas, sBounds.screenPos.x - (borderW / 2), sBounds.screenPos.y - (borderH / 2), sBounds.screenWidth + borderW ,sBounds.screenHeight + borderH);
+				}
     }
     catch(e){
         console.log("drawImage exception",e);
