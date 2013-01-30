@@ -297,13 +297,14 @@ var DeviceConfiguration = (function(){
             w.on("orientationchange",outerFit);
         }
         w.resize(outerFit);
-        $.get(
+       /* $.get(
             //this is a quick and dirty workaround to ensure that the devices log their useragent in a stateful manner on lift's end
             "/logDevice",
             {},
             function(data){
             }
         );
+*/
         $("#toolsToggleButton").on("click",function(){
             setSectionVisibility("tools",!sectionsVisible.tools);
             outerFit();
