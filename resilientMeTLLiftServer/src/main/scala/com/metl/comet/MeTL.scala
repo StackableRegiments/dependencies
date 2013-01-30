@@ -860,7 +860,7 @@ class MeTLActor extends StronglyTypedJsonActor{
             newConv
           } else cc
         }))
-				println("updating conversation to: %s".format(newConv))
+//				println("updating conversation to: %s".format(newConv))
         partialUpdate(Call(RECEIVE_CONVERSATION_DETAILS,serializer.fromConversation(newConv)))
       }
       case c:MeTLCommand if (c.command == "/SYNC_MOVE") => {
