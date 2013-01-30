@@ -40,6 +40,12 @@ object MeTLRestHelper extends RestHelper {
       () => Stopwatch.time("MeTLRestHelper.fullHistory", () => StatelessHtml.fullHistory(r))
     case r @ Req(List("details",jid),_,_) =>
       () => Stopwatch.time("MeTLRestHelper.details", () => StatelessHtml.details(jid))
+    case Req("search" :: Nil,_,_) =>
+      () => Stopwatch.time("MeTLStatefulRestHelper.search",() => {
+        val query = S.params("query").head
+        val server = ServerConfiguration.default
+        Full(XmlResponse(<conversations>{server.searchForConversation(query).map(c => serializer.fromConversation(c))}</conversations>))
+      })
     case Req("render" :: configName :: jid :: height :: width :: Nil,_,_) => Stopwatch.time("MeTLRestHelper.render", () => {
       val server = ServerConfiguration.configForName(configName)
       val history = MeTLXConfiguration.getRoom(jid,server.name).getHistory
@@ -75,12 +81,6 @@ object MeTLStatefulRestHelper extends RestHelper {
       () => Stopwatch.time("MeTLStatefulRestHelper.quizProxy", () => StatelessHtml.quizProxy(conversation,identity))
     case Req(List("submissionProxy",conversation,author,identity),_,_) =>
       () => Stopwatch.time("MeTLStatefulRestHelper.submissionProxy", () => StatelessHtml.submissionProxy(conversation,author,identity))
-    case Req("search" :: Nil,_,_) =>
-      () => Stopwatch.time("MeTLStatefulRestHelper.search",() => {
-        val query = S.params("query").head
-        val server = ServerConfiguration.default
-        Full(XmlResponse(<conversations>{server.searchForConversation(query).map(c => serializer.fromConversation(c))}</conversations>))
-      })
     case r@Req("join" :: Nil, _, _) => {
       for {
         conversationJid <- r.param("conversation");
