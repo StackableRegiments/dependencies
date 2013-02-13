@@ -273,35 +273,99 @@ function transformReceived(transform){
     }
     if(transform.xScale != 1 || transform.yScale != 1){
         op += sprintf("scale (%s,%s)",transform.xScale,transform.yScale);
-        var transformInk = function(ink){
-            if(ink){
+				var relevantInks = [];
+				var relevantTexts = [];
+				var relevantImages = [];
+				$.each(transform.inkIds,function(i,id){
+					relevantInks.push(boardContent.inks[id]);
+					relevantInks.push(boardContent.highlighters[id]);
+				});
+				$.each(transform.imageIds,function(i,id){
+					relevantImages.push(boardContent.images[id]);
+				});
+				$.each(transform.textIds,function(i,id){
+					relevantTexts.push(boardContent.texts[id]);
+				});
+				var point = function(x,y){return {"x":x,"y":y};};
+				var totalBounds = point(0,0);
+				var first = true;
+				var updateRect = function(point){
+					if (first){
+						totalBounds.x = point.x;
+						totalBounds.y = point.y;
+						first = false;
+					} else {
+						if (point.x < totalBounds.x){
+							totalBounds.x = point.x;
+						}
+						if (point.y < totalBounds.y){
+							totalBounds.y = point.y;
+						}
+					}	
+				};
+				$.each(relevantInks,function(i,ink){
+					if (ink != undefined && "bounds" in ink && _.size(ink.bounds) > 1){
+						updateRect(point(ink.bounds[0],ink.bounds[1]));
+					}
+				});
+				$.each(relevantTexts,function(i,text){
+					if (text != undefined && "x" in text && "y" in text){
+						updateRect(point(text.x,text.y));
+					}
+				});
+				$.each(relevantImages,function(i,image){
+					if (image != undefined && "x" in image && "y" in image){
+						updateRect(point(image.x,image.y));
+					}
+				});
+        var transformInk = function(index,ink){
+            if(ink && ink != undefined){
                 var ps = ink.points;
                 var xPos = ink.bounds[0];
                 var yPos = ink.bounds[1];
                 var xp, yp;
+							
+								var internalX = xPos - totalBounds.x;
+								var internalY = yPos - totalBounds.y;
+								var offsetX = -(internalX - (internalX * transform.xScale));
+								var offsetY = -(internalY - (internalY * transform.yScale));		
+
                 for(var p = 0; p < ps.length; p += 3){
                     xp = ps[p] - xPos;
                     yp = ps[p + 1] - yPos;
-                    ps[p] = xPos + xp * transform.xScale;
-                    ps[p+1] = yPos + yp * transform.yScale;
+                    ps[p] = (xPos + xp * transform.xScale) + offsetX;
+                    ps[p+1] = (yPos + yp * transform.yScale) + offsetY;
                 }
                 calculateInkBounds(ink);
             }
-        }
-        $.each(transform.inkIds,function(i,id){
-            transformInk(boardContent.inks[id]);
-            transformInk(boardContent.highlighters[id]);
-        });
-        $.each(transform.imageIds,function(i,id){
-            var image = boardContent.images[id];
-            image.width = image.width * transform.xScale;
-            image.height = image.height * transform.yScale;
-            calculateImageBounds(image);
-        });
-        $.each(transform.textIds,function(i,id){
-            var text = boardContent.texts[id];
+        };
+				var transformImage = function(index,image){
+					if (image != undefined){
+						image.width = image.width * transform.xScale;
+						image.height = image.height * transform.yScale;
+
+						var internalX = image.x - totalBounds.x;
+						var internalY = image.y - totalBounds.y;
+						var offsetX = -(internalX - (internalX * transform.xScale));
+						var offsetY = -(internalY - (internalY * transform.yScale));		
+						image.x = image.x + offsetX;
+						image.y = image.y + offsetY;				
+					
+						calculateImageBounds(image);
+					}
+				};
+				var transformText = function(index,text){
+					if (text != undefined){
             text.width = text.width * transform.xScale;
             text.height = text.height * transform.yScale;
+
+								var internalX = text.x - totalBounds.x;
+								var internalY = text.y - totalBounds.y;
+								var offsetX = -(internalX - (internalX * transform.xScale));
+								var offsetY = -(internalY - (internalY * transform.yScale));		
+					text.x = text.x + offsetX;
+					text.y = text.y + offsetY;				
+
             text.size = text.size * transform.yScale;
             text.font = sprintf("%spx %s",text.size,text.family);
             if(isUsable(text)){
@@ -312,7 +376,11 @@ function transformReceived(transform){
                     delete boardContent.texts[text.identity];
                 }
             }
-        });
+					}
+				};
+				$.each(relevantInks,transformInk);
+				$.each(relevantImages,transformImage);
+				$.each(relevantTexts,transformText);
     }
     updateStatus(sprintf("%s %s %s %s",
                          op,
