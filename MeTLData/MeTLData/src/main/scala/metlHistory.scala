@@ -122,30 +122,47 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     processNewStanza(s)
   })
 
-  protected def moveIndividualContent(s:MeTLMoveDelta,c:MeTLCanvasContent):Unit = Stopwatch.time("History.moveIndividualContent", () => {
+  protected def moveIndividualContent(s:MeTLMoveDelta,c:MeTLCanvasContent,left:Double = 0, top:Double = 0):Unit = Stopwatch.time("History.moveIndividualContent", () => {
     def matches(coll:Seq[String],i:MeTLCanvasContent):Boolean = coll.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
     c match {
       case i:MeTLInk if matches(s.inkIds,i) => {
         removeInk(i.generateDirty(s.timestamp),false)
         if (!s.isDeleted){
-          addInk(s.adjustIndividualContent(i).asInstanceOf[MeTLInk],false)
+          addInk(s.adjustIndividualContent(i,true,left,top).asInstanceOf[MeTLInk],false)
         }
       }
       case i:MeTLText if matches(s.textIds,i) => {
         removeText(i.generateDirty(s.timestamp),false)
         if (!s.isDeleted)
-          addText(s.adjustIndividualContent(i).asInstanceOf[MeTLText],false)
+          addText(s.adjustIndividualContent(i,true,left,top).asInstanceOf[MeTLText],false)
       }
       case i:MeTLImage if matches(s.imageIds,i) => {
         removeImage(i.generateDirty(s.timestamp),false)
         if (!s.isDeleted)
-          addImage(s.adjustIndividualContent(i).asInstanceOf[MeTLImage],false)
+          addImage(s.adjustIndividualContent(i,true,left,top).asInstanceOf[MeTLImage],false)
       }
       case _ => {}
     }
   })
   protected def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
-    getCanvasContents.foreach(cc => moveIndividualContent(s,cc))
+		def matches(cc:MeTLCanvasContent):Boolean = cc match {
+			case i:MeTLInk => s.inkIds.contains(i.identity) && i.timestamp < s.timestamp
+			case i:MeTLText => s.textIds.contains(i.identity) && i.timestamp < s.timestamp
+			case i:MeTLImage => s.imageIds.contains(i.identity) && i.timestamp < s.timestamp
+		}
+    val relevantContents = getCanvasContents.filter(cc => matches(cc))
+		val (boundsLeft,boundsTop) = {
+			if (Double.NaN.equals(s.xOrigin) || Double.NaN.equals(s.yOrigin)){
+				var first = true;
+				relevantContents.foldLeft((0.0,0.0))((acc,item) => {
+					if (first)
+						(item.left,item.top)
+					else 
+						(Math.min(item.left,acc._1),Math.min(item.top,acc._2))
+				});	
+			} else (s.xOrigin,s.yOrigin)
+		}
+		relevantContents.foreach(cc => moveIndividualContent(s,cc,boundsLeft,boundsTop))
   })
   protected def shouldAdd(cc:MeTLCanvasContent):Boolean = {
     val dirtyTest = cc match {

@@ -288,36 +288,41 @@ function transformReceived(transform){
 				});
 				var point = function(x,y){return {"x":x,"y":y};};
 				var totalBounds = point(0,0);
-				var first = true;
-				var updateRect = function(point){
-					if (first){
-						totalBounds.x = point.x;
-						totalBounds.y = point.y;
-						first = false;
-					} else {
-						if (point.x < totalBounds.x){
+				if ("xOrigin" in transform && "yOrigin" in transform){
+					totalBounds.x = transform.xOrigin;
+					totalBounds.y = transform.yOrigin;	
+				} else {
+					var first = true;
+					var updateRect = function(point){
+						if (first){
 							totalBounds.x = point.x;
-						}
-						if (point.y < totalBounds.y){
 							totalBounds.y = point.y;
+							first = false;
+						} else {
+							if (point.x < totalBounds.x){
+								totalBounds.x = point.x;
+							}
+							if (point.y < totalBounds.y){
+								totalBounds.y = point.y;
+							}
+						}	
+					};
+					$.each(relevantInks,function(i,ink){
+						if (ink != undefined && "bounds" in ink && _.size(ink.bounds) > 1){
+							updateRect(point(ink.bounds[0],ink.bounds[1]));
 						}
-					}	
-				};
-				$.each(relevantInks,function(i,ink){
-					if (ink != undefined && "bounds" in ink && _.size(ink.bounds) > 1){
-						updateRect(point(ink.bounds[0],ink.bounds[1]));
-					}
-				});
-				$.each(relevantTexts,function(i,text){
-					if (text != undefined && "x" in text && "y" in text){
-						updateRect(point(text.x,text.y));
-					}
-				});
-				$.each(relevantImages,function(i,image){
-					if (image != undefined && "x" in image && "y" in image){
-						updateRect(point(image.x,image.y));
-					}
-				});
+					});
+					$.each(relevantTexts,function(i,text){
+						if (text != undefined && "x" in text && "y" in text){
+							updateRect(point(text.x,text.y));
+						}
+					});
+					$.each(relevantImages,function(i,image){
+						if (image != undefined && "x" in image && "y" in image){
+							updateRect(point(image.x,image.y));
+						}
+					});
+				}
         var transformInk = function(index,ink){
             if(ink && ink != undefined){
                 var ps = ink.points;

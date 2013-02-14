@@ -134,7 +134,9 @@ class JsonSerializer(configName:String) extends Serializer{
       JField("xScale",JDouble(input.xScale)),
       JField("yScale",JDouble(input.yScale)),
       JField("newPrivacy",JString(input.newPrivacy.toString.toLowerCase)),
-      JField("isDeleted",JBool(input.isDeleted))
+      JField("isDeleted",JBool(input.isDeleted)),
+			JField("xOrigin", JDouble(input.xOrigin)),
+			JField("yOrigin", JDouble(input.yOrigin))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
   override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",()=>{
@@ -151,7 +153,9 @@ class JsonSerializer(configName:String) extends Serializer{
         val yScale = utils.getDoubleByName(input,"yScale")
         val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
         val isDeleted = utils.getBooleanByName(input,"isDeleted")
-        MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+				val xOrigin = utils.getDoubleByName(input,"xOrigin")
+				val yOrigin = utils.getDoubleByName(input,"yOrigin")
+        MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
       }
       case _ => MeTLMoveDelta.empty
     }

@@ -67,11 +67,13 @@ trait MeTLDataGenerators {
 		imageIds <- genIdList
 		xTrans <- arbitrary[Double]
 		yTrans <- arbitrary[Double]
+		xOrigin <- arbitrary[Double]
+		yOrigin <- arbitrary[Double]
 		xScale <- arbitrary[Double]
 		yScale <- arbitrary[Double]
 		newPrivacy <- genPrivacy
 		isDeleted <- arbitrary[Boolean]
-	} yield MeTLMoveDelta(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, 
+	} yield MeTLMoveDelta(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, xOrigin, yOrigin,
         inkIds, textIds, imageIds, xTrans, yTrans, xScale, yScale, newPrivacy, isDeleted)
 
 	val genImage = for {

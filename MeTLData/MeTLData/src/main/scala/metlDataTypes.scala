@@ -304,32 +304,46 @@ object MeTLText{
   def empty = MeTLText(ServerConfiguration.empty,"",0L,"",0.0,0.0,0,0.0,0.0,"","","","",0.0,"","","",Privacy.NOT_SET,"",Color.default)
 }
 
-case class MeTLMoveDelta(override val server:ServerConfiguration, override val author:String,override val timestamp:Long,override val target:String, override val privacy:Privacy,override val slide:String,override val identity:String,inkIds:Seq[String],textIds:Seq[String],imageIds:Seq[String],xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double,newPrivacy:Privacy,isDeleted:Boolean) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity){
+case class MeTLMoveDelta(override val server:ServerConfiguration, override val author:String,override val timestamp:Long,override val target:String, override val privacy:Privacy,override val slide:String,override val identity:String,xOrigin:Double,yOrigin:Double,inkIds:Seq[String],textIds:Seq[String],imageIds:Seq[String],xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double,newPrivacy:Privacy,isDeleted:Boolean) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity){
 	override def matches(other:MeTLCanvasContent) = other match {
 		case o:MeTLMoveDelta => super.matches(o)
 		case _ => false
 	}
-	override def generateNewIdentity(descriptor:String):MeTLMoveDelta = MeTLMoveDelta(server,author,timestamp,target,privacy,slide,genNewIdentity("newMeTLMoveDelta:"+descriptor),inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+	override def generateNewIdentity(descriptor:String):MeTLMoveDelta = MeTLMoveDelta(server,author,timestamp,target,privacy,slide,genNewIdentity("newMeTLMoveDelta:"+descriptor),xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
 	def generateDirtier(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.generateDirtier", () => {
-		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,genNewIdentity("dirtierGeneratedFrom(%s)".format(identity)),newInkIds,newTextIds,newImageIds,0.0,0.0,1.0,1.0,Privacy.NOT_SET,true)
+		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,genNewIdentity("dirtierGeneratedFrom(%s)".format(identity)),xOrigin,yOrigin,newInkIds,newTextIds,newImageIds,0.0,0.0,1.0,1.0,Privacy.NOT_SET,true)
 	})
 	def replaceIds(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.replaceIds", () => {
-		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,genNewIdentity("adjusterGeneratedFrom(%s)".format(identity)),newInkIds,newTextIds,newImageIds,xTranslate,yTranslate,xScale,yScale,Privacy.NOT_SET,isDeleted)
+		MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,genNewIdentity("adjusterGeneratedFrom(%s)".format(identity)),xOrigin,yOrigin,newInkIds,newTextIds,newImageIds,xTranslate,yTranslate,xScale,yScale,Privacy.NOT_SET,isDeleted)
 	})
 	override def adjustVisual(newXTranslate:Double,newYTranslate:Double,newXScale:Double,newYScale:Double):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.adjustVisual", () => {
-		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,inkIds,textIds,imageIds,xTranslate + newXTranslate,yTranslate + newYTranslate,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
+		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,xOrigin + newXTranslate,yOrigin + newYTranslate,inkIds,textIds,imageIds,xTranslate + newXTranslate,yTranslate + newYTranslate,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
 	})
 	override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.adjustTimestamp", () => {
-		MeTLMoveDelta(server,author,newTime,target,privacy,slide,identity,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+		MeTLMoveDelta(server,author,newTime,target,privacy,slide,identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
 	})
 	override def scale(newXScale:Double,newYScale:Double):MeTLMoveDelta = {
-		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,inkIds,textIds,imageIds,xTranslate * newXScale,yTranslate * newYScale,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
+		MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate * newXScale,yTranslate * newYScale,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
 	}
-	def adjustIndividualContent(cc:MeTLCanvasContent,shouldTestPrivacy:Boolean = true):MeTLCanvasContent = {
+	def adjustIndividualContent(cc:MeTLCanvasContent,shouldTestPrivacy:Boolean = true,possiblyOverrideLeftBounds:Double = 0.0,possiblyOverrideTopBounds:Double = 0.0):MeTLCanvasContent = {
+		val thisMdLeft = xOrigin match {
+			case Double.NaN => possiblyOverrideLeftBounds
+			case d:Double => d
+			case _ => possiblyOverrideLeftBounds
+		}	
+		val thisMdTop = yOrigin match {
+			case Double.NaN => possiblyOverrideTopBounds
+			case d:Double => d
+			case _ => possiblyOverrideTopBounds
+		}
+		val internalX = cc.left - thisMdLeft
+		val internalY = cc.top - thisMdTop
+		val offsetX = -(internalX - (internalX * xScale));
+		val offsetY = -(internalY - (internalY * yScale));
 		cc match {
-			case i:MeTLInk if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
-			case t:MeTLText if (isDirtierFor(t,shouldTestPrivacy)) => t.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
-			case i:MeTLImage if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate,yTranslate,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case i:MeTLInk if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate + offsetX,yTranslate + offsetY,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case t:MeTLText if (isDirtierFor(t,shouldTestPrivacy)) => t.adjustVisual(xTranslate + offsetX,yTranslate + offsetY,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
+			case i:MeTLImage if (isDirtierFor(i,shouldTestPrivacy)) => i.adjustVisual(xTranslate + offsetX,yTranslate + offsetY,xScale,yScale).adjustTimestamp(timestamp).alterPrivacy(newPrivacy)
 			case _ => cc
 		}
 	}
@@ -393,7 +407,7 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
 	}
 }
 case object MeTLMoveDelta{ 
-  def empty = MeTLMoveDelta(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,Nil,Nil,0.0,0.0,1.0,1.0,Privacy.NOT_SET,false)
+  def empty = MeTLMoveDelta(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",0.0,0.0,Nil,Nil,Nil,0.0,0.0,1.0,1.0,Privacy.NOT_SET,false)
 }
 
 case class MeTLDirtyInk(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity) {

@@ -104,7 +104,9 @@ class GenericXmlSerializer(configName:String) extends Serializer{
     val yScale = utils.getDoubleByName(input,"yScale")
     val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
     val isDeleted = utils.getBooleanByName(input,"isDeleted")
-    MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+		val xOrigin = utils.getDoubleByName(input,"xOrigin")
+		val yOrigin = utils.getDoubleByName(input,"yOrigin")
+    MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
   })
   override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", () => {
     canvasContentToXml("moveDelta",input, Seq(
@@ -116,7 +118,9 @@ class GenericXmlSerializer(configName:String) extends Serializer{
       <xScale>{input.xScale}</xScale>,
       <yScale>{input.yScale}</yScale>,
       <newPrivacy>{input.newPrivacy}</newPrivacy>,
-      <isDeleted>{input.isDeleted}</isDeleted>
+      <isDeleted>{input.isDeleted}</isDeleted>,
+			<xOrigin>{input.xOrigin}</xOrigin>,
+			<yOrigin>{input.yOrigin}</yOrigin>
     ))
   })
   override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLInk", () => {
