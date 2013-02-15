@@ -94,6 +94,8 @@ function batchTransform(){
         inkIds:[],
         textIds:[],
         imageIds:[],
+				xOrigin:0,
+				yOrigin:0,
         xTranslate:0,
         yTranslate:0,
         xScale:1.0,

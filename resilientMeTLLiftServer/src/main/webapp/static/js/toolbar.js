@@ -649,7 +649,8 @@ var Modes = (function(){
                                                     type:"image",
                                                     author:UserSettings.getUsername(),
                                                     timestamp:t,
-                                                    tag:identity,
+                                                    tag:"{\"author\":\""+UserSettings.getUsername()+"\",\"privacy\":\""+Privacy.getCurrentPrivacy()+"\",\"id\":\""+identity+"\",\"isBackground\":false,\"zIndex\":0,\"timestamp\":-1}",
+//identity,
                                                     identity:identity,
                                                     slide:currentSlide.toString(),
                                                     source:$(e).text(),
@@ -1511,6 +1512,21 @@ var Modes = (function(){
                         else if(resizing){
                             var resized = batchTransform();
                             var xScale = x / resizeHandle[0];
+														var totalBounds = {x:Infinity,y:Infinity};
+														_.forEach(Modes.select.selected.inks,function(ink){
+															totalBounds.x = Math.min(ink.bounds[0]);
+															totalBounds.y = Math.min(ink.bounds[1]);
+														});
+														_.forEach(Modes.select.selected.texts,function(text){
+															totalBounds.x = Math.min(text.bounds[0]);
+															totalBounds.y = Math.min(text.bounds[1]);
+														});
+														_.forEach(Modes.select.selected.images,function(image){
+															totalBounds.x = Math.min(image.bounds[0]);
+															totalBounds.y = Math.min(image.bounds[1]);
+														});
+														resized.xOrigin = totalBounds.x;
+														resized.yOrigin = totalBounds.y;
                             resized.inkIds = _.keys(Modes.select.selected.inks);
                             resized.textIds = _.keys(Modes.select.selected.texts);
                             resized.imageIds = _.keys(Modes.select.selected.images);
