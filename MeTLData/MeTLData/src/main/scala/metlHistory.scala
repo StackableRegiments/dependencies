@@ -146,9 +146,9 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   })
   protected def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
 		def matches(cc:MeTLCanvasContent):Boolean = cc match {
-			case i:MeTLInk => s.inkIds.contains(i.identity) && i.timestamp < s.timestamp
-			case i:MeTLText => s.textIds.contains(i.identity) && i.timestamp < s.timestamp
-			case i:MeTLImage => s.imageIds.contains(i.identity) && i.timestamp < s.timestamp
+			case i:MeTLInk => s.inkIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
+			case i:MeTLText => s.textIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
+			case i:MeTLImage => s.imageIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
 		}
     val relevantContents = getCanvasContents.filter(cc => matches(cc))
 		val (boundsLeft,boundsTop) = {
