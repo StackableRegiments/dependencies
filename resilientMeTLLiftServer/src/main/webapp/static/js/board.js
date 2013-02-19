@@ -242,37 +242,6 @@ function transformReceived(transform){
             deleteText(p,id);
         });
     }
-    if(transform.xTranslate || transform.yTranslate){
-        var deltaX = transform.xTranslate;
-        var deltaY = transform.yTranslate;
-        op += sprintf("translate (%s,%s)",deltaX,deltaY);
-        var translateInk = function(ink){
-            if(ink){
-                var ps = ink.points;
-                for(var p = 0; p < ps.length; p += 3){
-                    ps[p] += deltaX;
-                    ps[p+1] += deltaY;
-                }
-                calculateInkBounds(ink);
-            }
-        }
-        $.each(transform.inkIds,function(i,id){
-            translateInk(boardContent.inks[id]);
-            translateInk(boardContent.highlighters[id]);
-        });
-        $.each(transform.imageIds,function(i,id){
-            var image = boardContent.images[id];
-            image.x += transform.xTranslate;
-            image.y += transform.yTranslate;
-            calculateImageBounds(image);
-        });
-        $.each(transform.textIds,function(i,id){
-            var text = boardContent.texts[id];
-            text.x += transform.xTranslate;
-            text.y += transform.yTranslate;
-            calculateTextBounds(text);
-        });
-    }
     if(transform.xScale != 1 || transform.yScale != 1){
         op += sprintf("scale (%s,%s)",transform.xScale,transform.yScale);
 				var relevantInks = [];
@@ -388,6 +357,37 @@ function transformReceived(transform){
 				$.each(relevantInks,transformInk);
 				$.each(relevantImages,transformImage);
 				$.each(relevantTexts,transformText);
+    }
+    if(transform.xTranslate || transform.yTranslate){
+        var deltaX = transform.xTranslate;
+        var deltaY = transform.yTranslate;
+        op += sprintf("translate (%s,%s)",deltaX,deltaY);
+        var translateInk = function(ink){
+            if(ink){
+                var ps = ink.points;
+                for(var p = 0; p < ps.length; p += 3){
+                    ps[p] += deltaX;
+                    ps[p+1] += deltaY;
+                }
+                calculateInkBounds(ink);
+            }
+        }
+        $.each(transform.inkIds,function(i,id){
+            translateInk(boardContent.inks[id]);
+            translateInk(boardContent.highlighters[id]);
+        });
+        $.each(transform.imageIds,function(i,id){
+            var image = boardContent.images[id];
+            image.x += transform.xTranslate;
+            image.y += transform.yTranslate;
+            calculateImageBounds(image);
+        });
+        $.each(transform.textIds,function(i,id){
+            var text = boardContent.texts[id];
+            text.x += transform.xTranslate;
+            text.y += transform.yTranslate;
+            calculateTextBounds(text);
+        });
     }
     updateStatus(sprintf("%s %s %s %s",
                          op,
