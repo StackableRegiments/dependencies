@@ -452,7 +452,7 @@ class MeTLActor extends StronglyTypedJsonActor{
       val pubHistory = rooms.get((server,slideJid.toString)).map(r => r.getHistory).getOrElse(History.empty)
       val privHistory = rooms.get((server,slideJid.toString+username)).map(r => r.getHistory).getOrElse(History.empty)
       val mergedHistory = pubHistory.merge(privHistory)
-      val title = "submission%s%s".format(username,now.toString)
+      val title = "submission%s%s.jpg".format(username,now.toString)
       val imageBytes = SlideRenderer.render(mergedHistory,(mergedHistory.getRight - mergedHistory.getLeft).toInt,(mergedHistory.getBottom - mergedHistory.getTop).toInt)
       val uri = serverConfig.postResource(conversationJid,title,imageBytes)
       val submission = MeTLSubmission(serverConfig,username,now,title,slideJid,uri)
