@@ -144,6 +144,8 @@ class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvid
 		//println("pushConversationToServer (cache): %s".format(pushedConv))
 		pushedConv
 	}
+/*
+	// this is the correct way of doing it, but too slow for the large bulk of conversations in the prod dataset
 	override def conversationFor(slide:Int):Int = Stopwatch.time("CachedConversations.conversationFor", () => {
 		conversations.find{
 			case (jid,c) => {
@@ -151,6 +153,7 @@ class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvid
 			}
 		}.map(ce => ce._1).getOrElse(-1)
 	});
+*/
   override def receiveConversationDetailsUpdated(m:MeTLStanza):Option[Conversation] = {
 		//println("receiveConversationDetailsUpdated (cache): %s".format(m))
     m match {
@@ -215,7 +218,7 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
     config.name match {
       case "reifier" => ((slide / 1000) * 1000) + 400
       case "deified" => ((slide / 1000) * 1000) + 400
-			//case "standalone" => ((slide /1000) * 1000) + 400
+			case "standalone" => (((slide - 400) / 1000) * 1000) + 400
       case _ => (slide /1000) * 1000
     }
   })
