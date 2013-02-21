@@ -3,9 +3,9 @@
 	<serverConfigurations>
 <!--		<server>
 			<type>MeTL2011</type>
-			<name>madam</name>
-			<host>madam.adm.monash.edu.au</host>
-			<meggleUrl>http://meggle-staging.adm.monash.edu.au:8080/</meggleUrl>
+			<name>standalone</name>
+			<host>metl.adm.monash.edu.au</host>
+			<meggleUrl>unused</meggleUrl>
 		</server>
 -->
 		<server>
