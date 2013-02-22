@@ -55,7 +55,7 @@ class SearchSnippet {
 		".searchResultAnchor [href]" #> "/slide?server=%s&conversation=%s".format(server.name,result.jid) &
 		".searchResultTitle *" #> result.title &
 		".searchResultAuthor *" #> result.author &
-		".searchResultQuizLinks *" #> renderQuizLinks(server,result.jid.toString) &
+//		".searchResultQuizLinks *" #> renderQuizLinks(server,result.jid.toString) &
 		".searchResultSlideLinks *" #> renderSlideLinks(server,result.jid.toString,result.slides)
 	}
 
