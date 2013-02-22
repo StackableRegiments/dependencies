@@ -26,6 +26,8 @@ object MeTLRestHelper extends RestHelper {
   serve {
     case Req("serverStatus" :: Nil,_,_) =>
       () => Stopwatch.time("MeTLRestHelper.serverStatus", () => Full(PlainTextResponse("OK", List.empty[Tuple2[String,String]], 200)))
+    case Req(List("probe","index"),"html",_) =>
+      () => Stopwatch.time("MeTLRestHelper.serverStatus", () => Full(PlainTextResponse("OK", List.empty[Tuple2[String,String]], 200)))
     case Req(List("crossdomain"),"xml",_) =>
       () => Stopwatch.time("MeTLRestHelper.crossDomainPolicy", () => Full(XmlResponse(crossDomainPolicy,200)))
     case r @ Req(List("summaries"),_,_) =>
