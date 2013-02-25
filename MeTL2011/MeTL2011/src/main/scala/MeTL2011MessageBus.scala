@@ -35,7 +35,7 @@ class XmppConnProvider(configName:String,hostname:String,username:String,passwor
 		conns.find(c => c.getCount < maxCount).getOrElse({
 			val newConn = new MeTL2011XmppMultiConn(username,password,"metlxConnector_%s_%s".format(username, new Date().getTime.toString),hostname,domainName,configName,this)
 			conns = newConn :: conns
-			println("XMPPConnProvider:getConn.createConn(%s)".format(c))
+			println("XMPPConnProvider:getConn.createConn(%s)".format(newConn))
 			newConn
 		})
 	}
