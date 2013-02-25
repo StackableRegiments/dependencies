@@ -151,6 +151,9 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	val domain = incomingDomain
 	Packet.setDefaultXmlns(XmppUtils.ns)
 
+	protected def onConnLost:Unit = onConnectionLost
+	protected def onConnRegained:Unit = onConnectionRegained
+
 	def sendMessage(room:String,messageType:String,message:T):Unit = Stopwatch.time("XmppConnection.sendMessage", () => {			
 		rooms.find(r => r._1 == room).map(r => {
 			subscribedTypes.find(st => st.name == messageType).map(st => {
@@ -186,8 +189,9 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	protected lazy val ignoredTypes:List[String] = List.empty[String]
 
 	lazy val relevantElementNames = subscribedTypes.map(st => st.name).toList
+	private var roomInterests:Map[String,List[String]] = Map.empty[String,List[String]]
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
-	private val additionalConnectionListener = new XmppConnectionManager(onConnectionLost,onConnectionRegained)	
+	private val additionalConnectionListener = new XmppConnectionManager(onConnLost _,onConnRegained _)	
 	private var conn:Option[XMPPConnection] = None 
 	private val config:ConnectionConfiguration = {
 		val c = new ConnectionConfiguration(host,port,domain)
@@ -258,15 +262,42 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 			new MultiUserChat(c,roomJid)
 		})
 	})
-	def joinRoom(room:String):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
-		val roomJid = "%s@conference.%s".format(room,domain)
-		conn.map(c => {
-			val muc = new MultiUserChat(c,roomJid)
-			muc.join(resource)
-			rooms = rooms.updated(room,muc)
-			muc
-		})
+	def joinRoom(room:String,interestId:String = ""):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
+		roomInterests.get(room) match {
+			case Some(interests) => {
+				// if interestId is found in the interests list, ignore, else add it to the list
+				if (!interests.contains(interestId)) {
+					roomInterests =	roomInterests.updated(room,interestId :: interests)
+				}
+			}
+			case None => {
+				// join room for the "first" time
+				roomInterests = roomInterests.updated(room, List(interestId))
+				val roomJid = "%s@conference.%s".format(room,domain)
+				conn.map(c => {
+					val muc = new MultiUserChat(c,roomJid)
+					muc.join(resource)
+					rooms = rooms.updated(room,muc)
+					muc
+				})
+			}	
+		}
+		rooms.get(room)
 	})
+	def leaveRoom(roomName:String, interestId:String = ""):Unit = {
+		val leaving = roomInterests.get(roomName) match {
+			case Some(interests) => 
+			{
+				roomInterests = roomInterests.updated(roomName,interests.filterNot(i => i == interestId)) 
+				interests.length == 1 && interests.contains(interestId)
+			}
+			case _ => true
+		}
+
+		if (leaving){
+			rooms.get(roomName).map(r => leaveRoom(r))
+		}
+	}
 	def leaveRoom(room:MultiUserChat):Unit = {
 		room.leave
 		rooms = rooms.filterNot(r => r._2 == room)
