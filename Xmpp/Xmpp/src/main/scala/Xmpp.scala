@@ -277,23 +277,6 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 			List.empty[String]
 		}))
 		rooms.get(room)
-/*
-		roomInterests.get(room) match {
-			case Some(interests) => {
-				// if interestId is found in the interests list, ignore, else add it to the list
-				if (!interests.contains(interestId)) {
-					println("XMPP(%s):joinRoom.addInterestToExistingInterests".format(this.hashCode))
-					roomInterests =	roomInterests.updated(room,interestId :: interests)
-				}
-			}
-			case None => {
-				println("XMPP(%s):joinRoom".format(this.hashCode))
-				// join room for the "first" time
-				roomInterests = roomInterests.updated(room, List(interestId))
-			}	
-		}
-		rooms.get(room)
-*/
 	})
 	def leaveRoom(roomName:String, interestId:String = ""):Unit = {
 		roomInterests.getOrElseUpdate(roomName,List.empty[String]) match {
@@ -307,22 +290,6 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 			println("XMPP(%s):leaveRoom".format(this))
 			rooms.get(roomName).map(r => leaveRoom(r))
 		}
-/*
-		val leaving = roomInterests.get(roomName) match {
-			case Some(interests) => 
-			{
-				println("XMPP(%s):leaveRoom.removeInterestsFromExistingInterests".format(this))
-				roomInterests = roomInterests.updated(roomName,interests.filterNot(i => i == interestId)) 
-				interests.length == 1 && interests.contains(interestId)
-			}
-			case _ => true
-		}
-
-		if (leaving){
-			println("XMPP(%s):leaveRoom".format(this))
-			rooms.get(roomName).map(r => leaveRoom(r))
-		}
-*/
 	}
 	def leaveRoom(room:MultiUserChat):Unit = {
 		room.leave
