@@ -88,7 +88,6 @@ class SearchSnippet {
 						val (mid, end) = rest.splitAt(rest.length-numSlideEndLinks)
 
 						val interval = mid.length / (numSlideLinks-numSlideEndLinks*2)
-                        println(">>> interval: %d".format(interval))
 
 						val split = mid.foldLeft((List.empty[Slide],interval/2))((acc,item) => acc._2 match {
 							case 0 => (acc._1 ::: List(item), interval)
