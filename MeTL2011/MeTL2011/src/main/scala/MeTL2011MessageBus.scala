@@ -153,45 +153,47 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,username:String
 		xmpp = Some(conn)
 		xmpp.map(x => x.joinRoom(jid,this.hashCode.toString))
 	}
-  override def sendStanzaToRoom(stanza:MeTLStanza):Boolean = stanza match {
+  override def sendStanzaToRoom(stanza:MeTLStanza):Boolean = Stopwatch.time("XmppSharedConnMessageBus.sendStanzaToRoom", () => {
 		println("XMPPSharedConnMessageBus(%s):sendStanzaToRoom(%s)".format(d,xmpp))
-    case i:MeTLInk =>{
-      xmpp.map(x => x.sendMessage(jid,"ink",i))
-      true}
-    case t:MeTLText =>{
-      xmpp.map(x => x.sendMessage(jid,"textbox",t))
-      true}
-    case i:MeTLImage =>{
-      xmpp.map(x => x.sendMessage(jid,"image",i))
-      true}
-    case di:MeTLDirtyInk => {
-      xmpp.map(x => x.sendMessage(jid,"dirtyInk",di))
-      true}
-    case dt:MeTLDirtyText =>{
-      xmpp.map(x => x.sendMessage(jid,"dirtyText",dt))
-      true}
-    case di:MeTLDirtyImage =>{
-      xmpp.map(x => x.sendMessage(jid,"dirtyImage",di))
-      true}
-    case q:MeTLQuiz =>{
-      xmpp.map(x => x.sendMessage(jid,"quiz",q))
-      true}
-    case qr:MeTLQuizResponse =>{
-      xmpp.map(x => x.sendMessage(jid,"quizResponse",qr))
-      true}
-    case s:MeTLSubmission =>{
-      xmpp.map(x => x.sendMessage(jid,"submission",s))
-      true}
-    case c:MeTLCommand =>{
-      xmpp.map(x => x.sendSimpleMessage(jid,(c.command :: c.commandParameters).mkString(" ")))
-      true}
-    case d:MeTLMoveDelta =>{
-      xmpp.map(x => x.sendMessage(jid,"moveDelta",d))
-      true}
-    case _ => {
-      false
-    }
-  }
+		stanza match {
+			case i:MeTLInk =>{
+				xmpp.map(x => x.sendMessage(jid,"ink",i))
+				true}
+			case t:MeTLText =>{
+				xmpp.map(x => x.sendMessage(jid,"textbox",t))
+				true}
+			case i:MeTLImage =>{
+				xmpp.map(x => x.sendMessage(jid,"image",i))
+				true}
+			case di:MeTLDirtyInk => {
+				xmpp.map(x => x.sendMessage(jid,"dirtyInk",di))
+				true}
+			case dt:MeTLDirtyText =>{
+				xmpp.map(x => x.sendMessage(jid,"dirtyText",dt))
+				true}
+			case di:MeTLDirtyImage =>{
+				xmpp.map(x => x.sendMessage(jid,"dirtyImage",di))
+				true}
+			case q:MeTLQuiz =>{
+				xmpp.map(x => x.sendMessage(jid,"quiz",q))
+				true}
+			case qr:MeTLQuizResponse =>{
+				xmpp.map(x => x.sendMessage(jid,"quizResponse",qr))
+				true}
+			case s:MeTLSubmission =>{
+				xmpp.map(x => x.sendMessage(jid,"submission",s))
+				true}
+			case c:MeTLCommand =>{
+				xmpp.map(x => x.sendSimpleMessage(jid,(c.command :: c.commandParameters).mkString(" ")))
+				true}
+			case d:MeTLMoveDelta =>{
+				xmpp.map(x => x.sendMessage(jid,"moveDelta",d))
+				true}
+			case _ => {
+				false
+			}
+		}
+  })
   override def release = {
 		println("XMPPSharedConnMessageBus(%s):release".format(d))
 		xmpp.map(x => x.leaveRoom(jid,this.hashCode.toString))
