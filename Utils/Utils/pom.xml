@@ -27,13 +27,12 @@
       <name>SonaType Maven2 Repository</name>
       <url>https://oss.sonatype.org/content/repositories/releases</url>
     </repository>
-		<repository>
-			<id>Central</id>
-			<name>Central Maven2 Repository</name>
-			<url>http://repo2.maven.org/maven2/</url>
-		</repository>
+	<repository>
+	  <id>Central</id>
+	  <name>Central Maven2 Repository</name>
+	  <url>http://repo2.maven.org/maven2/</url>
+	</repository>
   </repositories>
-
   <pluginRepositories>
     <pluginRepository>
       <id>scala-tools.releases</id>
