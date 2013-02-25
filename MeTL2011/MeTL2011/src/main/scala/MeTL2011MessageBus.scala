@@ -31,17 +31,19 @@ class XmppConnProvider(configName:String,hostname:String,username:String,passwor
 	private var conns = List.empty[MeTL2011XmppMultiConn]	
 	private val maxCount = 20	
 	def getConn:MeTL2011XmppMultiConn = {
+		println("XMPPConnProvider:getConn")
 		conns.find(c => c.getCount < maxCount).getOrElse({
 			val newConn = new MeTL2011XmppMultiConn(username,password,"metlxConnector_%s_%s".format(username, new Date().getTime.toString),hostname,domainName,configName,this)
 			conns = newConn :: conns
-			println("creating "+newConn)
+			println("XMPPConnProvider:getConn.createConn(%s)".format(c))
 			newConn
 		})
 	}
 	def releaseConn(c:MeTL2011XmppMultiConn) = {
+		println("XMPPConnProvider:releaseConn")
 		if (c.getCount < 1){
 			conns = conns.filterNot(conn => conn == c)
-			println("removing "+c)
+			println("XMPPConnProvider:releaseConn.disconnectingConn(%s)".format(c))
     	c.disconnectFromXmpp
 		}
 	}
@@ -67,7 +69,7 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
 	}	
 
 	def addMessageBus(d:MessageBusDefinition,m:MessageBus) = {
-		println("%s adding %s".format(this,d))
+		println("XMPPMultiConn(%s):addMessageBus(%s)".format(this,d))
 		val oldLocMap = subscribedBusses.get(d.location).getOrElse(HashMap.empty[MessageBusDefinition,MessageBus])
 		oldLocMap.put(d,m) match {
 			case Some(_) => {}
@@ -76,19 +78,25 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
 		subscribedBusses.put(d.location,oldLocMap)
 	}
 	def removeMessageBus(d:MessageBusDefinition) = {
-		println("%s removing %s".format(this,d))
+		println("XMPPMultiConn(%s):removeMessageBus(%s)".format(this,d))
 		subscriptionCount -= 1
 		subscribedBusses(d.location).remove(d)
 		creator.releaseConn(this)
 	}
 	override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
-		subscribedBusses(room).values.foreach(mb => mb.recieveStanzaFromRoom(message))
+		println("XMPPMultiConn(%s):onMessageReceived(%s,%s)".format(this,room,messageType))
+		val targets = subscribedBusses(room).values
+		println("XMPPMultiConn(%s):onMessageReceived.sendTo(%s)".format(this,targets))
+		targets.foreach(mb => mb.recieveStanzaFromRoom(message))
 	}
 	override def onUntypedMessageRecieved(room:String,message:String) = {
     val parts = message.split(" ")
-		subscribedBusses(room).values.foreach(mb => mb.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList)))
+		println("XMPPMultiConn(%s):onUntypedMessageReceived(%s,%s,%s)".format(this,room,message))
+		val targets = subscribedBusses(room).values
+		println("XMPPMultiConn(%s):onUntypedMessageReceived.sendTo(%s)".format(this,targets))
+		targets.foreach(mb => mb.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList)))
 	}
-	 override lazy val ignoredTypes = List("metlMetaData")
+	override lazy val ignoredTypes = List("metlMetaData")
   override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","screenshotSubmission","submission","quiz","quizResponse","command","moveDelta","teacherstatus").map(item => {
     val ser = (i:MeTLStanza) => {
       val xml = serializer.fromMeTLStanza(i)
@@ -141,10 +149,12 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,username:String
   val jid = d.location
 	private var xmpp:Option[MeTL2011XmppMultiConn] = None
 	def addConn(conn:MeTL2011XmppMultiConn) = {
+		println("XMPPSharedConnMessageBus(%s):addConn(%s)".format(d,conn))
 		xmpp = Some(conn)
 		xmpp.map(x => x.joinRoom(jid,this.hashCode.toString))
 	}
   override def sendStanzaToRoom(stanza:MeTLStanza):Boolean = stanza match {
+		println("XMPPSharedConnMessageBus(%s):sendStanzaToRoom(%s)".format(d,xmpp))
     case i:MeTLInk =>{
       xmpp.map(x => x.sendMessage(jid,"ink",i))
       true}
@@ -183,6 +193,7 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,username:String
     }
   }
   override def release = {
+		println("XMPPSharedConnMessageBus(%s):release".format(d))
 		xmpp.map(x => x.leaveRoom(jid,this.hashCode.toString))
 		xmpp.map(x => x.removeMessageBus(d))
     super.release

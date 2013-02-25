@@ -116,22 +116,22 @@ object XmppUtils {
 
 class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
 	override def connectionClosed():Unit = {
-		println("connection closed")
+		println("XMPPConnectionManager:connection closed")
 		onConnectionLost()
 	}
 	override def connectionClosedOnError(e:Exception):Unit = {
-		println("connection lost: "+e.getMessage)
+		println("XMPPConnectionManager:connection lost: "+e.getMessage)
 		onConnectionLost()
 	}
 	override def reconnectingIn(seconds:Int):Unit = {
-		println("reconnecting in... "+seconds)
+		println("XMPPConnectionManager:reconnecting in... "+seconds)
 	}
 	override def reconnectionFailed(e:Exception):Unit = {
-		println("connection failed: "+e.getMessage)
+		println("XMPPConnectionManager:connection failed: "+e.getMessage)
 		onConnectionLost()
 	}
 	override def reconnectionSuccessful():Unit = {
-		println("reconnection successful")
+		println("XMPPConnectionManager:reconnection successful")
 		onConnectionRegained()
 	}
 }
@@ -189,7 +189,8 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	protected lazy val ignoredTypes:List[String] = List.empty[String]
 
 	lazy val relevantElementNames = subscribedTypes.map(st => st.name).toList
-	private var roomInterests:Map[String,List[String]] = Map.empty[String,List[String]]
+	private var roomInterests:SynchronizedWriteMap[String,List[String]] = new SynchronizedWriteMap[String,List[String]]()
+//	private var roomInterests:Map[String,List[String]] = Map.empty[String,List[String]]
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
 	private val additionalConnectionListener = new XmppConnectionManager(onConnLost _,onConnRegained _)	
 	private var conn:Option[XMPPConnection] = None 
@@ -263,31 +264,54 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		})
 	})
 	def joinRoom(room:String,interestId:String = ""):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
+		println("XMPP(%s):joinRoom(%s)".format(this.hashCode,room))
+		roomInterests.update(room,interestId :: roomInterests.getOrElseUpdate(room,{
+			println("XMPP(%s):joinRoom.creatingRoom(%s)".format(this.hashCode,room))
+			val roomJid = "%s@conference.%s".format(room,domain)
+			conn.map(c => {
+				val muc = new MultiUserChat(c,roomJid)
+				muc.join(resource)
+				rooms = rooms.updated(room,muc)
+				muc
+			})
+			List.empty[String]
+		}))
+		rooms.get(room)
+/*
 		roomInterests.get(room) match {
 			case Some(interests) => {
 				// if interestId is found in the interests list, ignore, else add it to the list
 				if (!interests.contains(interestId)) {
+					println("XMPP(%s):joinRoom.addInterestToExistingInterests".format(this.hashCode))
 					roomInterests =	roomInterests.updated(room,interestId :: interests)
 				}
 			}
 			case None => {
+				println("XMPP(%s):joinRoom".format(this.hashCode))
 				// join room for the "first" time
 				roomInterests = roomInterests.updated(room, List(interestId))
-				val roomJid = "%s@conference.%s".format(room,domain)
-				conn.map(c => {
-					val muc = new MultiUserChat(c,roomJid)
-					muc.join(resource)
-					rooms = rooms.updated(room,muc)
-					muc
-				})
 			}	
 		}
 		rooms.get(room)
+*/
 	})
 	def leaveRoom(roomName:String, interestId:String = ""):Unit = {
+		roomInterests.getOrElseUpdate(roomName,List.empty[String]) match {
+			case l:List[String] if l.length > 0 && l.contains(interestId) => {
+				println("XMPP(%s):leaveRoom.removeInterestsFromExistingInterests".format(this))
+				roomInterests.update(roomName,roomInterests(roomName).filterNot(_ == interestId))
+			}
+			case _ => {}
+		}
+		if (roomInterests(roomName).length == 0){
+			println("XMPP(%s):leaveRoom".format(this))
+			rooms.get(roomName).map(r => leaveRoom(r))
+		}
+/*
 		val leaving = roomInterests.get(roomName) match {
 			case Some(interests) => 
 			{
+				println("XMPP(%s):leaveRoom.removeInterestsFromExistingInterests".format(this))
 				roomInterests = roomInterests.updated(roomName,interests.filterNot(i => i == interestId)) 
 				interests.length == 1 && interests.contains(interestId)
 			}
@@ -295,8 +319,10 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		}
 
 		if (leaving){
+			println("XMPP(%s):leaveRoom".format(this))
 			rooms.get(roomName).map(r => leaveRoom(r))
 		}
+*/
 	}
 	def leaveRoom(room:MultiUserChat):Unit = {
 		room.leave
