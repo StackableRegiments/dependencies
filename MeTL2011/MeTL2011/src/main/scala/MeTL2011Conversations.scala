@@ -97,9 +97,9 @@ class ComposedMeTL2011CachedConversations(configName:String, http:SimpleAuthedHt
 */
 class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
   override val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _,()=>{
-			println("MeTL2011CachedConversations connection lost")
+			//println("MeTL2011CachedConversations connection lost")
 		},()=>{
-			println("MeTL2011CachedConversations connection regained")
+			//println("MeTL2011CachedConversations connection regained")
 			precacheConversations
 		}
 	)
@@ -196,9 +196,9 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
   lazy val serializer = new MeTL2011XmlSerializer(configName)
   lazy val rootAddress = "https://%s:1188".format(config.host)
   protected val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _,()=>{
-		println("MeTL2011Conversations connection lost")
+		//println("MeTL2011Conversations connection lost")
 	},()=>{
-		println("MeTL2011Conversations connection regained")
+		//println("MeTL2011Conversations connection regained")
 	})
   lazy val mb = messageBusProvider.getMessageBus(mbDef)
 

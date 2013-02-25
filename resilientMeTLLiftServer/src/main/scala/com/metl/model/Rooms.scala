@@ -11,7 +11,7 @@ import common._
 import http._
 import util._
 import util.TimeHelpers
-import Helpers.TimeSpan
+import Helpers._
 import java.util.Date
 
 import scala.collection.mutable.Queue
@@ -195,6 +195,7 @@ class StartupInformation {
 
 class HistoryCachingRoom(configName:String,location:String,creator:RoomProvider) extends MeTLRoom(configName,location,creator) {
 	private var history:History = History.empty
+	private val isPublic = tryo(location.toInt).map(l => true).openOr(false)
 	private var snapshots:Map[SnapshotSize.Value,Array[Byte]] = Map.empty[SnapshotSize.Value,Array[Byte]]
 	private lazy val starting = new StartupInformation
 	private def firstTime = initialize	
@@ -218,7 +219,13 @@ class HistoryCachingRoom(configName:String,location:String,creator:RoomProvider)
 		snapshots = makeSnapshots
 		lastRender = history.lastVisuallyModified
 	})
-	private def makeSnapshots = Stopwatch.time("HistoryCachingRoom_%s@%s makingSnapshots".format(location,configName), () => SlideRenderer.renderMultiple(history,Globals.snapshotSizes.map(ss => (ss._1.toString.asInstanceOf[String],ss._2.width,ss._2.height)).toList).map(ri => (SnapshotSize.parse(ri._1.toLowerCase) -> ri._2._3)))
+	private def makeSnapshots = Stopwatch.time("HistoryCachingRoom_%s@%s makingSnapshots".format(location,configName), () => {
+		val thisHistory = isPublic match {
+			case true => history.filterCanvasContents(cc => cc.privacy == Privacy.PUBLIC)
+			case false => history
+		}
+		SlideRenderer.renderMultiple(thisHistory,Globals.snapshotSizes.map(ss => (ss._1.toString.asInstanceOf[String],ss._2.width,ss._2.height)).toList).map(ri => (SnapshotSize.parse(ri._1.toLowerCase) -> ri._2._3))
+	})
 	override def getSnapshot(size:SnapshotSize.Value) = {
 		showInterest
 		snapshots(size)
