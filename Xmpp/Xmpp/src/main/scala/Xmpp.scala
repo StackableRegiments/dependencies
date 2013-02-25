@@ -114,13 +114,35 @@ object XmppUtils {
 	}
 }
 
-abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Box[XMPPConnection]) {
+class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
+	override def connectionClosed():Unit = {
+		println("connection closed")
+		onConnectionLost()
+	}
+	override def connectionClosedOnError(e:Exception):Unit = {
+		println("connection lost: "+e.getMessage)
+		onConnectionLost()
+	}
+	override def reconnectingIn(seconds:Int):Unit = {
+		println("reconnecting in... "+seconds)
+	}
+	override def reconnectionFailed(e:Exception):Unit = {
+		println("connection failed: "+e.getMessage)
+		onConnectionLost()
+	}
+	override def reconnectionSuccessful():Unit = {
+		println("reconnection successful")
+		onConnectionRegained()
+	}
+}
+
+abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Option[XMPPConnection],onConnectionLost:()=>Unit = () => {},onConnectionRegained:()=>Unit = () => {}) {
 
     def this(incomingUsername: String, password: String, incomingResource: String, incomingHost: String) {
-        this(incomingUsername, password, incomingResource, incomingHost, incomingHost, xmppConnection = Empty)
+        this(incomingUsername, password, incomingResource, incomingHost, incomingHost, xmppConnection = None)
     }
 		def this(incomingUsername: String, password: String, incomingResource: String, incomingHost: String, incomingDomain:String) {
-				this(incomingUsername, password, incomingResource, incomingHost, incomingDomain, xmppConnection = Empty)
+				this(incomingUsername, password, incomingResource, incomingHost, incomingDomain, xmppConnection = None)
 		}
 
 	val host = incomingHost
@@ -165,8 +187,8 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 
 	lazy val relevantElementNames = subscribedTypes.map(st => st.name).toList
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
-	
-	private var conn:Box[XMPPConnection] = Empty
+	private val additionalConnectionListener = new XmppConnectionManager(onConnectionLost,onConnectionRegained)	
+	private var conn:Option[XMPPConnection] = None 
 	private val config:ConnectionConfiguration = {
 		val c = new ConnectionConfiguration(host,port,domain)
 		c.setRosterLoadedAtLogin(loadRosterAtLogin)
@@ -185,9 +207,9 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	})
     initializeXmpp
 
-    private def createXmppConnection: Box[XMPPConnection] = {
+    private def createXmppConnection: Option[XMPPConnection] = {
         xmppConnection match {
-          case Full(xmpp) => xmppConnection
+          case Some(xmpp) => Some(xmpp)
           case _ => tryo(new XMPPConnection(config))
         }
     }
@@ -195,7 +217,10 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	def connectToXmpp:Unit = Stopwatch.time("Xmpp.connectToXmpp", () => {
 		disconnectFromXmpp
 		conn = createXmppConnection 
-		conn.map(c => c.connect)
+		conn.map(c => {
+			c.connect
+			c.addConnectionListener(additionalConnectionListener)
+		})
 		try {
 			conn.map(c => c.login(username,password,resource))
 		}
@@ -205,6 +230,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 				conn = createXmppConnection
 				conn.map(c => {
 					c.connect
+					c.addConnectionListener(additionalConnectionListener)
 					register
 					c.login(username,password,resource)
 				})
@@ -213,7 +239,10 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	})
 
 	def disconnectFromXmpp:Unit = Stopwatch.time("Xmpp.disconnectFromXmpp", () => {
-		conn.map(c => c.disconnect(new Presence(Presence.Type.unavailable)))
+		conn.map(c => {
+			c.removeConnectionListener(additionalConnectionListener)
+			c.disconnect(new Presence(Presence.Type.unavailable))
+		})
 	})
 
 	protected def register:Unit = Stopwatch.time("Xmpp.register", () => {
@@ -223,13 +252,13 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		})
 	})
 
-	protected def mucFor(room:String):Box[MultiUserChat] = Stopwatch.time("Xmpp.mucFor", () => {
+	protected def mucFor(room:String):Option[MultiUserChat] = Stopwatch.time("Xmpp.mucFor", () => {
 		conn.map(c => {
 			val roomJid = "%s@conference.%s".format(room,domain)
 			new MultiUserChat(c,roomJid)
 		})
 	})
-	def joinRoom(room:String):Box[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
+	def joinRoom(room:String):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
 		val roomJid = "%s@conference.%s".format(room,domain)
 		conn.map(c => {
 			val muc = new MultiUserChat(c,roomJid)

@@ -15,7 +15,7 @@ class XmppProvider(configName:String,hostname:String,username:String,password:St
   })
 }
 
-class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLStanza](u,p,r,h,d){
+class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLStanza](u,p,r,h,d,None,bus.notifyConnectionLost _,bus.notifyConnectionResumed _){
   protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
   private lazy val config = ServerConfiguration.configForName(configName)
 

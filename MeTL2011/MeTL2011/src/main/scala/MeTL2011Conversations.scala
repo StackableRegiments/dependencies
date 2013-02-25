@@ -96,24 +96,32 @@ class ComposedMeTL2011CachedConversations(configName:String, http:SimpleAuthedHt
 })
 */
 class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
+  override val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _,()=>{
+			println("MeTL2011CachedConversations connection lost")
+		},()=>{
+			println("MeTL2011CachedConversations connection regained")
+			precacheConversations
+		}
+	)
   val conversations = scala.collection.mutable.HashMap.empty[Int,Conversation]
 
-  private def precacheConversations = {
+  private def precacheConversations = Stopwatch.time("MeTL2011CachedConversations.precacheConversations", () => {
 		try {
 			val directoryUrl = "%s/Structure/".format(rootAddress)
 			http.getClient.get(directoryUrl)
 			val stream = new ByteArrayInputStream(http.getClient.getAsBytes("%s/all.zip".format(directoryUrl)))
 			val masterConversationList = Unzipper.unzip(stream).map(x => {
 				serializer.toConversation(x)
-			})
-			masterConversationList.map(c=>c.jid).map(super.detailsOf).filterNot(_ == Conversation.empty).foreach(c=>conversations.put(c.jid,c))
+			}).filterNot(_ == Conversation.empty).foreach(c => conversations.put(c.jid,c))
+//			masterConversationList.map(c=>c.jid).map(super.detailsOf).filterNot(_ == Conversation.empty).foreach(c=>conversations.put(c.jid,c))
 		} catch {
 			case e:Throwable => {}
 		}
-  }
+  })
   override lazy val isReady:Boolean = {
+		mb
     precacheConversations
-    true
+		true
   }
 
   override def search(query:String):List[Conversation] = Stopwatch.time("CachedConversations.search",() => {
@@ -187,8 +195,17 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
   lazy val utils = new MeTL2011Utils(configName)
   lazy val serializer = new MeTL2011XmlSerializer(configName)
   lazy val rootAddress = "https://%s:1188".format(config.host)
-  val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _)
-  val mb = messageBusProvider.getMessageBus(mbDef)
+  protected val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _,()=>{
+		println("MeTL2011Conversations connection lost")
+	},()=>{
+		println("MeTL2011Conversations connection regained")
+	})
+  lazy val mb = messageBusProvider.getMessageBus(mbDef)
+
+  override lazy val isReady:Boolean = {
+		mb
+		true
+  }
 
   def receiveConversationDetailsUpdated(m:MeTLStanza):Option[Conversation] = {
     m match {

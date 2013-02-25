@@ -14,6 +14,8 @@ import util.TimeHelpers
 import Helpers.TimeSpan
 import java.util.Date
 
+import scala.collection.mutable.Queue
+
 abstract class RoomProvider {
   def get(jid:String):MeTLRoom
   def removeMeTLRoom(room:String):Unit
@@ -56,7 +58,26 @@ case object Ping
 
 abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) extends LiftActor with ListenerManager {
   lazy val config = ServerConfiguration.configForName(configName)
-  protected val messageBusDefinition = new MessageBusDefinition(location,"unicastBackToOwner",(s:MeTLStanza) => this ! ServerToLocalMeTLStanza(s))
+	private var shouldBacklog = false
+	private var backlog = Queue.empty[MeTLStanza]
+	private def onConnectionLost:Unit = {
+//		println("connection lost: "+location)
+		shouldBacklog = true
+	}
+	private def onConnectionRegained:Unit = {
+	//	println("connection regained: "+location)
+		initialize
+		processBacklog
+		shouldBacklog = false
+	}
+	private def processBacklog:Unit = {
+		while (!backlog.isEmpty){
+			val item = backlog.dequeue
+			this ! LocalToServerMeTLStanza(item)
+		}
+	}
+	protected def initialize:Unit = {}
+  protected val messageBusDefinition = new MessageBusDefinition(location,"unicastBackToOwner",(s:MeTLStanza) => this ! ServerToLocalMeTLStanza(s),onConnectionLost _,onConnectionRegained _)
   protected val messageBus = config.getMessageBus(messageBusDefinition)
   def getHistory:History
 	def getThumbnail:Array[Byte]
@@ -73,6 +94,7 @@ abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) 
   def localShutdown = {
     messageBus.release
   }
+	initialize
 	case object IrrelevantMatch
 	protected def overrideableLowPriority:PartialFunction[Any,Unit] = {
 		case IrrelevantMatch => {}
@@ -104,7 +126,11 @@ abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) 
   protected def sendStanzaToServer(s:MeTLStanza):Unit = Stopwatch.time("MeTLRoom.sendStanzaToServer", () => {
 		//println("%s l->s %s".format(location,s))
 		showInterest
-		messageBus.sendStanzaToRoom(s)
+		if (shouldBacklog) {
+			backlog.enqueue(s)
+		} else {
+			messageBus.sendStanzaToRoom(s)
+		}
 	})
   private def formatConnection(username:String,uniqueId:String):String = "%s_%s".format(username,uniqueId)
   private def addConnection(j:JoinRoom):Unit = Stopwatch.time("MeTLRoom.addConnection(%s)".format(j),() => {
@@ -155,19 +181,43 @@ class NoCacheRoom(configName:String,location:String,creator:RoomProvider) extend
 
 case object ThumbnailRenderRequest
 
+class StartupInformation {
+	private var isFirstTime = true
+  def setHasStarted(value:Boolean):Unit = {
+		isFirstTime = value
+	}
+	def getHasStarted:Boolean = {
+		if (isFirstTime)
+			true
+		else false
+	}
+}
+
 class HistoryCachingRoom(configName:String,location:String,creator:RoomProvider) extends MeTLRoom(configName,location,creator) {
-  lazy val history = Stopwatch.time("MeTLRoom %s fetching history".format(location),() => {
-    showInterest
-    config.getHistory(location).attachRealtimeHook((s) => super.sendToChildren(s))
-  })
+	private var history:History = History.empty
+	private var snapshots:Map[SnapshotSize.Value,Array[Byte]] = Map.empty[SnapshotSize.Value,Array[Byte]]
+	private lazy val starting = new StartupInformation
+	private def firstTime = initialize	
+	override def initialize = Stopwatch.time("HistoryCachingRoom.initalize",() => {
+		if (starting.getHasStarted) {
+			starting.setHasStarted(false)
+		} else {
+			showInterest
+			history = config.getHistory(location).attachRealtimeHook((s) => super.sendToChildren(s))
+			updateSnapshots
+		}
+	})
+	firstTime
 	private var lastRender = 0L
 	private val acceptableRenderStaleness = 10000L
   override def getHistory:History = {
 		showInterest
 		history
 	}
-	private var snapshots:Map[SnapshotSize.Value,Array[Byte]] = makeSnapshots
-
+	private def updateSnapshots = Stopwatch.time("HistoryCachingRoom.updateSnapshots", () => {
+		snapshots = makeSnapshots
+		lastRender = history.lastVisuallyModified
+	})
 	private def makeSnapshots = Stopwatch.time("HistoryCachingRoom_%s@%s makingSnapshots".format(location,configName), () => SlideRenderer.renderMultiple(history,Globals.snapshotSizes.map(ss => (ss._1.toString.asInstanceOf[String],ss._2.width,ss._2.height)).toList).map(ri => (SnapshotSize.parse(ri._1.toLowerCase) -> ri._2._3)))
 	override def getSnapshot(size:SnapshotSize.Value) = {
 		showInterest
@@ -181,8 +231,7 @@ class HistoryCachingRoom(configName:String,location:String,creator:RoomProvider)
 		case ThumbnailRenderRequest => {
 			if ((new Date().getTime - lastRender) > acceptableRenderStaleness){
 				renderInProgress = false
-				snapshots = makeSnapshots
-				lastRender = history.lastVisuallyModified
+				updateSnapshots
 			} else if (!renderInProgress){
 				renderInProgress = true
 				ActorPing.schedule(this,ThumbnailRenderRequest,acceptableRenderStaleness)
