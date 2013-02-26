@@ -116,7 +116,7 @@ object XmppUtils {
 
 class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
 	override def connectionClosed():Unit = {
-		println("XMPPConnectionManager:connection closed")
+		//println("XMPPConnectionManager:connection closed")
 		onConnectionLost()
 	}
 	override def connectionClosedOnError(e:Exception):Unit = {
@@ -264,7 +264,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		})
 	})
 	def joinRoom(room:String,interestId:String = ""):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
-		println("XMPP(%s):joinRoom(%s)".format(this.hashCode,room))
+		//println("XMPP(%s):joinRoom(%s)".format(this.hashCode,room))
 		val oldRoomInterests = roomInterests.getOrElseUpdate(room,List.empty[String])
 		val creatingRoom = roomInterests(room) match {
 			case l:List[String] if l.length > 0 => false
@@ -272,7 +272,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		}
 		roomInterests.update(room,interestId :: oldRoomInterests)
 		if (creatingRoom){
-			println("XMPP(%s):joinRoom.creatingRoom(%s)".format(this.hashCode,room))
+			//println("XMPP(%s):joinRoom.creatingRoom(%s)".format(this.hashCode,room))
 			val roomJid = "%s@conference.%s".format(room,domain)
 			conn.map(c => {
 				val muc = new MultiUserChat(c,roomJid)
@@ -286,13 +286,13 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	def leaveRoom(roomName:String, interestId:String = ""):Unit = {
 		roomInterests.getOrElseUpdate(roomName,List.empty[String]) match {
 			case l:List[String] if l.length > 0 && l.contains(interestId) => {
-				println("XMPP(%s):leaveRoom.removeInterestsFromExistingInterests".format(this))
+				//println("XMPP(%s):leaveRoom.removeInterestsFromExistingInterests".format(this))
 				roomInterests.update(roomName,roomInterests(roomName).filterNot(_ == interestId))
 			}
 			case _ => {}
 		}
 		if (roomInterests(roomName).length == 0){
-			println("XMPP(%s):leaveRoom".format(this))
+			//println("XMPP(%s):leaveRoom".format(this))
 			rooms.get(roomName).map(r => leaveRoom(r))
 		}
 	}

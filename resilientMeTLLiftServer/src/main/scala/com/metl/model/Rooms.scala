@@ -61,20 +61,20 @@ abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) 
 	private var shouldBacklog = false
 	private var backlog = Queue.empty[MeTLStanza]
 	private def onConnectionLost:Unit = {
-		println("MeTLRoom(%s):onConnectionLost".format(location))
+		//println("MeTLRoom(%s):onConnectionLost".format(location))
 		shouldBacklog = true
 	}
 	private def onConnectionRegained:Unit = {
-		println("MeTLRoom(%s):onConnectionRegained".format(location))
+		//println("MeTLRoom(%s):onConnectionRegained".format(location))
 		initialize
 		processBacklog
 		shouldBacklog = false
 	}
 	private def processBacklog:Unit = {
-		println("MeTLRoom(%s):sendToServer.processingBacklog".format(location))
+		//println("MeTLRoom(%s):sendToServer.processingBacklog".format(location))
 		while (!backlog.isEmpty){
 			val item = backlog.dequeue
-			println("MeTLRoom(%s):sendToServer.processingBacklog.dequeue(%s)".format(location,item))
+			//println("MeTLRoom(%s):sendToServer.processingBacklog.dequeue(%s)".format(location,item))
 			this ! LocalToServerMeTLStanza(item)
 		}
 	}
@@ -94,7 +94,7 @@ abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) 
     heartbeat
   }
   def localShutdown = {
-		println("MeTLRoom(%s):localShutdown".format(location))
+		//println("MeTLRoom(%s):localShutdown".format(location))
     messageBus.release
   }
 	initialize
@@ -124,15 +124,15 @@ abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) 
 	})
   protected def sendToChildren(a:MeTLStanza):Unit = Stopwatch.time("MeTLRoom.sendToChildren",() => {
 		//println("%s s->l %s".format(location,a))
-		println("MeTLRoom(%s):sendToChildren(%s)".format(location,a))
+		//println("MeTLRoom(%s):sendToChildren(%s)".format(location,a))
     joinedUsers.foreach(j => j._3 ! a)
   })
   protected def sendStanzaToServer(s:MeTLStanza):Unit = Stopwatch.time("MeTLRoom.sendStanzaToServer", () => {
 		//println("%s l->s %s".format(location,s))
-		println("MeTLRoom(%s):sendToServer(%s)".format(location,s))
+		//println("MeTLRoom(%s):sendToServer(%s)".format(location,s))
 		showInterest
 		if (shouldBacklog) {
-			println("MeTLRoom(%s):sendToServer.backlogging".format(location))
+			//println("MeTLRoom(%s):sendToServer.backlogging".format(location))
 			backlog.enqueue(s)
 		} else {
 			messageBus.sendStanzaToRoom(s)
@@ -150,7 +150,7 @@ abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) 
   })
   private def possiblyCloseRoom:Boolean = Stopwatch.time("MeTLRoom.possiblyCloseRoom", () => {
     if (joinedUsers.length == 0 && !recentInterest) {
-			println("MeTLRoom(%s):heartbeat.closingRoom".format(location))
+			//println("MeTLRoom(%s):heartbeat.closingRoom".format(location))
       creator.removeMeTLRoom(location)
       true
     } else {
