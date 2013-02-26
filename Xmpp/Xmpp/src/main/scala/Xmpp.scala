@@ -265,7 +265,13 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	})
 	def joinRoom(room:String,interestId:String = ""):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
 		println("XMPP(%s):joinRoom(%s)".format(this.hashCode,room))
-		roomInterests.update(room,interestId :: roomInterests.getOrElseUpdate(room,{
+		val oldRoomInterests = roomInterests.getOrElseUpdate(room,List.empty[String])
+		val creatingRoom = roomInterests(room) match {
+			case l:List[String] if l.length > 0 => false
+			case _ => true
+		}
+		roomInterests.update(room,interestId :: oldRoomInterests)
+		if (creatingRoom){
 			println("XMPP(%s):joinRoom.creatingRoom(%s)".format(this.hashCode,room))
 			val roomJid = "%s@conference.%s".format(room,domain)
 			conn.map(c => {
@@ -274,8 +280,7 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 				rooms = rooms.updated(room,muc)
 				muc
 			})
-			List.empty[String]
-		}))
+		}
 		rooms.get(room)
 	})
 	def leaveRoom(roomName:String, interestId:String = ""):Unit = {
