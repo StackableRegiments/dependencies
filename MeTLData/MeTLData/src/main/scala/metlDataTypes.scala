@@ -102,7 +102,11 @@ object Presentation{
 case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions, blackList:List[String] = List.empty[String]) extends MeTLXml(server){
 	def delete = Conversation(server,author,new Date().getTime,slides,"deleted",tag,jid,title,created,permissions,blackList)
 	def rename(newTitle:String) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,newTitle,created,permissions,blackList)
-	def replacePermissions(newPermissions:Permissions) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,title,created,newPermissions,blackList)
+	def replacePermissions(newPermissions:Permissions) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,title,created,newPermissions,blackList)	
+	def shouldDisplayFor(username:String,userGroups:List[String]):Boolean = {
+		val trimmedSubj = subject.toLowerCase.trim
+		(author.toLowerCase.trim == username.toLowerCase.trim || userGroups.exists(ug => ug.toLowerCase.trim == trimmedSubj)) && trimmedSubj != "deleted"
+	}
 	def replaceSubject(newSubject:String) = Conversation(server,author,new Date().getTime,slides,newSubject,tag,jid,title,created,permissions,blackList)
 	def addSlideAtIndex(index:Int) = {
 		val oldSlides = slides.map(s => {
