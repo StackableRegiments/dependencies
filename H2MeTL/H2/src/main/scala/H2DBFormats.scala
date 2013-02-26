@@ -105,6 +105,8 @@ class H2MoveDelta extends H2MeTLCanvasContent[H2MoveDelta]{
 	object inkIds extends MappedText(this)
 	object textIds extends MappedText(this)
 	object imageIds extends MappedText(this)
+	object xOrigin extends MappedDouble(this)
+	object yOrigin extends MappedDouble(this)
 	object xTranslate extends MappedDouble(this)
 	object yTranslate extends MappedDouble(this)
 	object xScale extends MappedDouble(this)

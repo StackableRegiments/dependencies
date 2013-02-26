@@ -83,7 +83,7 @@ class H2Serializer(configName:String) extends Serializer {
   override def fromMeTLText(i:MeTLText):H2Text = incCanvasContent(H2Text.create,i,"text").text(i.text).height(i.height).width(i.width).caret(i.caret).x(i.x).y(i.y).tag(i.tag).style(i.style).family(i.family).weight(i.weight).size(i.size).decoration(i.decoration).color(fromColor(i.color).toString)
 	def toMeTLMoveDelta(i:H2MoveDelta):MeTLMoveDelta = {
 		val cc = decCanvasContent(i)	
-		MeTLMoveDelta(config,cc.author,cc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,stringToStrings(i.inkIds.is),stringToStrings(i.textIds.is),stringToStrings(i.imageIds.is),i.xTranslate.is,i.yTranslate.is,i.xScale.is,i.yScale.is,toPrivacy(i.newPrivacy.is),i.isDeleted.is)
+		MeTLMoveDelta(config,cc.author,cc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,i.xOrigin,i.yOrigin,stringToStrings(i.inkIds.is),stringToStrings(i.textIds.is),stringToStrings(i.imageIds.is),i.xTranslate.is,i.yTranslate.is,i.xScale.is,i.yScale.is,toPrivacy(i.newPrivacy.is),i.isDeleted.is)
 	}
 	protected def stringToStrings(s:String):Seq[String] = s.split("_:_").filter(s => s != "")
 	protected def stringsToString(ls:Seq[String]):String = ls.foldLeft("")((acc,s) => {
@@ -93,7 +93,7 @@ class H2Serializer(configName:String) extends Serializer {
 		}
 	})
 	override def fromMeTLMoveDelta(i:MeTLMoveDelta):H2MoveDelta = {
-		incCanvasContent(H2MoveDelta.create,i,"moveDelta").inkIds(stringsToString(i.inkIds)).textIds(stringsToString(i.textIds)).imageIds(stringsToString(i.imageIds)).xTranslate(i.xTranslate).yTranslate(i.yTranslate).xScale(i.xScale).yScale(i.yScale).newPrivacy(fromPrivacy(i.newPrivacy)).isDeleted(i.isDeleted)
+		incCanvasContent(H2MoveDelta.create,i,"moveDelta").inkIds(stringsToString(i.inkIds)).textIds(stringsToString(i.textIds)).imageIds(stringsToString(i.imageIds)).xTranslate(i.xTranslate).yTranslate(i.yTranslate).xScale(i.xScale).yScale(i.yScale).newPrivacy(fromPrivacy(i.newPrivacy)).isDeleted(i.isDeleted).xOrigin(i.xOrigin).yOrigin(i.yOrigin)
 	}
   def toMeTLDirtyInk(i:H2DirtyInk):MeTLDirtyInk = {
 		val cc = decCanvasContent(i)
