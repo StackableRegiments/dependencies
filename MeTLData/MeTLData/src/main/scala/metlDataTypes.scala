@@ -105,7 +105,7 @@ case class Conversation(override val server:ServerConfiguration,author:String,la
 	def replacePermissions(newPermissions:Permissions) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,title,created,newPermissions,blackList)	
 	def shouldDisplayFor(username:String,userGroups:List[String]):Boolean = {
 		val trimmedSubj = subject.toLowerCase.trim
-		(author.toLowerCase.trim == username.toLowerCase.trim || userGroups.exists(ug => ug.toLowerCase.trim == trimmedSubj)) && trimmedSubj != "deleted"
+		(trimmedSubj == "unrestricted" || author.toLowerCase.trim == username.toLowerCase.trim || userGroups.exists(ug => ug.toLowerCase.trim == trimmedSubj)) && trimmedSubj != "deleted"
 	}
 	def replaceSubject(newSubject:String) = Conversation(server,author,new Date().getTime,slides,newSubject,tag,jid,title,created,permissions,blackList)
 	def addSlideAtIndex(index:Int) = {
