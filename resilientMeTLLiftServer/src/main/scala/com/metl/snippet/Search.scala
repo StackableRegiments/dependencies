@@ -27,7 +27,7 @@ class SearchSnippet {
 	def searchResults ={
 		query.is match {
 			case q:String if (q.length > 0) => {
-				val results = server.searchForConversation(q)
+				val results = server.searchForConversation(q).filterNot(c => c.subject.toLowerCase.trim == "deleted")
 				"#searchResultsMetaTerms *" #> Text(q) & {
 				results.length match {
 					case 0 =>
