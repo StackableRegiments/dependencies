@@ -53,7 +53,7 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
 	protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
 	private lazy val config = ServerConfiguration.configForName(configName)
 	
-  override lazy val debug = true
+//  override lazy val debug = true
 
 	private val subscribedBusses = new HashMap[String,HashMap[MessageBusDefinition,MessageBus]]
 	
