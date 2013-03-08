@@ -15,8 +15,9 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,o
   protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
   protected lazy val history = new MeTL2011History(name,http)
   protected lazy val messageBusProvider = new PooledXmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
+	protected lazy val conversationsMessageBusProvider = new XmppProvider(name,hostname,"metlXConversations","fred",xmppDomainName)
 //  protected lazy val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
-  protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,onConversationDetailsUpdated)
+  protected val conversations = new MeTL2011CachedConversations(name,http,conversationsMessageBusProvider,onConversationDetailsUpdated)
   lazy val serializer = new MeTL2011XmlSerializer(name)
 	override def isReady = {
 		conversations.isReady

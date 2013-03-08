@@ -14,6 +14,10 @@ class XmppProvider(configName:String,hostname:String,username:String,password:St
   override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
     new XmppMessageBus(configName,hostname,username + new java.util.Date().getTime.toString,password,domainName,d,this)
   })
+	def getHostname = hostname
+	def getUsername = username
+	def getPassword = password
+	def getDomainName = domainName
 }
 
 class PooledXmppProvider(configName:String,hostname:String,username:String,password:String,domainName:String) extends OneBusPerRoomMessageBusProvider{
@@ -25,6 +29,10 @@ class PooledXmppProvider(configName:String,hostname:String,username:String,passw
 		conn.addMessageBus(d,bus)
 		bus
   })
+	def getHostname = hostname
+	def getUsername = username
+	def getPassword = password
+	def getDomainName = domainName
 }
 
 class XmppConnProvider(configName:String,hostname:String,username:String,password:String,domainName:String) {

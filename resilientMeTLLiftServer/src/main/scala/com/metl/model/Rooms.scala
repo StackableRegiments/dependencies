@@ -149,7 +149,7 @@ abstract class MeTLRoom(configName:String,location:String,creator:RoomProvider) 
     l.actor ! RoomLeaveAcknowledged(configName,location)
   })
   private def possiblyCloseRoom:Boolean = Stopwatch.time("MeTLRoom.possiblyCloseRoom", () => {
-    if (joinedUsers.length == 0 && !recentInterest) {
+    if (location != "global" && joinedUsers.length == 0 && !recentInterest) {
 			//println("MeTLRoom(%s):heartbeat.closingRoom".format(location))
       creator.removeMeTLRoom(location)
       true

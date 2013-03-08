@@ -87,6 +87,7 @@ object MeTLXConfiguration {
     LiftRules.statelessDispatchTable.prepend(WebMeTLRestHelper)
     LiftRules.dispatch.append(WebMeTLStatefulRestHelper)
 		configs.values.foreach(c => {
+			getRoom("global",c._1.name)
 			println("%s is now ready for use (%s)".format(c._1.name,c._1.isReady))
 		})
     configs.values.foreach(c => LiftRules.unloadHooks.append(c._1.shutdown _))
