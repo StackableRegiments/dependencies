@@ -21,7 +21,7 @@ class XmppProvider(configName:String,hostname:String,username:String,password:St
 }
 
 class PooledXmppProvider(configName:String,hostname:String,username:String,password:String,domainName:String) extends OneBusPerRoomMessageBusProvider{
-	private val connMgr = new XmppConnProvider(configName,hostname,username,password,domainName)
+	protected val connMgr = new XmppConnProvider(configName,hostname,username,password,domainName)
   override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("PooledXmppProvider.createNewMessageBus", () => {
 		val conn = connMgr.getConn
     val bus = new XmppSharedConnMessageBus(configName,hostname,username + new java.util.Date().getTime.toString,password,domainName,d,this)
@@ -36,8 +36,8 @@ class PooledXmppProvider(configName:String,hostname:String,username:String,passw
 }
 
 class XmppConnProvider(configName:String,hostname:String,username:String,password:String,domainName:String) {
-	private var conns = List.empty[MeTL2011XmppMultiConn]	
-	private val maxCount = 20	
+	protected var conns = List.empty[MeTL2011XmppMultiConn]	
+	protected val maxCount = 20	
 	def getConn:MeTL2011XmppMultiConn = {
 		//println("XMPPConnProvider:getConn")
 		conns.find(c => c.getCount < maxCount).getOrElse({
