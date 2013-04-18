@@ -156,7 +156,7 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:S
 
 class XmppSharedConnMessageBus(configName:String,hostname:String,username:String,password:String,domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
   val jid = d.location
-	private var xmpp:Option[MeTL2011XmppMultiConn] = None
+	protected var xmpp:Option[MeTL2011XmppMultiConn] = None
 	def addConn(conn:MeTL2011XmppMultiConn) = {
 		//println("XMPPSharedConnMessageBus(%s):addConn(%s)".format(d,conn))
 		xmpp = Some(conn)
