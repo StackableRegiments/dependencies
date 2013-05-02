@@ -84,6 +84,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
   override def setCookies(cook:Map[String,Header]):Unit = cookies = cook
   override def getCookies : Map[String, Header] = cookies
 
+	def addHttpHeader(name:String,value:String):Unit = setHttpHeaders(getHttpHeaders ::: List(new BasicHeader(name,value)))
   override def setHttpHeaders(headers:List[Header]):Unit = httpHeaders = headers.toArray
   override def getHttpHeaders : List[Header] = httpHeaders.toList
 
@@ -130,6 +131,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
       val path = determinePath(correctlyFormedUrl)
       val scheme = determineScheme(correctlyFormedUrl)
       val query = determineQuery(correctlyFormedUrl)
+			println("REQ: S:%s H:%s Port:%s Path: %s Query:%s".format(scheme,host,port,path,query)) 
       val route = new HttpRoute(new HttpHost(host,port,scheme))
       val connRequest = connMgr.requestConnection(route,null)
       val conn = connRequest.getConnection(connectionTimeout,TimeUnit.SECONDS)
@@ -140,6 +142,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         if(conn.isResponseAvailable(readTimeout)){
           val response = conn.receiveResponseHeader
           storeClientCookies(response.getHeaders("Set-Cookie").toList)
+//					println("response: %s".format(response.getStatusLine.getStatusCode))
           val output = response.getStatusLine.getStatusCode match {
             case 200 => {
               conn.receiveResponseEntity(response)
@@ -161,6 +164,14 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
             case 403 => throw new WebException("access forbidden to object at %s".format(uri),403,uri)
             case 404 => throw new WebException("object not found at %s".format(uri),404,uri)
             case 500 => throw new Exception("server error encountered at %s".format(uri))
+/*          case 500 => {
+              conn.receiveResponseEntity(response)
+              val entity = response.getEntity
+              val tempOutput = IOUtils.toByteArray(entity.getContent)
+              EntityUtils.consume(entity)
+              tempOutput
+						}
+*/
             case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
           }
           connMgr.releaseConnection(conn,keepAliveTimeout,TimeUnit.SECONDS)
