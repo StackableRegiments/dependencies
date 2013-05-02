@@ -131,7 +131,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
       val path = determinePath(correctlyFormedUrl)
       val scheme = determineScheme(correctlyFormedUrl)
       val query = determineQuery(correctlyFormedUrl)
-			println("REQ: S:%s H:%s Port:%s Path: %s Query:%s".format(scheme,host,port,path,query)) 
+			//println("REQ: S:%s H:%s Port:%s Path: %s Query:%s".format(scheme,host,port,path,query)) 
       val route = new HttpRoute(new HttpHost(host,port,scheme))
       val connRequest = connMgr.requestConnection(route,null)
       val conn = connRequest.getConnection(connectionTimeout,TimeUnit.SECONDS)
