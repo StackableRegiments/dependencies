@@ -131,7 +131,6 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
       val path = determinePath(correctlyFormedUrl)
       val scheme = determineScheme(correctlyFormedUrl)
       val query = determineQuery(correctlyFormedUrl)
-			//println("REQ: S:%s H:%s Port:%s Path: %s Query:%s".format(scheme,host,port,path,query)) 
       val route = new HttpRoute(new HttpHost(host,port,scheme))
       val connRequest = connMgr.requestConnection(route,null)
       val conn = connRequest.getConnection(connectionTimeout,TimeUnit.SECONDS)
@@ -142,7 +141,6 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         if(conn.isResponseAvailable(readTimeout)){
           val response = conn.receiveResponseHeader
           storeClientCookies(response.getHeaders("Set-Cookie").toList)
-//					println("response: %s".format(response.getStatusLine.getStatusCode))
           val output = response.getStatusLine.getStatusCode match {
             case 200 => {
               conn.receiveResponseEntity(response)
@@ -159,19 +157,23 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
               conn.abortConnection
               withConn(newLocString,actOnConn,redirectNumber + 1, retryNumber, exceptionsSoFar ::: List(new RedirectException("healthy redirect from: %s to %s".format(oldLocUri,newLocUri))))
             }
-            case 400 => throw new WebException("bad request sent to %s".format(uri),400,uri)
-            case 401 => throw new WebException("access to object at %s requires authentication".format(uri),401,uri)
-            case 403 => throw new WebException("access forbidden to object at %s".format(uri),403,uri)
-            case 404 => throw new WebException("object not found at %s".format(uri),404,uri)
-            case 500 => throw new Exception("server error encountered at %s".format(uri))
-/*          case 500 => {
+            case 400 => {
               conn.receiveResponseEntity(response)
               val entity = response.getEntity
               val tempOutput = IOUtils.toByteArray(entity.getContent)
               EntityUtils.consume(entity)
-              tempOutput
+  	        	throw new WebException("bad request sent to %s: %s".format(uri,tempOutput),400,uri)
 						}
-*/
+            case 401 => throw new WebException("access to object at %s requires authentication".format(uri),401,uri)
+            case 403 => throw new WebException("access forbidden to object at %s".format(uri),403,uri)
+            case 404 => throw new WebException("object not found at %s".format(uri),404,uri)
+	          case 500 => {
+              conn.receiveResponseEntity(response)
+              val entity = response.getEntity
+              val tempOutput = IOUtils.toByteArray(entity.getContent)
+              EntityUtils.consume(entity)
+            	throw new WebException("server error encountered at %s: %s".format(uri,tempOutput),500,uri)
+						}
             case other => throw new Exception("http status code (%s) not yet implemented, returned from %s".format(other,uri))
           }
           connMgr.releaseConnection(conn,keepAliveTimeout,TimeUnit.SECONDS)
@@ -186,7 +188,6 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
 					throw new RetryException(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "),ex.exceptions)
         }
         case ex:RedirectException => {
-          //throw ex
 					throw new RedirectException(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "),ex.exceptions)
         }
 				case ex:WebException => {
@@ -198,7 +199,13 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         }
       }
     } catch {
-	    case ex:Throwable => {
+			case ex:RetryException => {
+				throw new RetryException(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "),ex.exceptions)
+			}
+			case ex:RedirectException => {
+				throw new RedirectException(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "),ex.exceptions)
+			}
+			case ex:Throwable => {
         throw ex
       }
     }
