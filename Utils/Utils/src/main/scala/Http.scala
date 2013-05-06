@@ -183,11 +183,11 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
         }
       } catch {
         case ex:RetryException => {
-					throw new Exception(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "))
+					throw new RetryException(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "),ex.exceptions)
         }
         case ex:RedirectException => {
           //throw ex
-					throw new Exception(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "))
+					throw new RedirectException(ex.getMessage + ": "+ex.exceptions.map(e => e.getMessage).mkString("... "),ex.exceptions)
         }
 				case ex:WebException => {
 					throw ex
