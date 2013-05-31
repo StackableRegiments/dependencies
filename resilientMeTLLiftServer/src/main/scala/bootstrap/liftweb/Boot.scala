@@ -52,19 +52,18 @@ class Boot {
       case _ => NotFoundAsResponse(RedirectResponse("/index"))
     }
     def sitemap() = SiteMap(
-//MeTLX (disabled in this build)
-//      Menu(Loc("Board","board" :: Nil,"Main face to face",Hidden)),
-//WebMeTL
-    Menu("Home") / "index",
-	  Menu("Conversation") / "conversation",
-	  Menu("Slide") / "slide",
-		Menu("SlidePrev") / "slidePrev",
-		Menu("SlideNext") / "slideNext",
-		Menu("SlideNavigation") / "slideNavigation",
-		Menu("SlideTitle") / "slideTitle",
-	  Menu("Quiz") / "quiz",
-	  Menu("Quizzes") / "quizzes",
-//Default
+      Menu(Loc("Board","board" :: Nil,"Main face to face",Hidden)),
+      //WebMeTL
+      Menu("Home") / "index",
+      Menu("Conversation") / "conversation",
+      Menu("Slide") / "slide",
+      Menu("SlidePrev") / "slidePrev",
+      Menu("SlideNext") / "slideNext",
+      Menu("SlideNavigation") / "slideNavigation",
+      Menu("SlideTitle") / "slideTitle",
+      Menu("Quiz") / "quiz",
+      Menu("Quizzes") / "quizzes",
+      //Default
       Menu(Loc("Static", Link(List("static"), true, "/static/index"), "Static Content", Hidden)))
 
     LiftRules.setSiteMapFunc(() => sitemap())
