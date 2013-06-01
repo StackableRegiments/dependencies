@@ -91,6 +91,7 @@ object MeTLXConfiguration {
 			println("%s is now ready for use (%s)".format(c._1.name,c._1.isReady))
 		})
     configs.values.foreach(c => LiftRules.unloadHooks.append(c._1.shutdown _))
+		EmbeddedXmppServer.start
   }
   def getRoom(jid:String,configName:String) = {
     configs(configName)._2.get(jid)

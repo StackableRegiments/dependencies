@@ -204,8 +204,13 @@
       <artifactId>lift-mongodb-record_2.9.0-1</artifactId>
       <version>2.4-M2</version>
     </dependency>
-
-    <!--
+		<!-- for apache vysper xmpp server -->
+		<dependency>
+			<groupId>org.apache.vysper</groupId>
+			<artifactId>vysper-core</artifactId>
+			<version>0.7</version>
+		</dependency>
+		<!--
         <dependency>
         <groupId>commons-io</groupId>
         <artifactId>commons-io</artifactId>
