@@ -71,10 +71,16 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
 	def getCount = subscriptionCount
 
 	override def onConnLost = {
-		subscribedBusses.values.foreach(sbl => sbl.keys.foreach(mbd => mbd.onConnectionLost()))
+		subscribedBusses.values.foreach(sbl => sbl.keys.foreach(mbd => {
+			println("connLost: %s -> %s".format(mbd.location,mbd.feedbackName))
+			mbd.onConnectionLost()
+		}))
 	}
 	override def onConnRegained = {
-		subscribedBusses.values.foreach(sbl => sbl.keys.foreach(mbd => mbd.onConnectionRegained()))
+		subscribedBusses.values.foreach(sbl => sbl.keys.foreach(mbd => {
+			println("connRegained: %s -> %s".format(mbd.location,mbd.feedbackName))
+			mbd.onConnectionRegained()
+		}))
 	}	
 
 	def addMessageBus(d:MessageBusDefinition,m:MessageBus) = {
@@ -128,6 +134,17 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:S
   private lazy val config = ServerConfiguration.configForName(configName)
 
   //    override lazy val debug = true
+
+	override def onConnLost = {
+		val mbd = bus.getDefinition
+		println("singleConnLost: %s -> %s".format(mbd.location,mbd.feedbackName))
+		mbd.onConnectionLost()
+	}
+	override def onConnRegained = {
+		val mbd = bus.getDefinition
+		println("singleConnRegained: %s -> %s".format(mbd.location,mbd.feedbackName))
+		mbd.onConnectionRegained()
+	}	
 
   override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
     bus.recieveStanzaFromRoom(message)

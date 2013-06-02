@@ -116,15 +116,15 @@ object XmppUtils {
 
 class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
 	override def connectionClosed():Unit = {
-		//println("XMPPConnectionManager:connection closed")
+		println("XMPPConnectionManager:connection closed")
 		onConnectionLost()
 	}
 	override def connectionClosedOnError(e:Exception):Unit = {
-		println("XMPPConnectionManager:connection lost: "+e.getMessage)
+		println("XMPPConnectionManager:connection closed with error: "+e.getMessage)
 		onConnectionLost()
 	}
 	override def reconnectingIn(seconds:Int):Unit = {
-		println("XMPPConnectionManager:reconnecting in... "+seconds)
+		//println("XMPPConnectionManager:reconnecting in... "+seconds)
 	}
 	override def reconnectionFailed(e:Exception):Unit = {
 		println("XMPPConnectionManager:connection failed: "+e.getMessage)
@@ -192,7 +192,17 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 	private var roomInterests:SynchronizedWriteMap[String,List[String]] = new SynchronizedWriteMap[String,List[String]]()
 //	private var roomInterests:Map[String,List[String]] = Map.empty[String,List[String]]
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
-	private val additionalConnectionListener = new XmppConnectionManager(onConnLost _,onConnRegained _)	
+	private val additionalConnectionListener = new XmppConnectionManager(onConnLost _, () => {
+		conn.map(c => println("room reconnected: %s -> (Connected:%s,Authenticated:%s)".format(resource,c.isConnected,c.isAuthenticated)))
+		onConnRegained
+		rooms.foreach(roomDefinition => {
+			val roomJid = roomDefinition._1
+			val room = roomDefinition._2
+			println("rejoining room %s on connection %s".format(roomJid,resource))
+			room.leave
+			room.join(resource)
+		})
+	})	
 	private var conn:Option[XMPPConnection] = None 
 	private val config:ConnectionConfiguration = {
 		val c = new ConnectionConfiguration(host,port,domain)
@@ -210,14 +220,14 @@ abstract class XmppConnection[T](incomingUsername:String,password:String,incomin
 		val filter = new AndFilter( new PacketTypeFilter(classOf[Message]), new MessageTypeFilter(relevantElementNames))
 		conn.map(c => c.addPacketListener(new RemoteSyncListener,filter))
 	})
-    initializeXmpp
+	initializeXmpp
 
-    private def createXmppConnection: Option[XMPPConnection] = {
-        xmppConnection match {
-          case Some(xmpp) => Some(xmpp)
-          case _ => tryo(new XMPPConnection(config))
-        }
-    }
+	private def createXmppConnection: Option[XMPPConnection] = {
+			xmppConnection match {
+				case Some(xmpp) => Some(xmpp)
+				case _ => tryo(new XMPPConnection(config))
+			}
+	}
 
 	def connectToXmpp:Unit = Stopwatch.time("Xmpp.connectToXmpp", () => {
 		disconnectFromXmpp

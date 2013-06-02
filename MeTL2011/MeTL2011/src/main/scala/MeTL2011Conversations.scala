@@ -7,28 +7,36 @@ import java.io.ByteArrayInputStream
 import net.liftweb.util._
 import org.apache.commons.io.IOUtils
 class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
-  override val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _,()=>{
-  },()=>{
-    precacheConversations
-  }
-  )
+  override val mbDef = new MessageBusDefinition("global","conversationUpdating",
+		(m:MeTLStanza)=>{
+			println("Message received from the conversationUpdater's message bus: %s".format(m))
+			receiveConversationDetailsUpdated(m)
+		},
+		()=>{
+			println("MeTL2011CachedConversations connection lost")
+		},
+		()=>{
+			println("MeTL2011CachedConversations connection regained")
+			precacheConversations
+		}
+	)
   val conversations = scala.collection.mutable.HashMap.empty[Int,Conversation]
 
   private def precacheConversations = Stopwatch.time("MeTL2011CachedConversations.precacheConversations", () => {
-    try {
-      val directoryUrl = "%s/Structure/".format(rootAddress)
-      http.getClient.get(directoryUrl)
-      val remoteFile = "%s/all.zip".format(directoryUrl)
-      println("precacheConversations: %s".format(remoteFile))
-      val stream = new ByteArrayInputStream(http.getClient.getAsBytes(remoteFile))
-      val masterConversationList = Unzipper.unzip(stream).map(x => {
-        serializer.toConversation(x)
-      }).filterNot(_ == Conversation.empty).foreach(c => conversations.put(c.jid,c))
-    } catch {
-      case e:Throwable => {
-        println("precacheConversation failure :%s".format(e))
-      }
-    }
+		try {
+			println("recaching conversations")
+			val directoryUrl = "%s/Structure/".format(rootAddress)
+			http.getClient.get(directoryUrl)
+			val stream = new ByteArrayInputStream(http.getClient.getAsBytes("%s/all.zip".format(directoryUrl)))
+			Unzipper.unzip(stream).map(x => {
+				serializer.toConversation(x)
+			}).filterNot(_ == Conversation.empty).foreach(c => conversations.put(c.jid,c))
+			println("recaching conversations completed")
+		} catch {
+			case e:Throwable => {
+				println("recaching conversations failed: %s".format(e.getMessage))
+			}
+		}
   })
   override lazy val isReady:Boolean = {
     mb
@@ -107,11 +115,18 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
   lazy val utils = new MeTL2011Utils(configName)
   lazy val serializer = new MeTL2011XmlSerializer(configName)
   lazy val rootAddress = "https://%s:1188".format(config.host)
-  protected val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _,()=>{
-    //println("MeTL2011Conversations connection lost")
-  },()=>{
-    //println("MeTL2011Conversations connection regained")
-  })
+  protected val mbDef = new MessageBusDefinition("global","conversationUpdating",
+		(m:MeTLStanza)=>{
+			println("Message received from the conversationUpdater's message bus: %s".format(m))
+			receiveConversationDetailsUpdated(m)
+		},
+		()=>{
+			println("MeTL2011Conversations connection lost")
+		},
+		()=>{
+			println("MeTL2011Conversations connection regained")
+		}
+	)
   lazy val mb = messageBusProvider.getMessageBus(mbDef)
 
   override lazy val isReady:Boolean = {
@@ -229,7 +244,9 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Si
     remote
   }
   protected def notifyXmpp(newConversation:Conversation) = {
-    mb.sendStanzaToRoom(MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid.toString)))
+		val stanza = MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid.toString))
+		println("conversationUpdater sent message: %s".format(stanza))
+    mb.sendStanzaToRoom(stanza)
   }
   private def getNewJid:Int = http.getClient.get("https://"+config.host+":1188/primarykey.yaws").trim.toInt
 }
