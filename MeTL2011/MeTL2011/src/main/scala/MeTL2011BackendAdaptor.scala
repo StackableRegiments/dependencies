@@ -15,19 +15,23 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,o
   protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
   protected lazy val history = new MeTL2011History(name,http)
   protected lazy val messageBusProvider = new PooledXmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
-	protected lazy val conversationsMessageBusProvider = new XmppProvider(name,hostname,"metlXConversations","fred",xmppDomainName)
-//  protected lazy val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
+  protected lazy val conversationsMessageBusProvider = new XmppProvider(name,hostname,"metlXConversations","fred",xmppDomainName)
+  //  protected lazy val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
   protected val conversations = new MeTL2011CachedConversations(name,http,conversationsMessageBusProvider,onConversationDetailsUpdated)
   lazy val serializer = new MeTL2011XmlSerializer(name)
-	override def isReady = {
-		conversations.isReady
-	}
+  override def isReady = {
+    conversations.isReady
+  }
   protected val resourceProvider = new MeTL2011Resources(name,http)
   override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
   override def getHistory(jid:String) = history.getMeTLHistory(jid)
   override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
   override def searchForConversation(query:String) = conversations.search(query)
-  override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
+  override def detailsOfConversation(jid:String) ={
+    val details = conversations.detailsOf(jid.toInt)
+    println("MeTL2011BackendAdaptor supplying details for %s: %s".format(jid,details))
+    details
+  }
   override def createConversation(title:String,author:String) = conversations.createConversation(title,author)
   override def deleteConversation(jid:String):Conversation = conversations.deleteConversation(jid)
   override def renameConversation(jid:String,newTitle:String):Conversation = conversations.renameConversation(jid,newTitle)
@@ -45,11 +49,11 @@ object MeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit) = {
     val name = (e \\ "name").text
     val host = (e \\ "host").text
-		val xmppDomainName = (e \\ "xmppDomainName").text
-		xmppDomainName match {
-			case s:String if s.length > 0 => Some(new MeTL2011BackendAdaptor(name,host,s,onConversationDetailsUpdated))
-			case _ => Some(new MeTL2011BackendAdaptor(name,host,host,onConversationDetailsUpdated))
-		}
+    val xmppDomainName = (e \\ "xmppDomainName").text
+    xmppDomainName match {
+      case s:String if s.length > 0 => Some(new MeTL2011BackendAdaptor(name,host,s,onConversationDetailsUpdated))
+      case _ => Some(new MeTL2011BackendAdaptor(name,host,host,onConversationDetailsUpdated))
+    }
   }
 }
 
@@ -63,7 +67,10 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversation
   override def getHistory(jid:String) = history.getMeTLHistory(jid)
   override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
   override def searchForConversation(query:String) = conversations.search(query)
-  override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
+  override def detailsOfConversation(jid:String) = {
+    println("TransientMeTL2011BackendAdaptor supplying empty details for %s".format(jid))
+    conversations.detailsOf(jid.toInt)
+  }
   override def createConversation(title:String,author:String) = Conversation.empty
   override def deleteConversation(jid:String):Conversation = Conversation.empty
   override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty

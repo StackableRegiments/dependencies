@@ -320,9 +320,10 @@ var Conversations = (function(){
     var doMoveToSlide = function(slideId){
         delete Progress.conversationDetailsReceived["JoinAtIndexIfAvailable"];
         WorkQueue.enqueue(function(){
+	    console.log("doMoveToslide",slideId);
             indicateActiveSlide(slideId);
             loadSlide(slideId);
-            false
+            return true;
         });
     };
     var indicateActiveSlide = function(slideId){

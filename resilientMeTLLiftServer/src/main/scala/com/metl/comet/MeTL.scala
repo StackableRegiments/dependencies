@@ -79,10 +79,10 @@ class MeTLActor extends StronglyTypedJsonActor{
       getSlideHistory(jid)
     },Full(RECEIVE_HISTORY)),
     /*
-    ClientSideFunctionDefinition("getRoomPopulations",List.empty[String],(args) => {
-    JArray(rooms.map(kv => JObject(List(JField("server",JString(kv._1._1)),JField("jid",JString(kv._1._2)),JField("room",JString(kv._2.toString)),JField("population",JArray(kv._2.getChildren.map(cu => JString(cu._1)).toList))))).toList)
-    },Full("receiveRoomPopulations")),
-    */
+     ClientSideFunctionDefinition("getRoomPopulations",List.empty[String],(args) => {
+     JArray(rooms.map(kv => JObject(List(JField("server",JString(kv._1._1)),JField("jid",JString(kv._1._2)),JField("room",JString(kv._2.toString)),JField("population",JArray(kv._2.getChildren.map(cu => JString(cu._1)).toList))))).toList)
+     },Full("receiveRoomPopulations")),
+     */
     ClientSideFunctionDefinition("getSearchResult",List("query"),(args) => {
       serializer.fromConversationList(serverConfig.searchForConversation(args(0).toString))
     },Full(RECEIVE_CONVERSATIONS)),
@@ -98,7 +98,7 @@ class MeTLActor extends StronglyTypedJsonActor{
     ClientSideFunctionDefinition("getResource",List("source"),(args) => JString("not yet implemented"),Empty),
     ClientSideFunctionDefinition("moveToSlide",List("where"),(args) => {
       val where = getArgAsString(args(0))
-      //println("moveToSlideRequested(%s)".format(where))
+      println("moveToSlideRequested(%s)".format(where))
       moveToSlide(where)
       JNull
     },Empty),
@@ -147,43 +147,43 @@ class MeTLActor extends StronglyTypedJsonActor{
       serializer.fromConversation(serverConfig.createConversation(title,username))
     },Full(RECEIVE_NEW_CONVERSATION_DETAILS)),
     /*
-    ClientSideFunctionDefinition("deleteConversation",List("jid"),(args) => {
-      val jid = getArgAsString(args(0))
-    val c = serverConfig.detailsOfConversation(jid)
-    serializer.fromConversation(shouldModifyConversation(c) match {
-      case true => serverConfig.deleteConversation(c.jid.toString)
-    case _ => c
-    })
-    },Full(RECEIVE_CONVERSATION_DETAILS)),
-    */
+     ClientSideFunctionDefinition("deleteConversation",List("jid"),(args) => {
+     val jid = getArgAsString(args(0))
+     val c = serverConfig.detailsOfConversation(jid)
+     serializer.fromConversation(shouldModifyConversation(c) match {
+     case true => serverConfig.deleteConversation(c.jid.toString)
+     case _ => c
+     })
+     },Full(RECEIVE_CONVERSATION_DETAILS)),
+     */
     ClientSideFunctionDefinition("requestDeleteConversationDialogue",List("conversationJid"),(args) => {
       val jid = getArgAsString(args(0))
       val c = serverConfig.detailsOfConversation(jid)
       this ! SimpleMultipleButtonInteractableMessage("Delete conversation","Are you sure you would like to delete this conversation",
-                                                     Map(
-                                                       "yes" -> {() => {
-                                                         if (shouldModifyConversation(c)){
-                                                           serverConfig.deleteConversation(c.jid.toString)
-                                                           true
-                                                         } else {
-                                                           false
-                                                         }
-                                                       }},
-                                                       "no" -> {() => true}
-                                                     ),Full(()=> this ! SpamMessage(Text("You are not permitted to delete this conversation"))),false,Full("conversations"))
+        Map(
+          "yes" -> {() => {
+            if (shouldModifyConversation(c)){
+              serverConfig.deleteConversation(c.jid.toString)
+              true
+            } else {
+              false
+            }
+          }},
+          "no" -> {() => true}
+        ),Full(()=> this ! SpamMessage(Text("You are not permitted to delete this conversation"))),false,Full("conversations"))
       JNull
     },Empty),
     /*
-    ClientSideFunctionDefinition("renameConversation",List("jid","newTitle"),(args) => {
-      val jid = getArgAsString(args(0))
-    val newTitle = getArgAsString(args(1))
-    val c = serverConfig.detailsOfConversation(jid)
-    serializer.fromConversation(shouldModifyConversation(c) match {
-      case true => serverConfig.renameConversation(c.jid.toString,newTitle)
-    case _ => c
-    })
-    },Full(RECEIVE_CONVERSATION_DETAILS)),
-    */
+     ClientSideFunctionDefinition("renameConversation",List("jid","newTitle"),(args) => {
+     val jid = getArgAsString(args(0))
+     val newTitle = getArgAsString(args(1))
+     val c = serverConfig.detailsOfConversation(jid)
+     serializer.fromConversation(shouldModifyConversation(c) match {
+     case true => serverConfig.renameConversation(c.jid.toString,newTitle)
+     case _ => c
+     })
+     },Full(RECEIVE_CONVERSATION_DETAILS)),
+     */
     ClientSideFunctionDefinition("requestRenameConversationDialogue",List("conversationJid"),(args) => {
       val jid = getArgAsString(args(0))
       val c = serverConfig.detailsOfConversation(jid)
@@ -205,27 +205,27 @@ class MeTLActor extends StronglyTypedJsonActor{
       })
     },Full(RECEIVE_CONVERSATION_DETAILS)),
     /*
-    ClientSideFunctionDefinition("changeSubjectOfConversation",List("jid","newSubject"),(args) => {
-      val jid = getArgAsString(args(0))
-    val newSubject = getArgAsString(args(1))
-    val c = serverConfig.detailsOfConversation(jid)
-    serializer.fromConversation(shouldModifyConversation(c) match {
-      case true => serverConfig.updateSubjectOfConversation(c.jid.toString,newSubject)
-    case _ => c
-    })
-    },Full(RECEIVE_CONVERSATION_DETAILS)),
-    */
+     ClientSideFunctionDefinition("changeSubjectOfConversation",List("jid","newSubject"),(args) => {
+     val jid = getArgAsString(args(0))
+     val newSubject = getArgAsString(args(1))
+     val c = serverConfig.detailsOfConversation(jid)
+     serializer.fromConversation(shouldModifyConversation(c) match {
+     case true => serverConfig.updateSubjectOfConversation(c.jid.toString,newSubject)
+     case _ => c
+     })
+     },Full(RECEIVE_CONVERSATION_DETAILS)),
+     */
     ClientSideFunctionDefinition("requestChangeSubjectOfConversationDialogue",List("conversationJid"),(args) => {
       val jid = getArgAsString(args(0))
       val c = serverConfig.detailsOfConversation(jid)
       this ! SimpleRadioButtonInteractableMessage("Change sharing","How would you like to share this conversation?",
-                                                  Map(Globals.getUserGroups.map(eg => (eg._2.toLowerCase, ()=>{
-                                                    if (shouldModifyConversation(c)){
-                                                      serverConfig.updateSubjectOfConversation(c.jid.toString.toLowerCase,eg._2)
-                                                      true
-                                                    } else false
-                                                  })).toList:_*),
-                                                  Full(c.subject.toLowerCase),Full(()=> this ! SpamMessage(Text("An error occurred while attempting to rename the conversation"))),Full("conversations"))
+        Map(Globals.getUserGroups.map(eg => (eg._2.toLowerCase, ()=>{
+          if (shouldModifyConversation(c)){
+            serverConfig.updateSubjectOfConversation(c.jid.toString.toLowerCase,eg._2)
+            true
+          } else false
+        })).toList:_*),
+        Full(c.subject.toLowerCase),Full(()=> this ! SpamMessage(Text("An error occurred while attempting to rename the conversation"))),Full("conversations"))
       JNull
     },Empty),
     ClientSideFunctionDefinition("addSlideToConversationAtIndex",List("jid","index"),(args) => {
@@ -399,22 +399,22 @@ class MeTLActor extends StronglyTypedJsonActor{
         rooms.get((server,conversationJid.toString)).map(room => {
           room.getHistory.getQuizByIdentity(quizId).map(quiz => {
             this ! SimpleMultipleButtonInteractableMessage("Delete quiz","Are you sure you would like to delete this quiz? \r\n(%s)".format(quiz.question),
-                                                           Map(
-                                                             "yes" -> {() => {
-                                                               if (shouldModifyConversation(c)){
-                                                                 rooms.get((server,conversationJid.toString)).map(r => {
-                                                                   r.getHistory.getQuizByIdentity(quizId).map(q => {
-                                                                     val deletedQuiz = q.delete
-                                                                     r ! LocalToServerMeTLStanza(deletedQuiz)
-                                                                   })
-                                                                 })
-                                                                 true
-                                                               } else {
-                                                                 false
-                                                               }
-                                                             }},
-                                                             "no" -> {() => true}
-                                                           ),Full(()=> this ! SpamMessage(Text("You are not permitted to delete this conversation"))),false,Full("quizzes"))
+              Map(
+                "yes" -> {() => {
+                  if (shouldModifyConversation(c)){
+                    rooms.get((server,conversationJid.toString)).map(r => {
+                      r.getHistory.getQuizByIdentity(quizId).map(q => {
+                        val deletedQuiz = q.delete
+                        r ! LocalToServerMeTLStanza(deletedQuiz)
+                      })
+                    })
+                    true
+                  } else {
+                    false
+                  }
+                }},
+                "no" -> {() => true}
+              ),Full(()=> this ! SpamMessage(Text("You are not permitted to delete this conversation"))),false,Full("quizzes"))
           })
         })
       }
@@ -589,6 +589,7 @@ class MeTLActor extends StronglyTypedJsonActor{
   private var rooms = Map.empty[Tuple2[String,String],MeTLRoom]
   private lazy val serverConfig = ServerConfiguration.default
   private lazy val server = serverConfig.name
+  println("serverConfig: %s -> %s".format(server,serverConfig))
   private def username = Globals.currentUser.is
   private val serializer = new JsonSerializer("frontend")
   def registerWith = MeTLActorManager
@@ -597,13 +598,13 @@ class MeTLActor extends StronglyTypedJsonActor{
   }
   private val defaultContainerId  = "s2cMessageContainer"
   private val clientMessageBroker = new ClientMessageBroker(TemplateHolder.clientMessageTemplate,".s2cMessage",".s2cLabel",".s2cContent",".s2cClose",
-                                                            (cm) => {
-                                                              partialUpdate(SetHtml(defaultContainerId,cm.renderMessage) & Show(defaultContainerId))
-                                                            },
-                                                            (cm) => {
-                                                              partialUpdate(Hide(defaultContainerId) & cm.done)
-                                                            }
-                                                          )
+    (cm) => {
+      partialUpdate(SetHtml(defaultContainerId,cm.renderMessage) & Show(defaultContainerId))
+    },
+    (cm) => {
+      partialUpdate(Hide(defaultContainerId) & cm.done)
+    }
+  )
   override def lowPriority = {
     case roomInfo:RoomStateInformation => Stopwatch.time("MeTLActor.lowPriority.RoomStateInformation", () => updateRooms(roomInfo))
     case metlStanza:MeTLStanza => Stopwatch.time("MeTLActor.lowPriority.MeTLStanza", () => sendMeTLStanzaToPage(metlStanza))
@@ -645,6 +646,7 @@ class MeTLActor extends StronglyTypedJsonActor{
         joinRoomByJid(cs+username)
       })
     })
+    println("Refresh client side state: %s %s".format(CurrentConversation.is,CurrentSlide.is))
     val jsCmds:List[Box[JsCmd]] = List(
       Full(Call(RECEIVE_USERNAME,JString(username))),
       Full(Call(RECEIVE_USER_GROUPS,getUserGroups)),
@@ -668,13 +670,18 @@ class MeTLActor extends StronglyTypedJsonActor{
   private def joinConversation(jid:String):Box[Conversation] = {
     val details = serverConfig.detailsOfConversation(jid)
     leaveAllRooms()
+    println("joinConversation: %s".format(details))
     if (shouldDisplayConversation(details)){
+      println("conversation available")
       CurrentConversation(Full(details))
       val conversationJid = details.jid.toString
       joinRoomByJid(conversationJid)
       //joinRoomByJid(conversationJid,"loopback")
       CurrentConversation
-    } else Empty
+    } else{
+      println("conversation denied: %s, %s.".format(jid,details.subject))
+      Empty
+    }
   }
   private def getSlideHistory(jid:String):JValue = {
     val convHistory = CurrentConversation.map(cc => MeTLXConfiguration.getRoom(cc.jid.toString,server).getHistory).openOr(History.empty)
@@ -689,15 +696,19 @@ class MeTLActor extends StronglyTypedJsonActor{
   }
   private def conversationContainsSlideId(c:Conversation,slideId:Int):Boolean = c.slides.exists((s:Slide) => s.id == slideId)
   private def moveToSlide(jid:String):Unit = {
+    println("moveToSlide",jid)
     val slideId = jid.toInt
     if (CurrentSlide.map(cs => cs == jid).openOr(false)){
+      println("No moveToSlide action")
       //do nothing
     } else {
       CurrentConversation.map(cc => conversationContainsSlideId(cc,slideId)).openOr(false) match {
         case false => {
+          println("Have to join conversation using %s".format(serverConfig))
           joinConversation(serverConfig.getConversationForSlide(jid))
         }
         case true => {
+          println("Have to leave conversation")
           CurrentSlide.map(cs => {
             leaveRoomByJid(cs)
             leaveRoomByJid(cs+username)
@@ -706,6 +717,7 @@ class MeTLActor extends StronglyTypedJsonActor{
         }
       }
       CurrentConversation.map(cc => {
+        println("Joining conversation for",slideId)
         if (conversationContainsSlideId(cc,slideId)){
           CurrentSlide(Full(jid))
           if (cc.author.trim.toLowerCase == username.trim.toLowerCase && IsInteractiveUser.map(iu => iu == true).getOrElse(true)){
@@ -718,6 +730,7 @@ class MeTLActor extends StronglyTypedJsonActor{
         }
       })
     }
+    println("Refreshing clientsidestate")
     partialUpdate(refreshClientSideStateJs)
   }
   private def leaveAllRooms(shuttingDown:Boolean = false) = {
@@ -795,22 +808,22 @@ class MeTLActor extends StronglyTypedJsonActor{
           CurrentConversation.map(cc => {
             val (shouldSend,roomId,finalItem) = c.privacy match {
               case Privacy.PRIVATE => (true,c.slide+username,c)
-                case Privacy.PUBLIC => {
-                  if (shouldPublishInConversation(cc)){
-                    (true,c.slide,c)
-                  } else {
-                    (true,c.slide+username,c match {
-                      case i:MeTLInk => i.alterPrivacy(Privacy.PRIVATE)
-                      case t:MeTLText => t.alterPrivacy(Privacy.PRIVATE)
-                      case i:MeTLImage => i.alterPrivacy(Privacy.PRIVATE)
-                      case di:MeTLDirtyInk => di.alterPrivacy(Privacy.PRIVATE)
-                      case dt:MeTLDirtyText => dt.alterPrivacy(Privacy.PRIVATE)
-                      case di:MeTLDirtyImage => di.alterPrivacy(Privacy.PRIVATE)
-                      //case c:MeTLCanvasContent => c.alterPrivacy(Privacy.PRIVATE)
-                      case other => other
-                    })
-                  }
+              case Privacy.PUBLIC => {
+                if (shouldPublishInConversation(cc)){
+                  (true,c.slide,c)
+                } else {
+                  (true,c.slide+username,c match {
+                    case i:MeTLInk => i.alterPrivacy(Privacy.PRIVATE)
+                    case t:MeTLText => t.alterPrivacy(Privacy.PRIVATE)
+                    case i:MeTLImage => i.alterPrivacy(Privacy.PRIVATE)
+                    case di:MeTLDirtyInk => di.alterPrivacy(Privacy.PRIVATE)
+                    case dt:MeTLDirtyText => dt.alterPrivacy(Privacy.PRIVATE)
+                    case di:MeTLDirtyImage => di.alterPrivacy(Privacy.PRIVATE)
+                    //case c:MeTLCanvasContent => c.alterPrivacy(Privacy.PRIVATE)
+                    case other => other
+                  })
                 }
+              }
               case other => {
                 println("unexpected privacy found in: %s".format(c))
                 (false,c.slide,c)
@@ -838,12 +851,12 @@ class MeTLActor extends StronglyTypedJsonActor{
         }
       }
       /*
-      case s:MeTLStanza => {
-        if (s.author == username){
-          rooms.get((serverName,"global")).map(r => r ! LocalToServerMeTLStanza(s))
-        }
-      }
-      */
+       case s:MeTLStanza => {
+       if (s.author == username){
+       rooms.get((serverName,"global")).map(r => r ! LocalToServerMeTLStanza(s))
+       }
+       }
+       */
       case other => {
         println("sendStanzaToServer's toMeTLStanza returned unknown type when deserializing: %s".format(other))
       }
@@ -860,7 +873,7 @@ class MeTLActor extends StronglyTypedJsonActor{
             newConv
           } else cc
         }))
-//				println("updating conversation to: %s".format(newConv))
+        //                              println("updating conversation to: %s".format(newConv))
         partialUpdate(Call(RECEIVE_CONVERSATION_DETAILS,serializer.fromConversation(newConv)))
       }
       case c:MeTLCommand if (c.command == "/SYNC_MOVE") => {

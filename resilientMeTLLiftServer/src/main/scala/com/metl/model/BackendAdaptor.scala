@@ -21,33 +21,33 @@ import com.metl.h2._
 
 object MeTLXConfiguration {
   protected var configs:Map[String,Tuple2[ServerConfiguration,RoomProvider]] = Map.empty[String,Tuple2[ServerConfiguration,RoomProvider]]
-	val updateGlobalFunc = (c:Conversation) => {
-		getRoom("global",c.server.name) ! ServerToLocalMeTLStanza(MeTLCommand(c.server,c.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(c.jid.toString)))
-	}
-	def setupForStandalone = {
-		 val auth = new CASAuthenticator("metlx",() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
+  val updateGlobalFunc = (c:Conversation) => {
+    getRoom("global",c.server.name) ! ServerToLocalMeTLStanza(MeTLCommand(c.server,c.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(c.jid.toString)))
+  }
+  def setupForStandalone = {
+    val auth = new CASAuthenticator("metlx",() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
       println("loginHandler")
       Globals.casState(cs)
       Globals.currentUser(cs.username)
     })
-		MeTL2011ServerConfiguration.initialize
-		ServerConfiguration.loadServerConfigsFromFile("servers.standalone.xml",updateGlobalFunc)
-		val servers = ServerConfiguration.getServerConfigurations
+    MeTL2011ServerConfiguration.initialize
+    ServerConfiguration.loadServerConfigsFromFile("servers.standalone.xml",updateGlobalFunc)
+    val servers = ServerConfiguration.getServerConfigurations
     configs = Map(servers.map(c => (c.name,(c,new HistoryCachingRoomProvider(c.name)))):_*)
     Globals.isDevMode match {
       case false => CASAuthentication.attachCASAuthenticator(auth)
       case _ => {}
     }
-	}
+  }
   def setupForExternal = {
     val auth = new OpenIdAuthenticator(()=>Globals.casState.authenticated,(cs:com.metl.cas.CASStateData) => {
       println("openId loginHandler")
       Globals.casState(cs)
       Globals.currentUser(cs.username)
     })
-		LocalH2ServerConfiguration.initialize
-		ServerConfiguration.loadServerConfigsFromFile("servers.external.xml",updateGlobalFunc)
-		val servers = ServerConfiguration.getServerConfigurations
+    LocalH2ServerConfiguration.initialize
+    ServerConfiguration.loadServerConfigsFromFile("servers.external.xml",updateGlobalFunc)
+    val servers = ServerConfiguration.getServerConfigurations
     configs = Map(servers.map(c => (c.name,(c,new HistoryCachingRoomProvider(c.name)))):_*)
     Globals.isDevMode match {
       case false => OpenIdAuthenticator.attachOpenIdAuthenticator(auth)
@@ -60,10 +60,12 @@ object MeTLXConfiguration {
       Globals.casState(cs)
       Globals.currentUser(cs.username)
     })
-		MeTL2011ServerConfiguration.initialize
-		ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml",updateGlobalFunc)
-		val servers = ServerConfiguration.getServerConfigurations
+    MeTL2011ServerConfiguration.initialize
+    ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml",updateGlobalFunc)
+    val servers = ServerConfiguration.getServerConfigurations
     configs = Map(servers.map(c => (c.name,(c,new HistoryCachingRoomProvider(c.name)))):_*)
+    println("setting up Monash")
+    println(configs)
     Globals.isDevMode match {
       case false => CASAuthentication.attachCASAuthenticator(auth)
       case _ => {}
@@ -78,7 +80,7 @@ object MeTLXConfiguration {
     println("startupParams: "+prop)
     prop match {
       case s:String if s.toLowerCase.trim == "monash" => setupForMonash
-			case s:String if s.toLowerCase.trim == "standalone" => setupForStandalone
+      case s:String if s.toLowerCase.trim == "standalone" => setupForStandalone
       case _ => setupForExternal
     }
     // Setup RESTful endpoints (these are in view/Endpoints.scala)
@@ -86,12 +88,12 @@ object MeTLXConfiguration {
     LiftRules.dispatch.append(MeTLStatefulRestHelper)
     LiftRules.statelessDispatchTable.prepend(WebMeTLRestHelper)
     LiftRules.dispatch.append(WebMeTLStatefulRestHelper)
-		configs.values.foreach(c => {
-			getRoom("global",c._1.name)
-			println("%s is now ready for use (%s)".format(c._1.name,c._1.isReady))
-		})
+    configs.values.foreach(c => {
+      getRoom("global",c._1.name)
+      println("%s is now ready for use (%s)".format(c._1.name,c._1.isReady))
+    })
     configs.values.foreach(c => LiftRules.unloadHooks.append(c._1.shutdown _))
-		EmbeddedXmppServer.start
+    EmbeddedXmppServer.start
   }
   def getRoom(jid:String,configName:String) = {
     configs(configName)._2.get(jid)
