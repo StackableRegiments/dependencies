@@ -51,7 +51,14 @@ import org.apache.vysper.xmpp.modules.extension.xep0045_muc.handler.MUCHandlerHe
 import org.apache.vysper.xmpp.server.{ServerRuntimeContext,SessionContext}
 import org.apache.vysper.xmpp.stanza.{MessageStanza,MessageStanzaType,Stanza,StanzaBuilder,StanzaErrorCondition,StanzaErrorType}
 
-
+class EmbeddedXmppServerRoomAdaptor(serverRuntimeContext:ServerRuntimeContext) {
+	def relayMessageToMeTLRoom(location:String,message:AnyRef):Unit = {
+	
+	}
+	def relayMessageToXmppMuc(location:String,message:AnyRef):Unit = {
+	
+	}
+}
 
 object EmbeddedXmppServer {
 	protected var privateServer:Box[XMPPServer] = Empty

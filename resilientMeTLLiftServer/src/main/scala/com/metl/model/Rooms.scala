@@ -32,7 +32,7 @@ class HistoryCachingRoomProvider(configName:String) extends RoomProvider {
   private lazy val metlRooms = new SynchronizedWriteMap[String,MeTLRoom](scala.collection.mutable.HashMap.empty[String,MeTLRoom],true,(k:String) => createNewMeTLRoom(k))
   override def exists(room:String):Boolean = Stopwatch.time("Rooms.exists", () => metlRooms.keys.exists(k => k == room))
   override def get(room:String) = Stopwatch.time("Rooms.get", () => metlRooms.getOrElseUpdate(room, createNewMeTLRoom(room)))
-  private def createNewMeTLRoom(room:String) = Stopwatch.time("Rooms.createNewMeTLRoom(%s)".format(room), () => {
+  protected def createNewMeTLRoom(room:String) = Stopwatch.time("Rooms.createNewMeTLRoom(%s)".format(room), () => {
     val r = new HistoryCachingRoom(configName,room,this)
     r.localSetup
     r
@@ -43,6 +43,14 @@ class HistoryCachingRoomProvider(configName:String) extends RoomProvider {
       metlRooms.remove(room)
     }
   })
+}
+
+class XmppBridgingHistoryCachingRoomProvider(configName:String) extends HistoryCachingRoomProvider(configName) {
+	override protected def createNewMeTLRoom(room:String) = Stopwatch.time("XmppBridgingHistoryCachingRoomProvider.createNewMeTLRoom(%s".format(room), () => {
+		val r = new XmppBridgingHistoryCachingRoom(configName,room,this)
+		r.localSetup
+		r
+	})
 }
 
 case class ServerToLocalMeTLStanza(stanza:MeTLStanza)
@@ -252,7 +260,7 @@ class HistoryCachingRoom(configName:String,location:String,creator:RoomProvider)
 			}
 		}
 	}
-  override protected def sendToChildren(s:MeTLStanza):Unit = Stopwatch.time("MeTLRoom.sendToChildren",() => {
+  override protected def sendToChildren(s:MeTLStanza):Unit = Stopwatch.time("HistoryCachingMeTLRoom.sendToChildren",() => {
     history.addStanza(s)
 		s match {
 			case c:MeTLCanvasContent if (history.lastVisuallyModified > lastRender) => {
@@ -262,4 +270,13 @@ class HistoryCachingRoom(configName:String,location:String,creator:RoomProvider)
 		}
   })
 	override def toString = "HistoryCachingRoom(%s,%s,%s)".format(configName,location,creator)
+}
+
+class XmppBridgingHistoryCachingRoom(configName:String,location:String,creator:RoomProvider) extends HistoryCachingRoom(configName,location,creator) {
+	def sendMessageFromBridge(s:MeTLStanza):Unit = Stopwatch.time("XmppBridgedHistoryCachingROom.sendMessageFromBridge", () => {
+		sendStanzaToServer(s)		
+	})
+	override protected def sendToChildren(s:MeTLStanza):Unit = Stopwatch.time("XmppBridgedHistoryCachingRoom.sendToChildren", () => {
+		super.sendToChildren(s)
+	})
 }
