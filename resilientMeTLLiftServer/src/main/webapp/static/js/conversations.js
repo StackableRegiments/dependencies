@@ -17,11 +17,21 @@ var Conversations = (function(){
             }
         }));
     }
+		var paintThumbs = function(){
+				console.log("firing paintThumbs");
+				_.forEach(currentConversation.slides,function(slide){
+					possiblyUpdateThumbnail(slide);
+				})
+    }
     var refreshSlideDisplay = function(){
         updateStatus("Refreshing slide display");
-        $("#slideContainer").html(unwrap(currentConversation.slides.sort(function(a,b){return a.index - b.index;}).map(constructSlide))).append(constructAddSlideButton());
+        var slideContainer = $("#slideContainer")
+				slideContainer.html(unwrap(currentConversation.slides.sort(function(a,b){return a.index - b.index;}).map(constructSlide))).append(constructAddSlideButton());
+				paintThumbs();
+				var lazyRepaint = _.debounce(paintThumbs,200);
+				slideContainer.on("scroll",lazyRepaint);
 				Progress.call("onLayoutUpdated");
-    }
+		}
     var changeConvToLectureFunction = function(jid){
         if (!jid){
             jid = currentConversation.jid.toString();
@@ -156,10 +166,8 @@ var Conversations = (function(){
         }
     };
     var updateThumbnailFor = function(slideId) {
-        var id = sprintf("#slideButton_%s", slideId);
-        var img = $(id)[0];
-        img.src = sprintf("/thumbnail/madam/%s?nocache=%s",slideId,Date.now());
-
+				//setting index to zero because this isn't necessary.
+				possiblyUpdateThumbnail({id:slideId,index:0});
     }
     var goToNextSlideFunction = function(){
         if ("slides" in currentConversation && currentSlide > 0){
@@ -330,15 +338,33 @@ var Conversations = (function(){
         $(".slideButtonContainer").removeClass("activeSlide");
         $(sprintf("#slideContainer_%s",slideId)).addClass("activeSlide");
     };
+		var possiblyUpdateThumbnail = function(slide){
+			var slidesContainer = $("#slideContainer");
+			var slidesTop = slidesContainer.scrollTop();
+			var slidesBottom = slidesTop + slidesContainer.height();
+			var slideContainer = $(sprintf("#slideButton_%s",slide.id));
+			var slideTop = slideContainer.offset().top;
+			var slideBottom = slideTop + slideContainer.height();
+			if ((slideBottom >= slidesTop) && (slideTop <= slidesBottom)
+				&& (slideBottom <= slidesBottom) && (slideTop >= slidesTop) 
+				){
+				console.log("rendering within view",slide.id,slide);
+				slideContainer.attr("src",sprintf("/thumbnail/%s/%s?nocache=%s","standalone",slide.id,Date.now()));
+			}
+		}
     var constructSlide = function(slide){
         var slideIndex = slide.index + 1;
         var newSlide = $("<div/>",{
             id: sprintf("slideContainer_%s",slide.id),
             class:"slideButtonContainer"
-        })
+        }).css({
+						height:"75px",
+						width:"100px",
+						margin:"10px"
+				});
         $("<img/>",{
             id: sprintf("slideButton_%s",slide.id),
-            src:sprintf("/thumbnail/madam/%s?nocache=%s",slide.id,Date.now()),
+        //    src:sprintf("/thumbnail/madam/%s?nocache=%s",slide.id,Date.now()),
             class:"thumbnail",
             alt:sprintf("Slide %s",slideIndex),
             title:sprintf("Slide %s (%s)",slideIndex,slide.id)
@@ -447,6 +473,7 @@ var Conversations = (function(){
     //    Progress.onConversationJoin["Conversations"] = refreshSlideDisplay;
     Progress.currentSlideJidReceived["Conversations"] = actOnCurrentSlideJidReceived;
     Progress.currentConversationJidReceived["Conversations"] = actOnCurrentConversationJidReceived;
+		//Progress.onLayoutUpdated["Conversations"] = paintThumbs;
     $(function(){
         $("#conversations").click(function(){
             showBackstage("conversations");
