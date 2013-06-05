@@ -2,11 +2,11 @@ var Conversations = (function(){
     var currentSearchTerm = "";
     var currentlyDisplayedConversations = [];
     var currentConversation = {};
+		var currentServerConfigName = "external";
     var currentSlide = 0;
     var targetConversationJid = "";
     var currentTeacherSlide = 0;
     var isSyncedToTeacher = false;
-
     var shouldRefreshSlideDisplay = function(details){
         return (!("slides" in currentConversation) || "slides" in details && _.any(details,function(slide,slideIndex){
             var ccs = currentConversation.slides[slideIndex];
@@ -87,6 +87,10 @@ var Conversations = (function(){
             if (details.jid.toString().toLowerCase() == targetConversationJid.toLowerCase()){
                 if (shouldDisplayConversationFunction(details)){
                     currentConversation = details;
+										if ("configName" in details){
+											currentServerConfigName = details.configName;
+										}
+										currentServerConfigName
                     if (currentConversation.jid.toString().toLowerCase() != oldConversationJid){
                         Progress.call("onConversationJoin");
                     }
@@ -349,7 +353,10 @@ var Conversations = (function(){
 				&& (slideBottom <= slidesBottom) && (slideTop >= slidesTop) 
 				){
 				console.log("rendering within view",slide.id,slide);
-				slideContainer.attr("src",sprintf("/thumbnail/%s/%s?nocache=%s","standalone",slide.id,Date.now()));
+				var currentSrc = slideContainer.attr("src");
+				if (currentSrc == undefined || currentSrc.indexOf("/thumbnail/") != 0){
+					slideContainer.attr("src",sprintf("/thumbnail/%s/%s?nocache=%s",currentServerConfigName,slide.id,Date.now()));
+				}
 			}
 		}
     var constructSlide = function(slide){
