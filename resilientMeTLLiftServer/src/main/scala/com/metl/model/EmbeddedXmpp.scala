@@ -23,13 +23,11 @@ import org.apache.vysper.xmpp.server.XMPPServer
 
 // for MeTLMucModule
 
-import java.util.{ArrayList => JavaArrayList,List => JavaList}
+import java.util.{ArrayList => JavaArrayList,List => JavaList,Collection => JavaCollection,Arrays => JavaArrays,Set => JavaSet}
 import org.apache.vysper.xmpp.addressing.{Entity,EntityFormatException,EntityImpl,EntityUtils}
-//import org.apache.vysper.xmpp.delivery.failure.{DeliveryException,IgnoreFailureStrategy}
 import org.apache.vysper.xmpp.modules.DefaultDiscoAwareModule
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCModule
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.handler.{MUCIqAdminHandler,MUCMessageHandler,MUCPresenceHandler}
-//import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.{Conference,Occupant,Room}
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.storage.{OccupantStorageProvider,RoomStorageProvider}
 import org.apache.vysper.xmpp.modules.servicediscovery.management.{ComponentInfoRequestListener,InfoElement,InfoRequest,Item,ItemRequestListener,ServiceDiscoveryRequestException}
 import org.apache.vysper.xmpp.protocol.{NamespaceURIs,StanzaProcessor}
@@ -40,7 +38,6 @@ import org.slf4j.{Logger,LoggerFactory}
 // for MeTLMUCMessageHandler
 
 import org.apache.vysper.xml.fragment.{Attribute,XMLElement,XMLSemanticError}
-//import org.apache.vysper.xmpp.addressing.{Entity,EntityFormatException,EntityImpl}}
 import org.apache.vysper.xmpp.delivery.failure.{DeliveryException,IgnoreFailureStrategy}
 import org.apache.vysper.xmpp.modules.core.base.handler.DefaultMessageHandler
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCStanzaBuilder
@@ -50,6 +47,18 @@ import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.{MucUserItem
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.handler.MUCHandlerHelper
 import org.apache.vysper.xmpp.server.{ServerRuntimeContext,SessionContext}
 import org.apache.vysper.xmpp.stanza.{MessageStanza,MessageStanzaType,Stanza,StanzaBuilder,StanzaErrorCondition,StanzaErrorType}
+
+// for MeTLMUCPresenceHandler
+
+import org.apache.vysper.xmpp.modules.core.base.handler.DefaultPresenceHandler;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Affiliation;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Affiliations;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.History;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status;
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status.StatusCode;
+import org.apache.vysper.xmpp.modules.extension.xep0133_service_administration.ServerAdministrationService;
+import org.apache.vysper.xmpp.stanza.PresenceStanza;
+import org.apache.vysper.xmpp.stanza.PresenceStanzaType;
 
 class EmbeddedXmppServerRoomAdaptor(serverRuntimeContext:ServerRuntimeContext) {
 	def relayMessageToMeTLRoom(location:String,message:AnyRef):Unit = {
@@ -114,7 +123,7 @@ class MeTLMucModule(subdomain:String = "chat",conference:Conference = new Confer
 		this.serverRuntimeContext = serverRuntimeContext
 		fullDomain = EntityUtils.createComponentDomain(subdomain, serverRuntimeContext)
 		val processor:ComponentStanzaProcessor = new ComponentStanzaProcessor(serverRuntimeContext)
-		processor.addHandler(new MUCPresenceHandler(conference));
+		processor.addHandler(new MeTLMUCPresenceHandler(conference));
 		processor.addHandler(new MeTLMUCMessageHandler(conference, fullDomain));
 		processor.addHandler(new MUCIqAdminHandler(conference));
 		stanzaProcessor = processor;
@@ -222,7 +231,7 @@ class MeTLMucModule(subdomain:String = "chat",conference:Conference = new Confer
 	def getStanzaProcessor:StanzaProcessor = stanzaProcessor
 }
 
-class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity) extends DefaultMessageHandler {
+class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity,useXmppHistory:Boolean = false) extends DefaultMessageHandler {
 
 	//final Logger logger = LoggerFactory.getLogger(MUCMessageHandler.class);
 
@@ -269,14 +278,16 @@ class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity) extends D
 								}
 							} else {
 								println("Relaying message to all room occupants")
-								for (occupant:Occupant <- room.getOccupants().toArray().toList.asInstanceOf[List[Occupant]]) {
+								JavaListUtils.foreach(room.getOccupants(),(occupant:Occupant) => {
+//								for (occupant:Occupant <- room.getOccupants().toArray().toList.asInstanceOf[List[Occupant]]) {
 									println("Relaying message to %s".format(occupant))
 									val replaceAttributes:JavaList[Attribute] = new JavaArrayList[Attribute]()
 									replaceAttributes.add(new Attribute("from", roomAndSendingNick.getFullQualifiedName()))
 									replaceAttributes.add(new Attribute("to",occupant.getJid().getFullQualifiedName()))
 									relayStanza(occupant.getJid(), StanzaBuilder.createClone(stanza, true, replaceAttributes).build(), serverRuntimeContext)
-								}
-								room.getHistory().append(stanza, sendingOccupant)
+								})
+								if (useXmppHistory)
+									room.getHistory().append(stanza, sendingOccupant)
 								null
 							}
 						} else {
@@ -392,37 +403,35 @@ class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity) extends D
 				requestor.setRole(Role.Participant)
 				//nofity remaining users that user got role updated
 				val presenceItem:MucUserItem = new MucUserItem(requestor.getAffiliation(), requestor.getRole())
-				for (occupant:Occupant <- room.getOccupants().toArray().toList.asInstanceOf[List[Occupant]]) {
+				JavaListUtils.foreach(room.getOccupants(), (occupant:Occupant) => {
+//				for (occupant:Occupant <- room.getOccupants().toArray().toList.asInstanceOf[List[Occupant]]) {
 					val presenceToRemaining:Stanza = MUCStanzaBuilder.createPresenceStanza(requestor.getJidInRoom(), occupant.getJid(), null, NamespaceURIs.XEP0045_MUC_USER, presenceItem)
 					relayStanza(occupant.getJid(), presenceToRemaining, serverRuntimeContext)
-				}
+				})
 			}
 		} else if (requestAllow == null) {
 			// no request allow, treat as voice request
 			val requestForm:VoiceRequestForm = new VoiceRequestForm(from, sendingOccupant.getNick())
-			for (moderator:Occupant <- room.getModerators().toArray().toList.asInstanceOf[List[Occupant]]) {
+			JavaListUtils.foreach(room.getModerators(),(moderator:Occupant) => { 
+			//for (moderator:Occupant <- room.getModerators().toArray().toList.asInstanceOf[List[Occupant]]) {
 				val request:Stanza = StanzaBuilder.createMessageStanza(room.getJID(), moderator.getJid(), null, null).addPreparedElement(requestForm.createFormXML()).build()
 				relayStanza(moderator.getJid(), request, serverRuntimeContext)
-			}
+			})
 		}
 	}
 	protected def getFieldValue(fields:JavaList[XMLElement], varName:String):String = {
-		var found:Boolean = false
-		var output:String = null
-		for (field:XMLElement <- fields.toArray().toList.asInstanceOf[List[XMLElement]] if !found){
-			if (varName.equals(field.getAttributeValue("var"))){
+		JavaListUtils.foreach(fields,(field:XMLElement) => {
+			if (varName.equals(field.getAttributeValue("var"))) {
 				try {
-					output = field.getSingleInnerElementsNamed("value", NamespaceURIs.JABBER_X_DATA).getInnerText().getText()
-					found = true
+					return field.getSingleInnerElementsNamed("value", NamespaceURIs.JABBER_X_DATA).getInnerText().getText()
 				} catch {
 					case e:XMLSemanticError => {
-						null
+						return null
 					}
-					case other => throw other
 				}
 			}
-		} 
-		output
+		})
+		return null
 	}    
 	protected def relayStanza(receiver:Entity, stanza:Stanza, serverRuntimeContext:ServerRuntimeContext):Unit = {
 		try {
@@ -436,3 +445,331 @@ class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity) extends D
 	}
 }
 
+class MeTLMUCPresenceHandler(conference:Conference,useXmppHistory:Boolean = false) extends DefaultPresenceHandler {
+
+//    final Logger logger = LoggerFactory.getLogger(MUCPresenceHandler.class);
+
+		override protected def verifyNamespace(stanza:Stanza):Boolean = true
+
+		protected def createPresenceErrorStanza(from:Entity, to:Entity, id:String, typeName:String, errorName:String):Stanza = {
+        // "Note: If an error occurs in relation to joining a room, the service SHOULD include 
+        // the MUC child element (i.e., <x xmlns='http://jabber.org/protocol/muc'/>) in the 
+        // <presence/> stanza of type "error"."
+        MUCHandlerHelper.createErrorStanza("presence", NamespaceURIs.JABBER_CLIENT, from, to, id, typeName, errorName, JavaArrays.asList(new X().asInstanceOf[XMLElement]))
+		}
+		override protected def executePresenceLogic(stanza:PresenceStanza, serverRuntimeContext:ServerRuntimeContext,sessionsContext:SessionContext):Stanza = {
+			val roomAndNick:Entity = stanza.getTo()
+			val occupantJid:Entity = stanza.getFrom()
+			val roomJid:Entity = roomAndNick.getBareJID()
+			val nick:String = roomAndNick.getResource()
+      // user did not send nick name
+			if (nick == null) {
+				createPresenceErrorStanza(roomJid, occupantJid, stanza.getID(), "modify", "jid-malformed")
+			} else {
+				val typeName:String = stanza.getType()
+				if (typeName == null) {
+					available(stanza, roomJid, occupantJid, nick, serverRuntimeContext)
+				} else if (typeName.equals("unavailable")) {
+					unavailable(stanza, roomJid, occupantJid, nick, serverRuntimeContext)
+				} else {
+					throw new RuntimeException("Presence type not handled by MUC module: " + typeName)
+				}
+			}
+    }
+
+		protected def getInnerElementText(element:XMLElement,childName:String):String = {
+			try {
+				val childElm:XMLElement = element.getSingleInnerElementsNamed(childName)
+				if (childElm != null && childElm.getInnerText() != null) {
+					childElm.getInnerText().getText()
+				} else {
+					null
+				}
+			} catch {
+				case e:XMLSemanticError => null
+				case other => throw other
+			}
+		}
+
+		protected def available(stanza:PresenceStanza,roomJid:Entity,newOccupantJid:Entity,incomingNick:String, serverRuntimeContext:ServerRuntimeContext):Stanza = {
+			var nick:String = incomingNick
+			var newRoom:Boolean = false
+			var room:Room = conference.findRoom(roomJid)
+			var output:Stanza = null
+      // TODO what to use for the room name?
+			if (room == null) {
+				room = conference.createRoom(roomJid, roomJid.getNode())
+				newRoom = true
+			}
+			if (room.isInRoom(newOccupantJid)) {
+				// user is already in room, change nick
+				println("%s has requested to change nick in room %s".format(newOccupantJid, roomJid))
+				// occupant is already in room/
+        val occupant:Occupant = room.findOccupantByJID(newOccupantJid)
+//				val occupants:List[Occupant] = room.getOccupants().toArray().toList
+        if (nick.equals(occupant.getNick())) {
+        	// nick unchanged, change show and status
+					JavaListUtils.foreach(room.getOccupants(), (receiver:Occupant) => {
+//          for (val receiver:Occupant <- occupants) {
+						sendChangeShowStatus(occupant, receiver, room, getInnerElementText(stanza, "show"), getInnerElementText(stanza, "status"), serverRuntimeContext)
+					})
+				} else {
+					if (room.isInRoom(nick)) {
+						// user with this nick is already in room
+						return createPresenceErrorStanza(roomJid, newOccupantJid, stanza.getID(), "cancel", "conflict")
+					} else {
+						val oldNick:String = occupant.getNick();
+						// update the nick
+						occupant.setNick(nick);
+
+						// send out unavailable presences to all existing occupants
+						val occupants = room.getOccupants()
+						JavaListUtils.foreach(occupants,(receiver:Occupant) => {
+//						for (val receiver:Occupant <- occupants) {
+								sendChangeNickUnavailable(occupant, oldNick, receiver, room, serverRuntimeContext);
+						})
+
+						// send out available presences to all existing occupants
+						JavaListUtils.foreach(occupants,(receiver:Occupant) => {
+//						for (val receiver:Occupant <- room.getOccupants()) {
+								sendChangeNickAvailable(occupant, receiver, room, serverRuntimeContext);
+						})
+					}
+				}
+			} else {
+				println("%s has requested to enter room %s".format(newOccupantJid, roomJid))
+				var nickConflict:Boolean = room.isInRoom(nick)
+				var nickRewritten:Boolean = false
+				var counter:Int = 1
+				var maxNickChanges:Int = 100 // to avoid DoS attacks
+				var rewrittenNick:String = null
+				while (nickConflict && counter < maxNickChanges && room.rewritesDuplicateNick()) {
+					rewrittenNick = nick + "_" + counter
+					nickConflict = room.isInRoom(rewrittenNick)
+					if (nickConflict)
+						counter += 1
+					else {
+						nick = rewrittenNick
+						nickRewritten = true
+					}
+				}
+				if (nickConflict) {
+					// user with this nick is already in room
+					return createPresenceErrorStanza(roomJid, newOccupantJid, stanza.getID(), "cancel", "conflict")
+				} 	               
+				// check password if password protected
+				if (room.isRoomType(RoomType.PasswordProtected)) {
+					val x:X = X.fromStanza(stanza)
+					var password:String = null
+					if (x != null) {
+						password = x.getPasswordValue()
+					}
+					if (password == null || !password.equals(room.getPassword())) {
+						// password missing or not matching
+						return createPresenceErrorStanza(roomJid, newOccupantJid, stanza.getID(), "auth", "not-authorized")
+					}
+				}
+				var newOccupant:Occupant = null
+				try {
+					newOccupant = room.addOccupant(newOccupantJid, nick)
+				} catch {
+					case e:RuntimeException => {
+							return createPresenceErrorStanza(roomJid, newOccupantJid, stanza.getID(), "auth", e.getMessage())
+					}
+					case other => throw other
+				}
+				if(newRoom) {
+					room.getAffiliations().add(newOccupantJid, Affiliation.Owner)
+					newOccupant.setRole(Role.Moderator)
+				}
+				// if the new occupant is a server admin, he will be for the room, too
+				val adhocCommandsService:ServerAdministrationService = serverRuntimeContext.getServerRuntimeContextService(ServerAdministrationService.SERVICE_ID).asInstanceOf[ServerAdministrationService]
+				if (adhocCommandsService != null && adhocCommandsService.isAdmin(newOccupantJid.getBareJID())) {
+					val roomAffiliations:Affiliations = room.getAffiliations()
+					// make new occupant an Admin, but do not downgrade from Owner
+					// Admin affilitation implies Moderator role (see XEP-0045 5.1.2)
+					if (roomAffiliations.getAffiliation(newOccupantJid) != Affiliation.Owner) {
+						roomAffiliations.add(newOccupantJid, Affiliation.Admin)
+						newOccupant.setRole(Role.Moderator)
+					}
+				}
+				// relay presence of all existing room occupants to the now joined occupant
+				val occupants = room.getOccupants()
+				JavaListUtils.foreach(occupants,(occupant:Occupant) => {
+//					for (occupant:Occupant <- occupants) {
+					sendExistingOccupantToNewOccupant(newOccupant, occupant, room, serverRuntimeContext)
+				})
+				// relay presence of the newly added occupant to all existing occupants
+				JavaListUtils.foreach(occupants,(occupant:Occupant) => {
+//					for (occupant:Occupant <- occupants) {
+					sendNewOccupantPresenceToExisting(newOccupant, occupant, room, serverRuntimeContext, nickRewritten)
+				})
+				// send discussion history to user
+				if (useXmppHistory){
+					val includeJid:Boolean = room.isRoomType(RoomType.NonAnonymous)
+					val history:JavaList[Stanza] = room.getHistory().createStanzas(newOccupant,includeJid,History.fromStanza(stanza))
+					relayStanzas(newOccupantJid,history,serverRuntimeContext)
+				}
+				println("%s successfully entered room %s".format(newOccupantJid, roomJid))
+			}
+      return null;
+    }
+		protected def unavailable(stanza:PresenceStanza, roomJid:Entity, occupantJid:Entity, nick:String, serverRuntimeContext:ServerRuntimeContext):Stanza = {
+			val room:Room = conference.findRoom(roomJid)
+			// room must exist, or we do nothing
+			if (room != null) {
+				val exitingOccupant:Occupant = room.findOccupantByJID(occupantJid)
+				// user must by in room, or we do nothing
+				if (exitingOccupant != null) {
+					val allOccupants:JavaSet[Occupant] = room.getOccupants()
+					room.removeOccupant(occupantJid)
+					// TODO replace with use of X
+					var statusMessage:String = null	
+					try {
+						val statusElement:XMLElement = stanza.getSingleInnerElementsNamed("status")
+						if (statusElement != null && statusElement.getInnerText() != null) {
+							statusMessage = statusElement.getInnerText().getText()
+						}
+					} catch {
+						case e:XMLSemanticError => {}
+					}
+					// relay presence of the newly added occupant to all existing occupants
+					JavaListUtils.foreach(allOccupants,(occupant:Occupant) => {
+//					for (occupant:Occupant <= allOccupants) {
+						sendExitRoomPresenceToExisting(exitingOccupant, occupant, room, statusMessage, serverRuntimeContext)
+					})
+					if (room.isRoomType(RoomType.Temporary) && room.isEmpty()) {
+						conference.deleteRoom(roomJid)
+					}
+				}
+			}
+			return null
+		}
+	protected def sendExistingOccupantToNewOccupant(newOccupant:Occupant, existingOccupant:Occupant, room:Room, serverRuntimeContext:ServerRuntimeContext):Unit = {
+        //            <presence
+        //            from='darkcave@chat.shakespeare.lit/firstwitch'
+        //            to='hag66@shakespeare.lit/pda'>
+        //          <x xmlns='http://jabber.org/protocol/muc#user'>
+        //            <item affiliation='owner' role='moderator'/>
+        //          </x>
+        //        </presence>
+
+        // do not send own presence
+			if (existingOccupant.getJid().equals(newOccupant.getJid())) {
+				return
+			}
+			val roomAndOccupantNick:Entity = new EntityImpl(room.getJID(), existingOccupant.getNick())
+			val presenceToNewOccupant:Stanza = MUCStanzaBuilder.createPresenceStanza(roomAndOccupantNick, newOccupant.getJid(), null, NamespaceURIs.XEP0045_MUC_USER, new MucUserItem(existingOccupant.getAffiliation(), existingOccupant.getRole()))
+			println("Room presence from %s sent to %s".format(newOccupant,roomAndOccupantNick))
+      relayStanza(newOccupant.getJid(), presenceToNewOccupant, serverRuntimeContext)
+    }
+	protected def sendNewOccupantPresenceToExisting(newOccupant:Occupant,existingOccupant:Occupant,room:Room,serverRuntimeContext:ServerRuntimeContext,nickRewritten:Boolean):Unit = {
+		val roomAndNewUserNick:Entity = new EntityImpl(room.getJID(), newOccupant.getNick())
+		val inner:JavaList[XMLElement] = new JavaArrayList[XMLElement]()
+		// room is non-anonymous or semi-anonymous and the occupant a moderator, send full user JID
+		val includeJid:Boolean = includeJidInItem(room,existingOccupant)//room.isRoomType(RoomType.NonAnonymous) || (room.isRoomType(SemiAnonymous) && existingOccupant.getRole() == Role.Moderator)
+		inner.add(new MucUserItem(newOccupant, includeJid, false))
+		if (existingOccupant.getJid().equals(newOccupant.getJid())) {
+			if (room.isRoomType(RoomType.NonAnonymous)) {
+				// notify the user that this is a non-anonymous room
+				inner.add(new Status(StatusCode.ROOM_NON_ANONYMOUS))
+			}
+			// send status to indicate that this is the users own presence
+			inner.add(new Status(StatusCode.OWN_PRESENCE))
+			if (nickRewritten) 
+				inner.add(new Status(StatusCode.NICK_MODIFIED))
+		}
+		val presenceToExisting:Stanza = MUCStanzaBuilder.createPresenceStanza(roomAndNewUserNick, existingOccupant.getJid(), null, NamespaceURIs.XEP0045_MUC_USER, inner)
+		println("Room presence from %s sent to %s".format(roomAndNewUserNick, existingOccupant))
+		relayStanza(existingOccupant.getJid(), presenceToExisting, serverRuntimeContext)
+	}
+	protected def sendChangeNickUnavailable(changer:Occupant, oldNick:String, receiver:Occupant, room:Room, serverRuntimeContext:ServerRuntimeContext):Unit = {
+		val roomAndOldNick:Entity = new EntityImpl(room.getJID(), oldNick)
+		val inner:JavaList[XMLElement] = new JavaArrayList[XMLElement]()
+		val includeJid:Boolean = includeJidInItem(room, receiver)
+		inner.add(new MucUserItem(changer, includeJid, true))
+		inner.add(new Status(StatusCode.NEW_NICK))
+		if (receiver.getJid().equals(changer.getJid())) {
+			// send status to indicate that this is the users own presence
+			inner.add(new Status(StatusCode.OWN_PRESENCE))
+		}
+		val presenceToReceiver:Stanza = MUCStanzaBuilder.createPresenceStanza(roomAndOldNick, receiver.getJid(), PresenceStanzaType.UNAVAILABLE, NamespaceURIs.XEP0045_MUC_USER, inner)
+		println("Room presence from %s sent to %s".format(roomAndOldNick, receiver))
+    relayStanza(receiver.getJid(), presenceToReceiver, serverRuntimeContext)
+	}
+	protected def sendChangeShowStatus(changer:Occupant, receiver:Occupant, room:Room, show:String, status:String, serverRuntimeContext:ServerRuntimeContext):Unit = {
+		val roomAndNick:Entity = new EntityImpl(room.getJID(), changer.getNick())
+		val builder:StanzaBuilder = StanzaBuilder.createPresenceStanza(roomAndNick, receiver.getJid(), null, null, show, status)
+		val includeJid:Boolean = includeJidInItem(room, receiver)
+        //        if(receiver.getJid().equals(changer.getJid())) {
+        //            // send status to indicate that this is the users own presence
+        //            new Status(StatusCode.OWN_PRESENCE).insertElement(builder);
+        //        }
+		builder.addPreparedElement(new X(NamespaceURIs.XEP0045_MUC_USER, new MucUserItem(changer, includeJid, true)))
+    println("Room presence from %s sent to %s".format(roomAndNick, receiver))
+		relayStanza(receiver.getJid(), builder.build(), serverRuntimeContext)
+	}
+
+	protected def includeJidInItem(room:Room, receiver:Occupant):Boolean = {
+		// room is non-anonymous or semi-anonymous and the occupant a moderator, send full user JID
+		room.isRoomType(RoomType.NonAnonymous) || (room.isRoomType(RoomType.SemiAnonymous) && receiver.getRole() == Role.Moderator)
+	}
+
+	protected def sendChangeNickAvailable(changer:Occupant, receiver:Occupant, room:Room, serverRuntimeContext:ServerRuntimeContext):Unit = {
+		val roomAndOldNick:Entity = new EntityImpl(room.getJID(), changer.getNick())
+		val inner:JavaList[XMLElement] = new JavaArrayList[XMLElement]()
+    val includeJid:Boolean = includeJidInItem(room, receiver)
+		inner.add(new MucUserItem(changer, includeJid, false))
+		if (receiver.getJid().equals(changer.getJid())) {
+			// send status to indicate that this is the users own presence
+			inner.add(new Status(StatusCode.OWN_PRESENCE));
+		}
+    val presenceToReceiver:Stanza = MUCStanzaBuilder.createPresenceStanza(roomAndOldNick, receiver.getJid(), null, NamespaceURIs.XEP0045_MUC_USER, inner)
+		relayStanza(receiver.getJid(), presenceToReceiver, serverRuntimeContext);
+	}
+	protected def sendExitRoomPresenceToExisting(exitingOccupant:Occupant, existingOccupant:Occupant, room:Room, statusMessage:String, serverRuntimeContext:ServerRuntimeContext):Unit = {
+		val roomAndNewUserNick:Entity = new EntityImpl(room.getJID(), exitingOccupant.getNick())
+		val inner:JavaList[XMLElement] = new JavaArrayList[XMLElement]()
+		inner.add(new MucUserItem(null, null, existingOccupant.getAffiliation(), Role.None))
+		// is this stanza to be sent to the exiting user himself?
+		val ownStanza:Boolean = existingOccupant.getJid().equals(exitingOccupant.getJid())
+		if (ownStanza || statusMessage != null) {
+			val status:Status = ownStanza match {
+				case true => new Status(StatusCode.OWN_PRESENCE, statusMessage) 
+				case false => new Status(statusMessage)
+			}
+			inner.add(status)
+		}
+		val presenceToExisting:Stanza = MUCStanzaBuilder.createPresenceStanza(roomAndNewUserNick, existingOccupant.getJid(), PresenceStanzaType.UNAVAILABLE, NamespaceURIs.XEP0045_MUC_USER, inner)
+		relayStanza(existingOccupant.getJid(), presenceToExisting, serverRuntimeContext)
+	}
+	protected def relayStanzas(receiver:Entity, stanzas:JavaList[Stanza], serverRuntimeContext:ServerRuntimeContext):Unit = {
+		JavaListUtils.foreach(stanzas,(stanza:Stanza) => {
+//  	for (stanza:Stanza : stanzas.toArray().toList) {
+			relayStanza(receiver, stanza, serverRuntimeContext)
+		})
+	}
+	protected def relayStanza(receiver:Entity, stanza:Stanza, serverRuntimeContext:ServerRuntimeContext):Unit = {
+		try {
+			serverRuntimeContext.getStanzaRelay().relay(receiver, stanza, new IgnoreFailureStrategy())
+		} catch {
+			case e:DeliveryException => {
+				println("presence relaying failed %s".format(e))
+			}
+			case other => throw other
+		}
+	}
+}
+
+object JavaListUtils {
+	def foreach[A](coll:JavaSet[A], function:A=>Unit){
+		val iter = coll.iterator
+		while (iter.hasNext)
+			function(iter.next)
+	}
+	def foreach[A](coll:JavaList[A], function:A=>Unit){
+		val iter = coll.iterator
+		while (iter.hasNext)
+			function(iter.next)
+	}
+}
