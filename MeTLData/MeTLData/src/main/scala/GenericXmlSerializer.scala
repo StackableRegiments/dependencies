@@ -327,7 +327,12 @@ class GenericXmlSerializer(configName:String) extends Serializer{
     val title = utils.getStringByName(input,"title")
     val created = utils.getStringByName(input,"created")
     val permissions = utils.getXmlByName(input,"permissions").map(p => toPermissions(p)).headOption.getOrElse(Permissions.default(config))
-    Conversation(config,author,lastAccessed,slides,subject,tag,jid,title,created,permissions)
+		val thisConfig = utils.getStringByName(input,"configName") match {
+			case "unknown configName" => config
+			case "" => config
+			case other => ServerConfiguration.configForName(other)
+		}
+    Conversation(thisConfig,author,lastAccessed,slides,subject,tag,jid,title,created,permissions)
   })
   override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversation", () => {
     metlXmlToXml("conversation",List(
@@ -339,6 +344,7 @@ class GenericXmlSerializer(configName:String) extends Serializer{
       <jid>{input.jid}</jid>,
       <title>{input.title}</title>,
       <created>{input.created}</created>,
+//			<configName>{input.server.name}</configName>,
       fromPermissions(input.permissions)
     ))
   })

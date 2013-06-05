@@ -413,7 +413,11 @@ class JsonSerializer(configName:String) extends Serializer{
         val title = utils.getStringByName(input,"title")
         val created = utils.getStringByName(input,"created")
         val permissions = toPermissions(utils.getObjectByName(input,"permissions"))
-        Conversation(config,author,lastAccessed,slides,subject,tag,jid,title,created,permissions)
+				val thisConfig = utils.getStringByName(input,"configName") match {
+					case "" => config
+					case other => ServerConfiguration.configForName(other)
+				}
+        Conversation(thisConfig,author,lastAccessed,slides,subject,tag,jid,title,created,permissions)
       }
       case _ => Conversation.empty
     }
@@ -429,7 +433,8 @@ class JsonSerializer(configName:String) extends Serializer{
       JField("jid",JInt(input.jid)),
       JField("title",JString(input.title)),
       JField("created",JString(input.created)),
-      JField("permissions",fromPermissions(input.permissions))
+      JField("permissions",fromPermissions(input.permissions)),
+			JField("configName",JString(input.server.name))
     ))
   })
   override def toSlide(i:JValue):Slide = Stopwatch.time("JsonSerializer.toSlide", () => {
