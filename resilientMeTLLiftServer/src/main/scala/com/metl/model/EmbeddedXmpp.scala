@@ -22,8 +22,7 @@ import org.apache.vysper.xmpp.modules.extension.xep0077_inbandreg.InBandRegistra
 import org.apache.vysper.xmpp.server.XMPPServer
 
 // for MeTLMucModule
-
-import java.util.{ArrayList => JavaArrayList,List => JavaList,Collection => JavaCollection,Arrays => JavaArrays,Set => JavaSet}
+import java.util.{ArrayList => JavaArrayList,List => JavaList,Collection => JavaCollection,Arrays => JavaArrays,Set => JavaSet,Iterator => JavaIterator}
 import org.apache.vysper.xmpp.addressing.{Entity,EntityFormatException,EntityImpl,EntityUtils}
 import org.apache.vysper.xmpp.modules.DefaultDiscoAwareModule
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCModule
@@ -36,8 +35,7 @@ import org.apache.vysper.xmpp.stanza.{IQStanzaType,StanzaBuilder}
 import org.slf4j.{Logger,LoggerFactory}
 
 // for MeTLMUCMessageHandler
-
-import org.apache.vysper.xml.fragment.{Attribute,XMLElement,XMLSemanticError}
+import org.apache.vysper.xml.fragment.{Attribute,XMLElement,XMLSemanticError,XMLText,XMLFragment}
 import org.apache.vysper.xmpp.delivery.failure.{DeliveryException,IgnoreFailureStrategy}
 import org.apache.vysper.xmpp.modules.core.base.handler.DefaultMessageHandler
 import org.apache.vysper.xmpp.modules.extension.xep0045_muc.MUCStanzaBuilder
@@ -49,16 +47,15 @@ import org.apache.vysper.xmpp.server.{ServerRuntimeContext,SessionContext}
 import org.apache.vysper.xmpp.stanza.{MessageStanza,MessageStanzaType,Stanza,StanzaBuilder,StanzaErrorCondition,StanzaErrorType}
 
 // for MeTLMUCPresenceHandler
+import org.apache.vysper.xmpp.modules.core.base.handler.DefaultPresenceHandler
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.{Affiliation,Affiliations}
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.{History,Status}
+import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status.StatusCode
+import org.apache.vysper.xmpp.modules.extension.xep0133_service_administration.ServerAdministrationService
+import org.apache.vysper.xmpp.stanza.{PresenceStanza,PresenceStanzaType}
 
-import org.apache.vysper.xmpp.modules.core.base.handler.DefaultPresenceHandler;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Affiliation;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.model.Affiliations;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.History;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status;
-import org.apache.vysper.xmpp.modules.extension.xep0045_muc.stanzas.Status.StatusCode;
-import org.apache.vysper.xmpp.modules.extension.xep0133_service_administration.ServerAdministrationService;
-import org.apache.vysper.xmpp.stanza.PresenceStanza;
-import org.apache.vysper.xmpp.stanza.PresenceStanzaType;
+// for VysperXMLUtils
+import scala.xml._
 
 class EmbeddedXmppServerRoomAdaptor(serverRuntimeContext:ServerRuntimeContext) {
 	def relayMessageToMeTLRoom(location:String,message:AnyRef):Unit = {
@@ -242,8 +239,8 @@ class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity,useXmppHis
 	override protected def executeMessageLogic(stanza:MessageStanza, serverRuntimeContext:ServerRuntimeContext, sessionContext:SessionContext) = {
 		println("Received message for MUC")
 		val from:Entity = stanza.getFrom()
-		val roomWithNickJid = stanza.getTo()
-		val roomJid = roomWithNickJid.getBareJID()
+		val roomWithNickJid:Entity = stanza.getTo()
+		val roomJid:Entity = roomWithNickJid.getBareJID()
 		val typeName:MessageStanzaType = stanza.getMessageType()
 
 		if (typeName != null && typeName == MessageStanzaType.GROUPCHAT) {
@@ -762,14 +759,99 @@ class MeTLMUCPresenceHandler(conference:Conference,useXmppHistory:Boolean = fals
 }
 
 object JavaListUtils {
-	def foreach[A](coll:JavaSet[A], function:A=>Unit){
+	def foreach[A](coll:JavaSet[A], function:A=>Unit) = {
 		val iter = coll.iterator
 		while (iter.hasNext)
 			function(iter.next)
 	}
-	def foreach[A](coll:JavaList[A], function:A=>Unit){
+	def foreach[A](coll:JavaList[A], function:A=>Unit) = {
 		val iter = coll.iterator
 		while (iter.hasNext)
 			function(iter.next)
 	}
+	def map[A,B](coll:JavaList[A], function:A=>B):List[B] = {
+		val iter = coll.iterator
+		var output = List.empty[B]
+		while (iter.hasNext)
+			output = output ::: List(function(iter.next))
+		output
+	}
+	def foldl[A,B](coll:JavaList[A], seed:B, function:(B,A) => B):B = {
+		val iter = coll.iterator
+		var acc = seed
+		while (iter.hasNext)
+			acc = function(acc,iter.next)
+		acc
+	}
+	def toJavaList[A](list:List[A]):JavaList[A] = {
+		val output = new JavaArrayList[A]()
+		list.foreach(li => output.add(li))
+		output
+	}
+}
+
+class VysperXMLUtils {
+	def toVysper(scalaNode:Node):XMLFragment = {
+		scalaNode match {
+			case t:Text => new XMLText(t.text)
+			case e:Elem => {
+				val prefix = e.prefix
+				val namespace = e.getNamespace(prefix)
+				val label = e.label
+				val attributes = toAttributes(e.attributes)
+				val children:JavaList[XMLFragment] = JavaListUtils.toJavaList((e.child.map{	
+					case g:Group => g.nodes.map(n => toVysper(n))
+					case other => List(toVysper(other))
+				}).toList.flatten)
+				new XMLElement(namespace,label,prefix,attributes,children)
+			}
+			case _ => null.asInstanceOf[XMLFragment]
+		}
+	}
+	def toScala(vysperNode:XMLFragment):Node = {
+		vysperNode match {
+			case e:XMLElement => {
+				val prefix = e.getNamespacePrefix
+				val label = e.getName
+				val innerElements:JavaList[XMLFragment] = e.getInnerFragments
+				val namespace = null
+				val attributes:JavaList[Attribute] = e.getAttributes
+				val scalaAttributes = toMetaData(attributes)
+				val child = JavaListUtils.map(innerElements, (fragment:XMLFragment) => toScala(fragment)) match {
+					// I wonder whether I should pass a null or an empty Text()?
+					case l:List[Node] if l.length == 0 => Text("")
+					case l:List[Node] if l.length == 1 => l.head
+					case l:List[Node] => Group(l)	
+				}
+				Elem(prefix,label,scalaAttributes,namespace,child)
+			}
+			case t:XMLText => Text(t.getText)
+			case _ => null.asInstanceOf[Node]
+		}
+	}
+	protected def toMetaData(attributes:JavaList[Attribute]):MetaData = toMetaDataFromIterator(attributes.iterator)
+	protected def toMetaDataFromIterator(iter:JavaIterator[Attribute]):MetaData = {
+		iter.hasNext match {
+			case true => {
+				val current = iter.next
+				val name = current.getName
+				val value = current.getValue
+		//		current.getNamespaceUri match {
+		//			case s:String if s > 0 => new PrefixedAttribute(s,name,value,toMetaDataFromIterator(iter))
+		//			case _ => new UnprefixedAttribute(name,value,toMetaDataFromIterator(iter))
+		//		}
+				new UnprefixedAttribute(name,value,toMetaDataFromIterator(iter))
+			}
+			case false => scala.xml.Null
+		}
+	}
+	protected def toAttributes(metaData:MetaData):JavaList[Attribute] = JavaListUtils.toJavaList(toAttributesList(metaData))
+	protected def toAttributesList(metaData:MetaData):List[Attribute] = {
+		metaData match {
+			case u:UnprefixedAttribute => new Attribute(u.key, scalaAttributeValue(u.value)) :: toAttributesList(metaData.next)
+			case p:PrefixedAttribute => new Attribute(p.key, scalaAttributeValue(p.value)) :: toAttributesList(metaData.next)
+			case _ => List.empty[Attribute]
+		}
+	}
+	protected def scalaAttributeValue(nodes:Seq[Node]):String = nodes.foldLeft("")((acc,item) => acc + item.text)
 }
