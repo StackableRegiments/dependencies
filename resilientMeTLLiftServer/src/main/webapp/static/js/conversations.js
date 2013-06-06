@@ -344,7 +344,7 @@ var Conversations = (function(){
     };
 		var possiblyUpdateThumbnail = function(slide){
 			var slidesContainer = $("#slideContainer");
-			var slidesTop = slidesContainer.scrollTop();
+			var slidesTop = slidesContainer.scrollTop() + slidesContainer.offset().top;
 			var slidesBottom = slidesTop + slidesContainer.height();
 			var slideContainer = $(sprintf("#slideButton_%s",slide.id));
 			var slideTop = slideContainer.offset().top;

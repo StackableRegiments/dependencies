@@ -57,17 +57,64 @@ import org.apache.vysper.xmpp.stanza.{PresenceStanza,PresenceStanzaType}
 // for VysperXMLUtils
 import scala.xml._
 
-class EmbeddedXmppServerRoomAdaptor(serverRuntimeContext:ServerRuntimeContext) {
-	def relayMessageToMeTLRoom(location:String,message:AnyRef):Unit = {
-	
+// for MeTL integration
+import com.metl.data._
+import com.metl.metl2011._
+
+class EmbeddedXmppServerRoomAdaptor(serverRuntimeContext:ServerRuntimeContext,conference:Conference) {
+	val domainString = "metl.adm.monash.edu.au"
+	val conferenceString = "conference.%s".format(domainString)
+	val configName = "standalone"
+	val serializer = new MeTL2011XmlSerializer(configName)
+	val converter = new VysperXMLUtils
+	protected val xmppMessageDeliveryStrategy = new IgnoreFailureStrategy()
+	def relayMessageToMeTLRoom(message:Stanza):Unit = {
+		val to:Entity = message.getTo()
+		val location:String = to.getNode()
+		val payloads:JavaList[XMLFragment] = message.getInnerFragments()
+		//this is about to be a problem - how do I choose the appropriate serverConfiguration, I wonder?
+		MeTLXConfiguration.getRoom(location,configName) match {
+			case r:XmppBridgingHistoryCachingRoom => {
+				JavaListUtils.foreach(payloads,(payload:XMLFragment) => {
+					val metlStanza = serializer.toMeTLStanza(message)
+					r.sendMessageFromBridge(metlStanza)
+				})
+			}
+			case _ => {}
+		}			
 	}
-	def relayMessageToXmppMuc(location:String,message:AnyRef):Unit = {
-	
+	def relayMessageToXmppMuc(location:String,message:MeTLStanza):Unit = relayMessageToXmppMuc(location,serializer.fromMeTLStanza(message))
+	def relayMessageToXmppMuc(location:String,message:Node):Unit = {
+		val roomJid:Entity = EntityImpl.parse("%s@%s".format(location,conferenceString))
+		val room:Room = conference.findRoom(roomJid)
+		if (room != null){
+			val from:Entity = room.getJID()
+			val messageFunc = (sb:StanzaBuilder) => converter.toVysper(message) match {
+				case t:XMLText => sb.addText(t.getText)
+				case e:XMLElement => sb.addPreparedElement(e)
+				case _ => sb
+			}
+			JavaListUtils.foreach(room.getOccupants(),(occupant:Occupant) => {
+				val to:Entity = occupant.getJid()
+				val request:Stanza = messageFunc(StanzaBuilder.createMessageStanza(from, to, null, null)).build()
+				try {
+					serverRuntimeContext.getStanzaRelay().relay(to, request, xmppMessageDeliveryStrategy)
+				} catch {
+					case e:DeliveryException => {
+						println("presence relaying failed %s".format(e))
+					}
+					case other => throw other
+				}
+			})
+		}
 	}
 }
 
 object EmbeddedXmppServer {
 	protected var privateServer:Box[XMPPServer] = Empty
+	protected var mucModule:Box[MeTLMucModule] = Empty
+	protected var roomAdaptor:Box[EmbeddedXmppServerRoomAdaptor] = Empty
+
 	def start = {
 		println("embedded xmpp server start handler")
 		val domain = "metl.adm.monash.edu.au"
@@ -75,9 +122,9 @@ object EmbeddedXmppServer {
 		
 		val accountManagement = providerRegistry.retrieve(classOf[AccountManagement]).asInstanceOf[AccountManagement]
 		val user1 = EntityImpl.parse("dave@" + domain);
-		if (!accountManagement.verifyAccountExists(user1)) 
+		if (!accountManagement.verifyAccountExists(user1)){ 
 			accountManagement.addUser(user1, "fred")
-
+		}
 		privateServer = Full(new XMPPServer(domain))
 		privateServer.map(p => {
 			p.addEndpoint(new TCPEndpoint())
@@ -92,12 +139,15 @@ object EmbeddedXmppServer {
 			try {
 				p.start()
 				println("embedded xmpp server started")
+				val metlMuc = new MeTLMucModule()
 				p.addModule(new SoftwareVersionModule())
 				p.addModule(new EntityTimeModule())
 				p.addModule(new VcardTempModule())
 				p.addModule(new XmppPingModule())
 				p.addModule(new InBandRegistrationModule())
-				p.addModule(new MeTLMucModule())
+				p.addModule(metlMuc)
+				mucModule = Full(metlMuc)
+				roomAdaptor = metlMuc.getRoomAdaptor
 				println("embedded xmpp default modules loaded")
 			} catch {
 				case e:Throwable => {
@@ -106,7 +156,8 @@ object EmbeddedXmppServer {
 			}
 		})
 	}
-	def sendMessageToRoom(message:AnyRef) = {}
+	def relayMessageToRoom(message:Stanza):Unit = roomAdaptor.map(ra => ra.relayMessageToMeTLRoom(message))
+	def relayMessageToXmppMuc(location:String,message:MeTLStanza):Unit = roomAdaptor.map(ra => ra.relayMessageToXmppMuc(location,message))
 }            
 
 class MeTLMucModule(subdomain:String = "chat",conference:Conference = new Conference("Conference")) extends DefaultDiscoAwareModule with Component with ComponentInfoRequestListener with ItemRequestListener {
@@ -115,13 +166,15 @@ class MeTLMucModule(subdomain:String = "chat",conference:Conference = new Confer
 	protected var serverRuntimeContext:ServerRuntimeContext = null
 	protected var stanzaProcessor:ComponentStanzaProcessor = null
 
+	protected var roomAdaptor:Box[EmbeddedXmppServerRoomAdaptor] = Empty
+
 	override def initialize(serverRuntimeContext:ServerRuntimeContext):Unit = {
 		super.initialize(serverRuntimeContext)
 		this.serverRuntimeContext = serverRuntimeContext
 		fullDomain = EntityUtils.createComponentDomain(subdomain, serverRuntimeContext)
 		val processor:ComponentStanzaProcessor = new ComponentStanzaProcessor(serverRuntimeContext)
-		processor.addHandler(new MeTLMUCPresenceHandler(conference));
-		processor.addHandler(new MeTLMUCMessageHandler(conference, fullDomain));
+		processor.addHandler(new MeTLMUCPresenceHandler(conference,this));
+		processor.addHandler(new MeTLMUCMessageHandler(conference, fullDomain,this));
 		processor.addHandler(new MUCIqAdminHandler(conference));
 		stanzaProcessor = processor;
 		val roomStorageProvider:RoomStorageProvider = serverRuntimeContext.getStorageProvider(classOf[RoomStorageProvider]).asInstanceOf[RoomStorageProvider]
@@ -139,9 +192,11 @@ class MeTLMucModule(subdomain:String = "chat",conference:Conference = new Confer
 			conference.setOccupantStorageProvider(occupantStorageProvider);
 		}
 		this.conference.initialize();
+		roomAdaptor = Full(new EmbeddedXmppServerRoomAdaptor(this.serverRuntimeContext,this.conference))
 	}
 	override def getName:String = "XEP-0045 Multi-user chat"
 	override def getVersion:String = "1.24"
+	def getRoomAdaptor:Box[EmbeddedXmppServerRoomAdaptor] = roomAdaptor
 
 	override def addItemRequestListeners(itemRequestListeners:JavaList[ItemRequestListener]):Unit = {
 		itemRequestListeners.add(this)
@@ -228,7 +283,7 @@ class MeTLMucModule(subdomain:String = "chat",conference:Conference = new Confer
 	def getStanzaProcessor:StanzaProcessor = stanzaProcessor
 }
 
-class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity,useXmppHistory:Boolean = false) extends DefaultMessageHandler {
+class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity,mucModule:MeTLMucModule,useXmppHistory:Boolean = false) extends DefaultMessageHandler {
 
 	//final Logger logger = LoggerFactory.getLogger(MUCMessageHandler.class);
 
@@ -276,13 +331,14 @@ class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity,useXmppHis
 							} else {
 								println("Relaying message to all room occupants")
 								JavaListUtils.foreach(room.getOccupants(),(occupant:Occupant) => {
-//								for (occupant:Occupant <- room.getOccupants().toArray().toList.asInstanceOf[List[Occupant]]) {
 									println("Relaying message to %s".format(occupant))
 									val replaceAttributes:JavaList[Attribute] = new JavaArrayList[Attribute]()
 									replaceAttributes.add(new Attribute("from", roomAndSendingNick.getFullQualifiedName()))
 									replaceAttributes.add(new Attribute("to",occupant.getJid().getFullQualifiedName()))
-									relayStanza(occupant.getJid(), StanzaBuilder.createClone(stanza, true, replaceAttributes).build(), serverRuntimeContext)
+									val finalStanza:Stanza = StanzaBuilder.createClone(stanza, true, replaceAttributes).build()
+									relayStanza(occupant.getJid(), finalStanza, serverRuntimeContext)
 								})
+								mucModule.getRoomAdaptor.map(ra => ra.relayMessageToMeTLRoom(stanza))
 								if (useXmppHistory)
 									room.getHistory().append(stanza, sendingOccupant)
 								null
@@ -442,7 +498,7 @@ class MeTLMUCMessageHandler(conference:Conference,moduleDomain:Entity,useXmppHis
 	}
 }
 
-class MeTLMUCPresenceHandler(conference:Conference,useXmppHistory:Boolean = false) extends DefaultPresenceHandler {
+class MeTLMUCPresenceHandler(conference:Conference,mucModule:MeTLMucModule,useXmppHistory:Boolean = false) extends DefaultPresenceHandler {
 
 //    final Logger logger = LoggerFactory.getLogger(MUCPresenceHandler.class);
 
