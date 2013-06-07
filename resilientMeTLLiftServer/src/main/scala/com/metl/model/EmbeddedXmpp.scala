@@ -56,6 +56,7 @@ import org.apache.vysper.xmpp.stanza.{PresenceStanza,PresenceStanzaType}
 
 // for VysperXMLUtils
 import scala.xml._
+import org.apache.vysper.xml.fragment.{Renderer => vXmlRenderer}
 
 // for MeTL integration
 import com.metl.data._
@@ -848,9 +849,21 @@ object JavaListUtils {
 }
 
 class VysperXMLUtils {
+	def vRender(input:XMLFragment):String = {
+		input match {
+			case t:XMLText => t.getText
+			case e:XMLElement => new vXmlRenderer(e).getComplete()
+			case other => "unable to render: %s".format(other)
+		}
+	}
 	def toVysper(scalaNode:Node):XMLFragment = {
-		scalaNode match {
-			case t:Text => new XMLText(t.text)
+		val output = scalaNode match {
+			case a:Atom[String] => new XMLText(a.text)
+			case a:Atom[Double] => new XMLText(a.text.toString)
+			case a:Atom[Int] => new XMLText(a.text.toString)
+			case a:Atom[Long] => new XMLText(a.text.toString)
+			case a:Atom[Float] => new XMLText(a.text.toString)
+			//case t:Text => new XMLText(t.text)
 			case e:Elem => {
 				val prefix = e.prefix
 				val namespace = e.getNamespace(prefix)
@@ -862,16 +875,25 @@ class VysperXMLUtils {
 				}).toList.flatten)
 				new XMLElement(namespace,label,prefix,attributes,children)
 			}
-			case _ => null.asInstanceOf[XMLFragment]
+			case other => {
+				println("other found: %s (%s)".format(other, other.getClass.toString))
+				null.asInstanceOf[XMLFragment]
+			}
 		}
+		println("toVysper: %s -> %s".format(scalaNode,vRender(output)))
+		output
 	}
 	def toScala(vysperNode:XMLFragment):Node = {
-		vysperNode match {
+		val output = vysperNode match {
+			case t:XMLText => Text(t.getText)
 			case e:XMLElement => {
-				val prefix = e.getNamespacePrefix
+				val prefix = e.getNamespacePrefix match {
+					case s:String if s.length > 0 => s
+					case _ => null
+				}
 				val label = e.getName
 				val innerElements:JavaList[XMLFragment] = e.getInnerFragments
-				val namespace = null
+				val scope = TopScope
 				val attributes:JavaList[Attribute] = e.getAttributes
 				val scalaAttributes = toMetaData(attributes)
 				val child = JavaListUtils.map(innerElements, (fragment:XMLFragment) => toScala(fragment)) match {
@@ -880,11 +902,15 @@ class VysperXMLUtils {
 					case l:List[Node] if l.length == 1 => l.head
 					case l:List[Node] => Group(l)	
 				}
-				Elem(prefix,label,scalaAttributes,namespace,child)
+				Elem(prefix,label,scalaAttributes,scope,child)
 			}
-			case t:XMLText => Text(t.getText)
-			case _ => null.asInstanceOf[Node]
+			case other => {
+				println("other found: %s (%s)".format(other, other.getClass.toString))
+				null.asInstanceOf[Node]
+			}
 		}
+		println("toScala: %s -> %s".format(vRender(vysperNode),output))
+		output
 	}
 	protected def toMetaData(attributes:JavaList[Attribute]):MetaData = toMetaDataFromIterator(attributes.iterator)
 	protected def toMetaDataFromIterator(iter:JavaIterator[Attribute]):MetaData = {
