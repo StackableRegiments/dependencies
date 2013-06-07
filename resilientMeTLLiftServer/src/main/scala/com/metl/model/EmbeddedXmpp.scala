@@ -64,7 +64,8 @@ import com.metl.metl2011._
 class EmbeddedXmppServerRoomAdaptor(serverRuntimeContext:ServerRuntimeContext,conference:Conference) {
 	val domainString = "metl.adm.monash.edu.au"
 	val conferenceString = "conference.%s".format(domainString)
-	val configName = "standalone"
+	val config = ServerConfiguration.default
+	val configName = config.name
 	val serializer = new MeTL2011XmlSerializer(configName)
 	val converter = new VysperXMLUtils
 	protected val xmppMessageDeliveryStrategy = new IgnoreFailureStrategy()
@@ -76,15 +77,15 @@ class EmbeddedXmppServerRoomAdaptor(serverRuntimeContext:ServerRuntimeContext,co
 		MeTLXConfiguration.getRoom(location,configName) match {
 			case r:XmppBridgingHistoryCachingRoom => {
 				JavaListUtils.foreach(payloads,(payload:XMLFragment) => {
-					val metlStanza = serializer.toMeTLStanza(message)
+					val metlStanza = serializer.toMeTLStanza(converter.toScala(payload))
 					r.sendMessageFromBridge(metlStanza)
 				})
 			}
 			case _ => {}
 		}			
 	}
-	def relayMessageToXmppMuc(location:String,message:MeTLStanza):Unit = relayMessageToXmppMuc(location,serializer.fromMeTLStanza(message))
-	def relayMessageToXmppMuc(location:String,message:Node):Unit = {
+	def relayMessageToXmppMuc(location:String,message:MeTLStanza):Unit = relayMessageNodeToXmppMuc(location,serializer.fromMeTLStanza(message).asInstanceOf[Node])
+	def relayMessageNodeToXmppMuc(location:String,message:Node):Unit = {
 		val roomJid:Entity = EntityImpl.parse("%s@%s".format(location,conferenceString))
 		val room:Room = conference.findRoom(roomJid)
 		if (room != null){
