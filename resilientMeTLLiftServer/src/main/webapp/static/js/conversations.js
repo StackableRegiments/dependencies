@@ -344,18 +344,18 @@ var Conversations = (function(){
     };
 		var possiblyUpdateThumbnail = function(slide){
 			var slidesContainer = $("#slideContainer");
-			var slidesTop = slidesContainer.scrollTop() + slidesContainer.offset().top;
+			var slidesTop = 0;
 			var slidesBottom = slidesTop + slidesContainer.height();
-			var slideContainer = $(sprintf("#slideButton_%s",slide.id));
-			var slideTop = slideContainer.offset().top;
+			var slideContainer = $(sprintf("#slideContainer_%s",slide.id));
+			var slideTop = slideContainer.position().top + 10; //10 pixel margin for the top, which appears to be being ignored.
 			var slideBottom = slideTop + slideContainer.height();
-			if ((slideBottom >= slidesTop) && (slideTop <= slidesBottom)
-				&& (slideBottom <= slidesBottom) && (slideTop >= slidesTop) 
-				){
-				console.log("rendering within view",slide.id,slide);
+			var isVisible = (slideBottom >= slidesTop) && (slideTop <= slidesBottom);
+			var isEntirelyVisible = isVisible && (slideBottom <= slidesBottom) && (slideTop >= slidesTop);
+			if (isEntirelyVisible){
 				var currentSrc = slideContainer.attr("src");
 				if (currentSrc == undefined || currentSrc.indexOf("/thumbnail/") != 0){
-					slideContainer.attr("src",sprintf("/thumbnail/%s/%s?nocache=%s",currentServerConfigName,slide.id,Date.now()));
+					var slideImage = slideContainer.find("img");
+					slideImage.attr("src",sprintf("/thumbnail/%s/%s?nocache=%s",currentServerConfigName,slide.id,Date.now()));
 				}
 			}
 		}
