@@ -171,6 +171,9 @@ a.s2cClose{
 .headerRow1, .headerRow2, .headerRow3{
     display:inline-block;
 }
+.headerRow2{
+		width:100px;
+}
 #minimizedTools{
     display:none;
 }
