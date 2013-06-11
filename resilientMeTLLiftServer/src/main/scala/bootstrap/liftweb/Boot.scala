@@ -56,6 +56,7 @@ class Boot {
       Menu(Loc("Board","board" :: Nil,"Main face to face",Hidden)),
       //WebMeTL
       Menu("Directory") / "directory",
+      Menu("Summaries") / "summaries",
       Menu("Home") / "index",
       Menu("Conversation") / "conversation",
       Menu("Slide") / "slide",
