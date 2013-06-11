@@ -253,7 +253,6 @@ class MeTLActor extends StronglyTypedJsonActor{
               val tempSubImage = MeTLImage(serverConfig,username,now,identity,Full(sub.url),sub.imageBytes,Empty,Double.NaN,Double.NaN,10,10,"presentationSpace",Privacy.PUBLIC,ho.id.toString,identity)
               val dimensions = SlideRenderer.measureImage(tempSubImage)
               val subImage = MeTLImage(serverConfig,username,now,identity,Full(sub.url),sub.imageBytes,Empty,dimensions.width,dimensions.height,dimensions.left,dimensions.top,"presentationSpace",Privacy.PUBLIC,ho.id.toString,identity)
-              //println("sending subImage to server: %s".format(subImage))
               slideRoom ! LocalToServerMeTLStanza(subImage)
             })
           })
@@ -646,7 +645,6 @@ class MeTLActor extends StronglyTypedJsonActor{
         joinRoomByJid(cs+username)
       })
     })
-    println("Refresh client side state: %s %s".format(CurrentConversation.is,CurrentSlide.is))
     val jsCmds:List[Box[JsCmd]] = List(
       Full(Call(RECEIVE_USERNAME,JString(username))),
       Full(Call(RECEIVE_USER_GROUPS,getUserGroups)),

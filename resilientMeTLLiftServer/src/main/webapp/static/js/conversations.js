@@ -345,7 +345,7 @@ var Conversations = (function(){
     /*
     Workaround for parallel connection limits queueing thumbnail loads behind long poll
     */
-    var thumbServer = "adm-app09-v02.adm.monash.edu"
+    var thumbServer = "http://metlviewer.adm.monash.edu.au"
     /* */
     var possiblyUpdateThumbnail = function(slide){
         var slidesContainer = $("#slideContainer");
