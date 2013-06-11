@@ -19,16 +19,18 @@ var Conversations = (function(){
     }
     var paintThumbs = function(){
         console.log("firing paintThumbs");
+        var slidesContainer = $("#slideContainer");
+        var containerHeight = slidesContainer.height();
         _.forEach(currentConversation.slides,function(slide){
-            possiblyUpdateThumbnail(slide);
+            possiblyUpdateThumbnail(slide,slidesContainer,containerHeight);
         })
     }
     var refreshSlideDisplay = function(){
         updateStatus("Refreshing slide display");
         var slideContainer = $("#slideContainer")
         slideContainer.html(unwrap(currentConversation.slides.sort(function(a,b){return a.index - b.index;}).map(constructSlide))).append(constructAddSlideButton());
-        paintThumbs();
         var lazyRepaint = _.debounce(paintThumbs,200);
+	slideContainer.off("scroll");
         slideContainer.on("scroll",lazyRepaint);
         Progress.call("onLayoutUpdated");
     }
@@ -171,7 +173,9 @@ var Conversations = (function(){
     };
     var updateThumbnailFor = function(slideId) {
         //setting index to zero because this isn't necessary.
-        possiblyUpdateThumbnail({id:slideId,index:0});
+        var slidesContainer = $("#slideContainer");
+        var containerHeight = slidesContainer.height();
+        possiblyUpdateThumbnail({id:slideId,index:0},slidesContainer,containerHeight);
     }
     var goToNextSlideFunction = function(){
         if ("slides" in currentConversation && currentSlide > 0){
@@ -343,27 +347,24 @@ var Conversations = (function(){
         $(sprintf("#slideContainer_%s",slideId)).addClass("activeSlide");
     };
     /*
-    Workaround for parallel connection limits queueing thumbnail loads behind long poll
-    */
+     Workaround for parallel connection limits queueing thumbnail loads behind long poll
+     */
     var thumbServer = "http://metlviewer.adm.monash.edu.au"
-    /* */
-    var possiblyUpdateThumbnail = function(slide){
-        var slidesContainer = $("#slideContainer");
+    /*nocache parameter removed during this workaround */
+    var possiblyUpdateThumbnail = function(slide,slidesContainer,containerHeight){
         var slidesTop = 0;
-        var slidesBottom = slidesTop + slidesContainer.height();
-        var slideContainer = $(sprintf("#slideContainer_%s",slide.id));
+        var slidesBottom = slidesTop + containerHeight;
+        var slideContainer = slidesContainer.find(sprintf("#slideContainer_%s",slide.id));
         var slideTop = slideContainer.position().top + 10; //10 pixel margin for the top, which appears to be being ignored.
         var slideBottom = slideTop + slideContainer.height();
         var isVisible = (slideBottom >= slidesTop) && (slideTop <= slidesBottom);
         var isEntirelyVisible = isVisible && (slideBottom <= slidesBottom) && (slideTop >= slidesTop);
         if (isEntirelyVisible){
-            var currentSrc = slideContainer.attr("src");
-            if (currentSrc == undefined || currentSrc.indexOf("/thumbnail/") != 0){
-                var slideImage = slideContainer.find("img");
-                slideImage.attr("src",sprintf("%s/thumbnail/%s/%s?nocache=%s",
-					      thumbServer,
-					      currentServerConfigName,slide.id,Date.now()));
-            }
+	    console.log("Drawing",slide.id,slide.index+1);
+            var slideImage = slideContainer.find("img");
+            slideImage.attr("src",sprintf("%s/thumbnail/%s/%s",
+                                          thumbServer,
+                                          currentServerConfigName,slide.id));
         }
     }
     var constructSlide = function(slide){
