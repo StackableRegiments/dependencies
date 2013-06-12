@@ -615,7 +615,7 @@ class MeTLActor extends StronglyTypedJsonActor{
   override def autoIncludeJsonCode = true
   override def localSetup = Stopwatch.time("MeTLActor.localSetup(%s,%s)".format(username,userUniqueId), () => {
     super.localSetup()
-    joinRoomByJid(username)
+    //joinRoomByJid(username)
     joinRoomByJid("global")
     // joinRoomByJid("global","loopback")
   })
