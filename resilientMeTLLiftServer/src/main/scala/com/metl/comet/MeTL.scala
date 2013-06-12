@@ -684,14 +684,19 @@ class MeTLActor extends StronglyTypedJsonActor{
     }
   }
   private def getSlideHistory(jid:String):JValue = {
+    println("GetSlideHistory %s".format(jid))
     val convHistory = CurrentConversation.map(cc => MeTLXConfiguration.getRoom(cc.jid.toString,server).getHistory).openOr(History.empty)
+    println("conv %s".format(jid))
     val pubHistory = MeTLXConfiguration.getRoom(jid,server).getHistory
+    println("pub %s".format(jid))
     val privHistory = IsInteractiveUser.map(iu => if (iu){
       MeTLXConfiguration.getRoom(jid+username,server).getHistory
     } else {
       History.empty
     }).openOr(History.empty)
+    println("priv %s".format(jid))
     val finalHistory = pubHistory.merge(privHistory).merge(convHistory)
+    println("final %s".format(jid))
     serializer.fromHistory(finalHistory)
   }
   private def conversationContainsSlideId(c:Conversation,slideId:Int):Boolean = c.slides.exists((s:Slide) => s.id == slideId)
