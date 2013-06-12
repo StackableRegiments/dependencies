@@ -8,61 +8,57 @@ var Conversations = (function(){
     var currentTeacherSlide = 0;
     var isSyncedToTeacher = false;
 
-		var ThumbCache = (function(){
-			var cache = {};
-			var dataUrlHeader = "data:image/jpeg;charset=utf-8;base64,";
-			/*
-			Workaround for parallel connection limits queueing thumbnail loads behind long poll
-			*/
-			var fetchAndPaintThumb = function(slide,slideContainer){
-				var currentSrc = slideContainer.attr("src");
-				var slideImage = slideContainer.find("img");
-//				var thumbUrl = sprintf("%s/thumbnail/%s/%s?nocache=%s",thumbServer,currentServerConfigName,slide.id,Date.now());	
-				var thumbUrl = sprintf("/thumbnail/%s/%s?nocache=%s",currentServerConfigName,slide.id,Date.now());	
-				var storeThumb = function(data){
-					//this needs to take the data that's returned from the $.get, encode it as a dataUri, and put it into the cache at slide.id
-						var b64Data = btoa(unescape(encodeURIComponent(data)));
-						var dataUrl = dataUrlHeader+b64Data;
-						cache[slide.id] = dataUrl;
-					//then fire paint as normal, which paints from the cache
-						paintThumb(slide,slideContainer);
-				};
-				// how the heck does one request image data in jquery?
-				$.ajax({
-					url:thumbUrl,
-					dataType: "text",
-					mimeType: "text/plain; charset=x-user-defined"
-				}).done(storeThumb);
-			};
-			var paintThumb = function(slide,slideContainer){
-				var slideImage = slideContainer.find("img");
-				if (slide.id in cache){
-					slideImage.attr("src",cache[slide.id]);
-				} else {
-					fetchAndPaintThumb(slide,slideContainer);
-				}
-			};
-			var possiblyUpdateThumbnail = function(slide){
-					var slidesContainer = $("#slideContainer");
-					var slidesTop = 0;
-					var slidesBottom = slidesTop + slidesContainer.height();
-					var slideContainer = $(sprintf("#slideContainer_%s",slide.id));
-					var slideTop = slideContainer.position().top + 10; //10 pixel margin for the top, which appears to be being ignored.
-					var slideBottom = slideTop + slideContainer.height();
-					var isVisible = (slideBottom >= slidesTop) && (slideTop <= slidesBottom);
-					var isEntirelyVisible = isVisible && (slideBottom <= slidesBottom) && (slideTop >= slidesTop);
-					if (isEntirelyVisible){
-						paintThumb(slide,slideContainer);
-					}
-			}
-			var clearCacheFunction = function(){
-				cache = {};
-			};
-			return {
-				paintThumb:possiblyUpdateThumbnail,
-				clearCache:clearCacheFunction
-			};
-		})();
+    var ThumbCache = (function(){
+        var cache = {};
+        /*
+         Workaround for parallel connection limits queueing thumbnail loads behind long poll
+         */
+        var fetchAndPaintThumb = function(slide,slideContainer){
+            var currentSrc = slideContainer.attr("src");
+            var slideImage = slideContainer.find("img");
+            var thumbUrl = sprintf("/thumbnailDataUri/%s/%s?nocache=%s",currentServerConfigName,slide.id,Date.now());
+            var storeThumb = function(data){
+                cache[slide.id] = data;
+                //then fire paint as normal, which paints from the cache
+                paintThumb(slide,slideContainer);
+            };
+	    cache[slide.id] = "data:image/jpeg;base64,"
+            $.ajax({
+                url:thumbUrl,
+                beforeSend: function ( xhr ) {
+                    xhr.overrideMimeType("text/plain; charset=x-user-defined");
+                },
+                dataType: "text"
+            }).done(storeThumb);
+        };
+        var paintThumb = function(slide,slideContainer){
+            var slideImage = slideContainer.find("img");
+            if (slide.id in cache){
+                slideImage.attr("src",cache[slide.id]);
+            } else {
+                fetchAndPaintThumb(slide,slideContainer);
+            }
+        };
+        var possiblyUpdateThumbnail = function(slide,slidesContainer,slideContainerHeight){
+            var slidesTop = 0;
+	    var slidesBottom = slidesTop + slideContainerHeight;
+            var slideContainer = $(sprintf("#slideContainer_%s",slide.id));
+            var slideTop = slideContainer.position().top + 10; //10 pixel margin for the top, which appears to be being ignored.
+            var slideBottom = slideTop + slideContainer.height();
+            var isVisible = (slideBottom >= slidesTop) && (slideTop <= slidesBottom);
+            var isEntirelyVisible = isVisible && (slideBottom <= slidesBottom) && (slideTop >= slidesTop);
+            if (isEntirelyVisible){
+                paintThumb(slide,slideContainer);
+            }
+        }
+        var clearCacheFunction = function(){
+            cache = {};
+        };
+        return {
+            paintThumb:possiblyUpdateThumbnail,
+            clearCache:clearCacheFunction
+        };
+    })();
 
     var shouldRefreshSlideDisplay = function(details){
         return (!("slides" in currentConversation) || "slides" in details && _.any(details,function(slide,slideIndex){
@@ -79,7 +75,7 @@ var Conversations = (function(){
         var slidesContainer = $("#slideContainer");
         var containerHeight = slidesContainer.height();
         _.forEach(currentConversation.slides,function(slide){
-            ThumbCache.paintThumb(slide);
+            ThumbCache.paintThumb(slide,slidesContainer,containerHeight);
         })
     }
     var refreshSlideDisplay = function(){
@@ -87,7 +83,7 @@ var Conversations = (function(){
         var slideContainer = $("#slideContainer")
         slideContainer.html(unwrap(currentConversation.slides.sort(function(a,b){return a.index - b.index;}).map(constructSlide))).append(constructAddSlideButton());
         var lazyRepaint = _.debounce(paintThumbs,200);
-	slideContainer.off("scroll");
+        slideContainer.off("scroll");
         slideContainer.on("scroll",lazyRepaint);
         Progress.call("onLayoutUpdated");
     }
@@ -152,7 +148,7 @@ var Conversations = (function(){
                     currentServerConfigName
                     if (currentConversation.jid.toString().toLowerCase() != oldConversationJid){
                         Progress.call("onConversationJoin");
-												ThumbCache.clearCache;
+                        ThumbCache.clearCache();
                     }
                 }
                 else {
@@ -231,7 +227,9 @@ var Conversations = (function(){
     };
     var updateThumbnailFor = function(slideId) {
         //setting index to zero because this isn't necessary.
-        ThumbCache.paintThumb({id:slideId,index:0});
+        var slidesContainer = $("#slideContainer");
+        var containerHeight = slidesContainer.height();
+	ThumbCache.paintThumb({id:slideId,index:0},slidesContainer,containerHeight);
     }
     var goToNextSlideFunction = function(){
         if ("slides" in currentConversation && currentSlide > 0){
@@ -522,7 +520,7 @@ var Conversations = (function(){
     //    Progress.onConversationJoin["Conversations"] = refreshSlideDisplay;
     Progress.currentSlideJidReceived["Conversations"] = actOnCurrentSlideJidReceived;
     Progress.currentConversationJidReceived["Conversations"] = actOnCurrentConversationJidReceived;
-    //Progress.onLayoutUpdated["Conversations"] = paintThumbs;
+    Progress.onLayoutUpdated["Conversations"] = paintThumbs;
     $(function(){
         $("#conversations").click(function(){
             showBackstage("conversations");

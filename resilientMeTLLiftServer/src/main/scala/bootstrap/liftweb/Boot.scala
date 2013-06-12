@@ -52,10 +52,10 @@ class Boot {
       case _ => NotFoundAsResponse(RedirectResponse("/index"))
     }
 
-    
+
 
     def sitemap() = SiteMap(
-			//MeTLX 
+      //MeTLX
       Menu(Loc("Board","board" :: Nil,"Main face to face",Hidden)),
       //WebMeTL
       Menu("Directory") / "directory",

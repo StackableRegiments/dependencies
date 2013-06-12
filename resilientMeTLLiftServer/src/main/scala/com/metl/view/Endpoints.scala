@@ -3,6 +3,7 @@ package com.metl.view
 import com.metl.data._
 import com.metl.utils._
 import com.metl.renderer.SlideRenderer
+import javax.xml.bind.DatatypeConverter;
 
 import net.liftweb.util._
 import net.liftweb.common._
@@ -59,16 +60,22 @@ object MeTLRestHelper extends RestHelper {
       val image = MeTLXConfiguration.getRoom(jid,server.name).getThumbnail
       Full(InMemoryResponse(image,List("Content-Type" -> "image/jpeg"),Nil,200))
     })
-	}
+    case Req("thumbnailDataUri" :: configName :: jid :: Nil,_,_) => Stopwatch.time("MeTLRestHelper.thumbnailDataUri", () => {
+      val server = ServerConfiguration.configForName(configName)
+      val image = MeTLXConfiguration.getRoom(jid,server.name).getThumbnail
+      val dataUri = "data:image/jpeg;base64," + DatatypeConverter.printBase64Binary(image)
+      Full(InMemoryResponse(IOUtils.toByteArray(dataUri),Nil,Nil,200))
+    })
+  }
 }
 object WebMeTLRestHelper extends RestHelper {
   println("WebMeTLRestHelper inline")
-	serve {
-		case Req("application" :: "snapshot" :: Nil,_,_) => () => {
-			val server = S.param("server").openOr("")
-			val slide = S.param("slide").openOr("")
-			Full(HttpResponder.snapshot(server,slide,"small"))
-		}
+  serve {
+    case Req("application" :: "snapshot" :: Nil,_,_) => () => {
+      val server = S.param("server").openOr("")
+      val slide = S.param("slide").openOr("")
+      Full(HttpResponder.snapshot(server,slide,"small"))
+    }
   }
 }
 object MeTLStatefulRestHelper extends RestHelper {
@@ -118,29 +125,29 @@ object MeTLStatefulRestHelper extends RestHelper {
     case r @ Req(List("upload"),_,_) =>{
       println("Upload registered in MeTLStatefulRestHelper")
       println(r.body)
-      () => Stopwatch.time("MeTLStatefulRestHelper.upload",() => {
-        r.body.map(bytes => {
-          val filename = S.params("filename").head
-          val jid = S.params("jid").head
-          val server = ServerConfiguration.default
-          XmlResponse(<resourceUrl>{server.postResource(jid,filename,bytes)}</resourceUrl>)
+        () => Stopwatch.time("MeTLStatefulRestHelper.upload",() => {
+          r.body.map(bytes => {
+            val filename = S.params("filename").head
+            val jid = S.params("jid").head
+            val server = ServerConfiguration.default
+            XmlResponse(<resourceUrl>{server.postResource(jid,filename,bytes)}</resourceUrl>)
+          })
         })
-      })
     }
     case r @ Req(List("uploadDataUri"),_,_) =>{
       println("UploadDataUri registered in MeTLStatefulRestHelper")
       println(r.body)
-      () => Stopwatch.time("MeTLStatefulRestHelper.upload",() => {
-        r.body.map(dataUriBytes => {
-          val dataUriString = IOUtils.toString(dataUriBytes)
-          val b64Bytes = dataUriString.split(",")(1)
-          val bytes = net.liftweb.util.SecurityHelpers.base64Decode(b64Bytes)
-          val filename = S.params("filename").head
-          val jid = S.params("jid").head
-          val server = ServerConfiguration.default
-          XmlResponse(<resourceUrl>{server.postResource(jid,filename,bytes)}</resourceUrl>)
+        () => Stopwatch.time("MeTLStatefulRestHelper.upload",() => {
+          r.body.map(dataUriBytes => {
+            val dataUriString = IOUtils.toString(dataUriBytes)
+            val b64Bytes = dataUriString.split(",")(1)
+            val bytes = net.liftweb.util.SecurityHelpers.base64Decode(b64Bytes)
+            val filename = S.params("filename").head
+            val jid = S.params("jid").head
+            val server = ServerConfiguration.default
+            XmlResponse(<resourceUrl>{server.postResource(jid,filename,bytes)}</resourceUrl>)
+          })
         })
-      })
     }
     case r @ Req(List("logDevice"),_,_) => () => {
       r.userAgent.map(ua => {
@@ -148,17 +155,17 @@ object MeTLStatefulRestHelper extends RestHelper {
         PlainTextResponse("loggedUserAgent")
       })
     }
-	}
+  }
 }
 object WebMeTLStatefulRestHelper extends RestHelper {
   println("WebMeTLStatefulRestHelper inline")
   serve {
-		case Req(server :: "slide" :: jid :: size :: Nil,_,_) => () => Full(HttpResponder.snapshot(server,jid,size))
-		case Req(server :: "quizImage" :: jid :: id :: Nil,_,_) => () => Full(HttpResponder.quizImage(server,jid,id))
-		case Req(server :: "quizResponse" :: conversation :: quiz :: response :: Nil,_,_)
-			if (List(server,conversation,quiz,response).filter(_.length == 0).isEmpty) => () => {
-				val slide = S.param("slide").openOr("")
-				Full(QuizResponder.handleResponse(server,conversation,slide,quiz,response))
-			}
+    case Req(server :: "slide" :: jid :: size :: Nil,_,_) => () => Full(HttpResponder.snapshot(server,jid,size))
+    case Req(server :: "quizImage" :: jid :: id :: Nil,_,_) => () => Full(HttpResponder.quizImage(server,jid,id))
+    case Req(server :: "quizResponse" :: conversation :: quiz :: response :: Nil,_,_)
+        if (List(server,conversation,quiz,response).filter(_.length == 0).isEmpty) => () => {
+          val slide = S.param("slide").openOr("")
+          Full(QuizResponder.handleResponse(server,conversation,slide,quiz,response))
+        }
   }
 }
