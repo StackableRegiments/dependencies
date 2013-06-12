@@ -647,24 +647,30 @@ class MeTLActor extends StronglyTypedJsonActor{
     })
     println("Refresh client side state: %s, %s".format(CurrentConversation,CurrentSlide))
     val receiveUsername:Box[JsCmd] = Full(Call(RECEIVE_USERNAME,JString(username)))
+    println(receiveUsername)
     val receiveUserGroups:Box[JsCmd] = Full(Call(RECEIVE_USER_GROUPS,getUserGroups))
+    println(receiveUserGroups)
     val receiveCurrentConversation:Box[JsCmd] = CurrentConversation.map(cc => Call(RECEIVE_CURRENT_CONVERSATION,JString(cc.jid.toString))) match{
       case Full(cc) => Full(cc)
       case _ => Full(Call("showBackstage",JString("conversations")))
     }
+    println(receiveCurrentConversation)
     val receiveConversationDetails:Box[JsCmd] = CurrentConversation.map(cc => Call(RECEIVE_CONVERSATION_DETAILS,serializer.fromConversation(cc)))
+    println(receiveConversationDetails)
     val receiveCurrentSlide:Box[JsCmd] = CurrentSlide.map(cc => Call(RECEIVE_CURRENT_SLIDE, JString(cc)))
+    println(receiveCurrentSlide)
     val receiveLastSyncMove:Box[JsCmd] = CurrentConversation.map(cc => {
       MeTLXConfiguration.getRoom(cc.jid.toString,server).getHistory.getLatestCommands.get("/SYNC_MOVE") match{
         case Some(lastSyncMove) => Call(RECEIVE_SYNC_MOVE,JString(lastSyncMove.commandParameters(0).toString))
         case _ => Noop
       }
     })
+    println(receiveLastSyncMove)
     val receiveHistory:Box[JsCmd] = CurrentSlide.map(cc => Call(RECEIVE_HISTORY,getSlideHistory(cc)))
     val receiveInteractiveUser:Box[JsCmd] = IsInteractiveUser.map(iu => Call(RECEIVE_IS_INTERACTIVE_USER,JBool(iu)))
+    println(receiveInteractiveUser)
 
     val jsCmds:List[Box[JsCmd]] = List(receiveUsername,receiveUserGroups,receiveCurrentConversation,receiveConversationDetails,receiveCurrentSlide,receiveLastSyncMove,receiveHistory,receiveInteractiveUser)
-    List(receiveUsername,receiveUserGroups,receiveCurrentConversation,receiveConversationDetails,receiveCurrentSlide,receiveLastSyncMove,receiveInteractiveUser).map(println _)
     jsCmds.foldLeft(Noop)((acc,item) => item.map(i => acc & i).openOr(acc))
   }
   private def joinConversation(jid:String):Box[Conversation] = {
