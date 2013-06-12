@@ -645,24 +645,26 @@ class MeTLActor extends StronglyTypedJsonActor{
         joinRoomByJid(cs+username)
       })
     })
-    val jsCmds:List[Box[JsCmd]] = List(
-      Full(Call(RECEIVE_USERNAME,JString(username))),
-      Full(Call(RECEIVE_USER_GROUPS,getUserGroups)),
-      CurrentConversation.map(cc => Call(RECEIVE_CURRENT_CONVERSATION,JString(cc.jid.toString))) match{
-        case Full(cc) => Full(cc)
-        case _ => Full(Call("showBackstage",JString("conversations")))
-      },
-      CurrentConversation.map(cc => Call(RECEIVE_CONVERSATION_DETAILS,serializer.fromConversation(cc))),
-      CurrentSlide.map(cc => Call(RECEIVE_CURRENT_SLIDE, JString(cc))),
-      CurrentConversation.map(cc => {
-        MeTLXConfiguration.getRoom(cc.jid.toString,server).getHistory.getLatestCommands.get("/SYNC_MOVE") match{
-          case Some(lastSyncMove) => Call(RECEIVE_SYNC_MOVE,JString(lastSyncMove.commandParameters(0).toString))
-          case _ => Noop
-        }
-      }),
-      CurrentSlide.map(cc => Call(RECEIVE_HISTORY,getSlideHistory(cc))),
-      IsInteractiveUser.map(iu => Call(RECEIVE_IS_INTERACTIVE_USER,JBool(iu)))
-    )
+    println("Refresh client side state: %s, %s".format(CurrentConversation,CurrentSlide))
+    val receiveUsername:Box[JsCmd] = Full(Call(RECEIVE_USERNAME,JString(username)))
+    val receiveUserGroups:Box[JsCmd] = Full(Call(RECEIVE_USER_GROUPS,getUserGroups))
+    val receiveCurrentConversation:Box[JsCmd] = CurrentConversation.map(cc => Call(RECEIVE_CURRENT_CONVERSATION,JString(cc.jid.toString))) match{
+      case Full(cc) => Full(cc)
+      case _ => Full(Call("showBackstage",JString("conversations")))
+    }
+    val receiveConversationDetails:Box[JsCmd] = CurrentConversation.map(cc => Call(RECEIVE_CONVERSATION_DETAILS,serializer.fromConversation(cc)))
+    val receiveCurrentSlide:Box[JsCmd] = CurrentSlide.map(cc => Call(RECEIVE_CURRENT_SLIDE, JString(cc)))
+    val receiveLastSyncMove:Box[JsCmd] = CurrentConversation.map(cc => {
+      MeTLXConfiguration.getRoom(cc.jid.toString,server).getHistory.getLatestCommands.get("/SYNC_MOVE") match{
+        case Some(lastSyncMove) => Call(RECEIVE_SYNC_MOVE,JString(lastSyncMove.commandParameters(0).toString))
+        case _ => Noop
+      }
+    })
+    val receiveHistory:Box[JsCmd] = CurrentSlide.map(cc => Call(RECEIVE_HISTORY,getSlideHistory(cc)))
+    val receiveInteractiveUser:Box[JsCmd] = IsInteractiveUser.map(iu => Call(RECEIVE_IS_INTERACTIVE_USER,JBool(iu)))
+
+    val jsCmds:List[Box[JsCmd]] = List(receiveUsername,receiveUserGroups,receiveCurrentConversation,receiveConversationDetails,receiveCurrentSlide,receiveLastSyncMove,receiveHistory,receiveInteractiveUser)
+    List(receiveUsername,receiveUserGroups,receiveCurrentConversation,receiveConversationDetails,receiveCurrentSlide,receiveLastSyncMove,receiveInteractiveUser).map(println _)
     jsCmds.foldLeft(Noop)((acc,item) => item.map(i => acc & i).openOr(acc))
   }
   private def joinConversation(jid:String):Box[Conversation] = {
@@ -728,7 +730,6 @@ class MeTLActor extends StronglyTypedJsonActor{
         }
       })
     }
-    println("Refreshing clientsidestate")
     partialUpdate(refreshClientSideStateJs)
   }
   private def leaveAllRooms(shuttingDown:Boolean = false) = {
