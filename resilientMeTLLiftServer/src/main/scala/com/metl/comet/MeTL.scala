@@ -660,9 +660,19 @@ class MeTLActor extends StronglyTypedJsonActor{
     val receiveCurrentSlide:Box[JsCmd] = CurrentSlide.map(cc => Call(RECEIVE_CURRENT_SLIDE, JString(cc)))
     println(receiveCurrentSlide)
     val receiveLastSyncMove:Box[JsCmd] = CurrentConversation.map(cc => {
-      MeTLXConfiguration.getRoom(cc.jid.toString,server).getHistory.getLatestCommands.get("/SYNC_MOVE") match{
-        case Some(lastSyncMove) => Call(RECEIVE_SYNC_MOVE,JString(lastSyncMove.commandParameters(0).toString))
-        case _ => Noop
+      val room = MeTLXConfiguration.getRoom(cc.jid.toString,server)
+      println("receiveLastSyncMove: %s".format(room))
+      val history = room.getHistory
+      println("receiveLastSyncMove: %s".format(history))
+      history.getLatestCommands.get("/SYNC_MOVE") match{
+        case Some(lastSyncMove) =>{
+          println("receiveLastSyncMove found move: %s".format(lastSyncMove))
+          Call(RECEIVE_SYNC_MOVE,JString(lastSyncMove.commandParameters(0).toString))
+        }
+        case _ =>{
+          println("receiveLastSyncMove no move found")
+          Noop
+        }
       }
     })
     println(receiveLastSyncMove)
