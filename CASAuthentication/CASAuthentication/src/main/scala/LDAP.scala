@@ -33,7 +33,7 @@ class LDAPSearchService extends LDAPSearch {
   def withLDAP(searchTerm:String, action:(List[SearchResult])=> Unit): Unit = Stopwatch.time("LDAP.withLDAP", () => {
 		var env = new java.util.Hashtable[String,String]()
 		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory")
-		env.put(Context.PROVIDER_URL,"ldap://hybrid.monash.edu.au")
+		env.put(Context.PROVIDER_URL,"ldap://directory.monash.edu.au")
 		env.put(Context.SECURITY_AUTHENTICATION,"simple")
 		env.put(Context.SECURITY_PRINCIPAL,"uid=mdsmetl, o=Monash University, c=AU")
 		env.put(Context.SECURITY_CREDENTIALS,"xaepejam")
