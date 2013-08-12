@@ -514,7 +514,7 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
         forAll (getFunctions) { (action, expectedResult) =>
             val f = clientWithResponse("Whatever", HttpStatus.SC_NO_CONTENT)
 
-            intercept[RetryException] {
+            intercept[WebException] {
 
               val result = action match {
                   case Get => f.client.get(mockUri)
@@ -529,7 +529,7 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
         forAll (getFunctions) { (action, expectedResult) =>
             val f = clientWithResponse("Whatever", HttpStatus.SC_NO_CONTENT)
 
-            intercept[RetryException] {
+            intercept[WebException] {
 
               val result = action match {
                 case Get => f.client.get(mockUri, additionalHeader)
@@ -561,7 +561,7 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
               }
             }
 
-            verify(f.conn, times(21)).abortConnection
+            verify(f.conn, times(21)).receiveResponseHeader
         }
     }
 
@@ -586,7 +586,7 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
               }
             }
 
-            verify(f.conn, times(21)).abortConnection
+            verify(f.conn, times(21)).receiveResponseHeader
         }
  
     }
@@ -684,7 +684,7 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
             verify(f.connMgr, times(2)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
-
+/*
     test("response available after unimplemented statuscode exception") { 
         forAll (getFunctions) { (action, expectedResult) =>
             val f = clientWithCustomResponse((conn) =>
@@ -732,7 +732,7 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
             verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
-
+*/
     test("post bytes using the connection") { 
 
         val f = clientWithResponse("Whatever", HttpStatus.SC_OK)

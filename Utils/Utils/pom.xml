@@ -121,9 +121,13 @@
       <artifactId>httpclient</artifactId>
       <version>4.1</version>
     </dependency>
-	
+	<!-- for HTML parser -->
+		<dependency>
+			<groupId>net.sourceforge.htmlcleaner</groupId>
+			<artifactId>htmlcleaner</artifactId>
+			<version>2.2</version>
+		</dependency>
   </dependencies>
-
   <build>
 		<!-- start import maven svn wagon -->
 		<extensions>
