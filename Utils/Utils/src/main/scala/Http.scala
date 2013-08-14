@@ -349,7 +349,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
 			case 401 => throw new WebException("access to object at %s requires authentication".format(uri),401,uri)
 			case 403 => throw new WebException("access forbidden to object at %s".format(uri),403,uri)
 			case 404 => throw new WebException("object not found at %s".format(uri),404,uri)
-			case 500 => throw new WebException("server error encountered at %s: %s".format(uri,tempOutput),500,uri)
+			case 500 => throw new WebException("server error encountered at %s: %s".format(uri,response.responseAsString),500,uri)
 			case other => throw new WebException("http status code (%s) not yet implemented, returned from %s".format(other,uri),other,uri)
 		}
 	}
