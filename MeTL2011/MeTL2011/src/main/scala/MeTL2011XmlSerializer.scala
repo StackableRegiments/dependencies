@@ -68,26 +68,63 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
   override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLCommand", () => {
     <body>{Text((input.command :: input.commandParameters).mkString(" "))}</body>
   })
-  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MeTL2011XmlSerializer.toMeTLQuiz", () => {
+  override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission", () => {
+		//println("submission attempted: %s".format(input))
     val m = utils.parseMeTLContent(input)
-    val created = utils.getLongByName(input,"created")
-    val question = utils.getStringByName(input,"question") match {
-      case q if (q.length > 0) => q
-      case _ => utils.getStringByName(input,"title")
-    }
-    val id = utils.getStringByName(input,"id")
-    val url = utils.getStringByName(input,"url") match {
-      case s:String if (s.length > 0 && s != "unknown url" && s != "none") => metlUtils.reabsolutizeUri(s,"Resource")
-      case _ => Empty
-    }
-    val quizImage = url.map(u => {
-      if (cacheImages)
-        getCachedImage(u)
-      else
-        config.getResource(u)
-    })
-    val isDeleted = utils.getBooleanByName(input,"isDeleted")
-    val options = utils.getXmlByName(input,"quizOption").map(qo => toQuizOption(qo)).toList
-    MeTLQuiz(config,m.author,m.timestamp,created,question,id,url,quizImage,isDeleted,options)
+    val c = utils.parseCanvasContent(input)
+    val title = utils.getStringByName(input,"title")
+    val urlBox = utils.getStringByName(input,"url") match {
+			case s:String if s.length > 0 => {
+				if (s.startsWith("http")) {
+					Full(s)
+				} else {
+					metlUtils.reabsolutizeUri(s,"Resource")
+				}
+			}
+			case _ => Empty
+		}
+    val imageBytes = urlBox.map(url => {
+			if (cacheImages)
+				getCachedImage(url)
+			else 
+				config.getResource(url)
+		})
+		val url = urlBox.openOr("no valid url specified")
+    val blacklist = utils.getXmlByName(input,"blacklist").map(bl => {
+      val username = utils.getStringByName(bl,"username")
+      val highlight = utils.getColorByName(bl,"highlight")
+      SubmissionBlacklistedPerson(username,highlight)
+    }).toList
+    MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity)
+  })
+  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MeTL2011XmlSerializer.toMeTLQuiz", () => {
+		//println("quiz attempted: %s".format(input))
+    val m = utils.parseMeTLContent(input)
+		try {
+			val created = utils.getLongByName(input,"created")
+			val question = utils.getStringByName(input,"question") match {
+				case q if (q.length > 0) => q
+				case _ => utils.getStringByName(input,"title")
+			}
+			val id = utils.getStringByName(input,"id")
+			val url = utils.getStringByName(input,"url") match {
+				case s:String if (s.length > 0 && s != "unknown url" && s != "none") => metlUtils.reabsolutizeUri(s,"Resource")
+				case _ => Empty
+			}
+			val quizImage = url.map(u => {
+				if (cacheImages)
+					getCachedImage(u)
+				else
+					config.getResource(u)
+			})
+			val isDeleted = utils.getBooleanByName(input,"isDeleted")
+			val options = utils.getXmlByName(input,"quizOption").map(qo => toQuizOption(qo)).toList
+			MeTLQuiz(config,m.author,m.timestamp,created,question,id,url,quizImage,isDeleted,options)
+		} catch {
+			case e:Throwable => {
+				println("failed to construct MeTLQuiz: %s -> %s".format(e,e.getMessage))
+				MeTLQuiz(config,m.author,m.timestamp,0L,"","",Empty,Empty,true,List.empty[QuizOption])	
+			}
+		}
   })
 }
