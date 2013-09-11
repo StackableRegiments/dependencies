@@ -23,7 +23,7 @@ object XmlUtils {
     val target = getStringByName(i,"target")
     val privacy = getPrivacyByName(i,"privacy")
     val slide = getStringByName(i,"slide")
-    val identity = getStringByName(i,"identity")
+    val identity = getStringByName(i,"identity") 
     ParsedCanvasContent(target,privacy,slide,identity)
   }
   def parsedCanvasContentToXml(p:ParsedCanvasContent):Seq[Node] = {
@@ -34,8 +34,18 @@ object XmlUtils {
   }
   def parseMeTLContent(i:NodeSeq):ParsedMeTLContent = {
     val author = getStringByName(i,"author")
+		val timestamp = {
+			val failed = -1L
+			tryo(getAttributeOfNode(i,"message","time").toLong).openOr({
+				getLongByName(getXmlByName(i,"metlMetaData"),"timestamp") match {
+					case l:Long if l == failed => tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(failed)
+					case l:Long => l
+					case _ => failed
+				}
+			})
+		}
     //val timestamp = tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(-1L)
-    val timestamp = getLongByName(getXmlByName(i,"metlMetaData"),"timestamp")
+    //val timestamp = getLongByName(getXmlByName(i,"metlMetaData"),"timestamp")
     ParsedMeTLContent(author,timestamp)
   }
   def parsedMeTLContentToXml(p:ParsedMeTLContent):Node = {
@@ -132,8 +142,11 @@ class GenericXmlSerializer(configName:String) extends Serializer{
     val color = utils.getColorByName(input,"color")
     val thickness = utils.getDoubleByName(input,"thickness")
     val isHighlighter = utils.getBooleanByName(input,"highlight")
-    val identity = startingSum.toString
-    MeTLInk(config,m.author,m.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,c.target,c.privacy,c.slide,c.identity)
+    val identity = c.identity match {
+			case "" => startingSum.toString
+			case other => other
+		}
+    MeTLInk(config,m.author,m.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,c.target,c.privacy,c.slide,identity)
   })
   override def fromMeTLInk(input:MeTLInk):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLInk",() => {
     canvasContentToXml("ink",input,List(
