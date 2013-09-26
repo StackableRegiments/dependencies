@@ -4,6 +4,7 @@ import com.metl.data._
 import com.metl.metl2011._
 import com.metl.utils._
 import com.metl.cas._
+import com.metl.ldap._
 
 import scala.xml._
 import _root_.net.liftweb.util._
@@ -20,7 +21,7 @@ case class WebMeTLServerConfiguration(name:String,serverConfig:ServerConfigurati
 }
 
 object WebMeTLServerConfiguration {
-	val auth = new com.metl.cas.CASAuthenticator("webmetl",() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
+  val auth = new CASAuthenticator("webmetl",None,Some(new LDAP(new LDAPConfig("ldap://directory.monash.edu.au","uid=mdsmetl, o=Monash University, c=AU","xaepejam"))),() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
 		println("loginHandler")
 		Globals.casState(cs)
 		Globals.currentUser(cs.username)

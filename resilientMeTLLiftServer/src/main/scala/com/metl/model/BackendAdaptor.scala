@@ -4,6 +4,7 @@ import com.metl.cas._
 import com.metl.data._
 import com.metl.metl2011._
 import com.metl.utils._
+import com.metl.ldap._
 
 import _root_.net.liftweb.util._
 import Helpers._
@@ -33,7 +34,7 @@ object MeTLXConfiguration {
     }
   }
   def setupForStandalone = {
-    val auth = new CASAuthenticator("metlx",() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
+    val auth = new CASAuthenticator("metlx",None,Some(new LDAP(new LDAPConfig("ldap://directory.monash.edu.au","uid=mdsmetl, o=Monash University, c=AU","xaepejam"))),() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
       println("loginHandler")
       Globals.casState(cs)
       Globals.currentUser(cs.username)
@@ -63,7 +64,7 @@ object MeTLXConfiguration {
     }
   }
   def setupForMonash = {
-    val auth = new CASAuthenticator("metlx",() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
+    val auth = new CASAuthenticator("metlx",None,Some(new LDAP(new LDAPConfig("ldap://directory.monash.edu.au","uid=mdsmetl, o=Monash University, c=AU","xaepejam"))),() => Globals.casState.authenticated, (cs:com.metl.cas.CASStateData) => {
       println("loginHandler")
       Globals.casState(cs)
       Globals.currentUser(cs.username)

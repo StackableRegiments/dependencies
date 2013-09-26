@@ -111,8 +111,12 @@
 		<dependency>
 			<groupId>com.metl</groupId>
 			<artifactId>CASAuthentication</artifactId>
-			<version>1.1-SNAPSHOT</version>
+			<version>1.2-SNAPSHOT</version>
 		</dependency>
+		<dependency>
+			<groupId>com.metl</groupId>
+			<artifactId>LDAP</artifactId>
+			<version>1.2-SNAPSHOT</version>
 		<dependency>
 			<groupId>com.metl</groupId>
 			<artifactId>MeTL2011</artifactId>
