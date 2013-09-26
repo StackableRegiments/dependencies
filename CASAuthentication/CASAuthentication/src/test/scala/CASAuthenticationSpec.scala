@@ -227,7 +227,10 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
          val redirect = auth.CASRedirect 
          redirect must haveClass[RedirectResponse]
-         redirect.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis")
+         redirect match {
+           case r:RedirectResponse => r.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis")
+           case _ => "redirect is a redirect" must beEqualTo("true")
+        }
     }
 
     "redirect returns expected redirectresponse" withSFor(testUrlWithParams, testSessionWithParams) in {
@@ -248,6 +251,9 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
          val redirect = auth.CASRedirect 
          redirect must haveClass[RedirectResponse]
-         redirect.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis%3Ffoo%3Dhbar%26testing%3Dtrue")
+         redirect match {
+           case r:RedirectResponse => r.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis%3Ffoo%3Dhbar%26testing%3Dtrue")
+           case _ => "redirect is a redirect" must beEqualTo("true")
+        }
     }
 }

@@ -29,46 +29,46 @@ object casStateDevelopmentData {
 
 
 object CASAuthentication {
-	def attachCASAuthenticator(mod:CASAuthenticator):Unit = {
-		LiftRules.dispatch.prepend {
-			case req if ((!mod.checkWhetherAlreadyLoggedIn) && (!mod.checkReqForCASCookies(req))) => () => {
-				Full(mod.CASRedirect) 
-			}
-		}
-	}	
+  def attachCASAuthenticator(mod:CASAuthenticator):Unit = {
+    LiftRules.dispatch.prepend {
+      case req if ((!mod.checkWhetherAlreadyLoggedIn) && (!mod.checkReqForCASCookies(req))) => () => {
+        Full(mod.CASRedirect) 
+      }
+    }
+  } 
 }
 
 object InSessionCASState extends SessionVar[CASStateData](CASStateDataForbidden)
 
 class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: Option[IMeTLLDAP], alreadyLoggedIn:() => Boolean,onSuccess:(CASStateData) => Unit) {
 
-    def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (CASStateData) => Unit) {
-        this(realm, None, None, alreadyLoggedIn, onSuccess)
-    }
+  def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (CASStateData) => Unit) {
+      this(realm, None, None, alreadyLoggedIn, onSuccess)
+  }
 
-    private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
-    private val getLDAP: IMeTLLDAP = ldap.getOrElse(new LDAP(LDAPProdConfig))
+  private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
+  private val getLDAP: IMeTLLDAP = ldap.getOrElse(DisconnectedLDAP)
 
-	def getCasState = InSessionCASState.is
+  def getCasState = InSessionCASState.is
 
-	def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => getCasState.authenticated || alreadyLoggedIn())
+  def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => getCasState.authenticated || alreadyLoggedIn())
 
   val monashCasUrl = "https://my.monash.edu.au/authentication/cas"
   def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", () => {
-		val result = verifyCASTicket(req)
-		if (result.authenticated) {
-			InSessionCASState.set(result)
-			onSuccess(result)
-			true
-		} else {
-			false
-		}
-	})
+    val result = verifyCASTicket(req)
+    if (result.authenticated) {
+      InSessionCASState.set(result)
+      onSuccess(result)
+      true
+    } else {
+      false
+    }
+  })
   private def ticketlessUrl(originalRequest : Req):String = Stopwatch.time("CASAuthenticator.ticketlessUrl", () => {
-		val url = originalRequest.request.serverName
-		val port = originalRequest.request.serverPort
-		val path = originalRequest.path.wholePath.mkString("/")
-		val newParams = originalRequest.params.toList.sortBy(_._1).foldLeft("")((acc, param) => param match {
+    val url = originalRequest.request.serverName
+    val port = originalRequest.request.serverPort
+    val path = originalRequest.path.wholePath.mkString("/")
+    val newParams = originalRequest.params.toList.sortBy(_._1).foldLeft("")((acc, param) => param match {
        case Tuple2(paramName,listOfParams) if (paramName.toLowerCase == "ticket") => acc
        case Tuple2(paramName,listOfParams) => {
         val newItem = "%s=%s".format(URLEncoder.encode(paramName, "utf-8"), URLEncoder.encode(listOfParams.mkString(""), "utf-8")) 
@@ -91,19 +91,15 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: 
         val verifyUrl = monashCasUrl + "/serviceValidate?ticket=%s&service=%s"
         val casValidityResponse = getHttpClient.getAsString(verifyUrl.format(ticket,URLEncoder.encode(ticketlessUrl(req), "utf-8")))
         val casValidityResponseXml = xml.XML.loadString(casValidityResponse)
-	      val state = for(success <- (casValidityResponseXml \\ "authenticationSuccess");
-					user <- (success \\ "user");
-					groups <- getLDAP.ou(List(user.text)).get(user.text);
-					info <- getLDAP.info(List(user.text)).get(user.text)
-				) yield CASStateData(true,user.text,groups,info)
-				state match{
-					case List(newState@CASStateData(true,fetchedUsername,_,_))=> {
-						newState
-					}
-					case other => {
-						CASStateDataForbidden
-					}
-				}
+        val state = for(success <- (casValidityResponseXml \\ "authenticationSuccess");
+          user <- (success \\ "user");
+          groups <- getLDAP.ou(List(user.text)).get(user.text);
+          info <- getLDAP.info(List(user.text)).get(user.text)
+        ) yield CASStateData(true,user.text,groups,info)
+        state match{
+          case newState :: Nil if newState.authenticated == true => newState
+          case _ => CASStateDataForbidden
+        }
       }
       case Empty => CASStateDataForbidden
       case _ => CASStateDataForbidden
@@ -111,8 +107,9 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: 
   })
   val redirectUrl = monashCasUrl + "/login/?service=%s" 
   def CASRedirect = Stopwatch.time("CASAuthenticator.CASRedirect", () => {
-		val req = S.request.openTheBox
-		val url = redirectUrl.format(URLEncoder.encode(ticketlessUrl(req),"utf-8"))
-		new RedirectResponse(url, req)
+    S.request.map(req => {
+      val url = redirectUrl.format(URLEncoder.encode(ticketlessUrl(req),"utf-8"))
+      new RedirectResponse(url, req)
+    }).openOr(new ForbiddenResponse(S ? "cas.unknown.error"))
   })
 }
