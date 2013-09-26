@@ -30,7 +30,7 @@ object WebMeTLServerConfiguration {
 	val empty = WebMeTLServerConfiguration("empty",ServerConfiguration.empty,EmptyQuizResponseActor,EmptyLogActor)
 
 	MeTL2011ServerConfiguration.initialize
-	ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml")
+	ServerConfiguration.loadServerConfigsFromFile("servers.monash.xml",(c:Conversation)=>{})
 	val servers = ServerConfiguration.getServerConfigurations
 	val serverConfigs = Map(("empty",empty) :: servers.map(s => (s.name,WebMeTLServerConfiguration(s.name,s,new QuizResponseActor(s.host),new LogActor(s.host)))):_*)
 	def initializeWebMeTLSystem = {

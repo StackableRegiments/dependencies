@@ -117,6 +117,7 @@
 			<groupId>com.metl</groupId>
 			<artifactId>LDAP</artifactId>
 			<version>1.2-SNAPSHOT</version>
+		</dependency>
 		<dependency>
 			<groupId>com.metl</groupId>
 			<artifactId>MeTL2011</artifactId>
