@@ -24,14 +24,19 @@ object liftAuthStateDevelopmentData {
 object LiftAuthAuthentication {
   def attachAuthenticator(mod:LiftAuthenticationSystem):Unit = {
     LiftRules.dispatch.prepend {
-      case req if mod.dispatchTableItemFilter(req) => dispatchTableItem _
+      case req if mod.dispatchTableItemFilter(req) => () => mod.dispatchTableItem(req)
     }
   }
 }
 
 trait LiftAuthenticationSystem {
   def dispatchTableItemFilter:Req=>Boolean
-  def dispatchTableItem:()=>LiftResponse 
+  def dispatchTableItem(req:Req):Box[LiftResponse]
 }
 
-object InSessionLiftAuthState extends SessionVar[LiftAuthStateData](LiftAuthStateDataForbidden)
+
+abstract class LiftAuthenticator(alreadyLoggedIn:()=>Boolean,onSuccess:(LiftAuthStateData) => Unit) {
+  object InSessionLiftAuthState extends SessionVar[LiftAuthStateData](LiftAuthStateDataForbidden)
+  def checkWhetherAlreadyLoggedIn:Boolean = alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated
+  def constructResponse(input:Req):LiftResponse 
+}

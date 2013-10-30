@@ -1,5 +1,6 @@
 package com.metl.cas
 
+import com.metl.liftAuthenticator._
 import com.metl.ldap._
 import com.metl.utils._
 import javax.servlet.http.HttpServletRequest
@@ -8,7 +9,7 @@ import net.liftweb.common.{Box, Full, Empty}
 import net.liftweb.mocks.MockHttpServletRequest
 import net.liftweb.mockweb.MockWeb
 import net.liftweb.mockweb.WebSpec
-import net.liftweb.http.{LiftRules, LiftRulesMocker, S, SessionVar, RedirectResponse}
+import net.liftweb.http.{LiftRules, LiftRulesMocker, S, SessionVar, RedirectResponse, ForbiddenResponse}
 
 import org.scalatest.mock.MockitoSugar
 import org.mockito.Mockito._
@@ -66,7 +67,7 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
     "create a CASAuthenticator" in {
 
         var onSuccess = false
-        val auth = new CASAuthenticator("realm", () => false, (cs:CASStateData) => 
+        val auth = new CASAuthenticator("realm", () => false, (cs:LiftAuthStateData) => 
         {
             onSuccess = true
         })
@@ -78,7 +79,7 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
     "check whether already logged in returns false when not logged in" in {
 
         var onSuccess = false
-        val auth = new CASAuthenticator("realm",() => false, (cs:CASStateData) => 
+        val auth = new CASAuthenticator("realm",() => false, (cs:LiftAuthStateData) => 
         {
             onSuccess = true
         })
@@ -94,7 +95,7 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
              val httpClient = testClient
              var onSuccess = false
-             val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => 
+             val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:LiftAuthStateData) => 
              { 
                onSuccess = true
              })
@@ -136,7 +137,7 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
            when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
            var onSuccess = false
-           val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(ldap), () => false, (cs:CASStateData) => { onSuccess = true })
+           val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(ldap), () => false, (cs:LiftAuthStateData) => { onSuccess = true })
 
            auth.checkReqForCASCookies(req) mustBe true
            auth.checkWhetherAlreadyLoggedIn mustBe true
@@ -173,7 +174,7 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
          when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
          var onSuccess = false
-         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(ldap), () => false, (cs:CASStateData) => { onSuccess = true })
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(ldap), () => false, (cs:LiftAuthStateData) => { onSuccess = true })
 
          auth.checkReqForCASCookies(req) mustBe true
          auth.checkWhetherAlreadyLoggedIn mustBe true
@@ -200,7 +201,7 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
          when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
          var onSuccess = false
-         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { onSuccess = true })
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:LiftAuthStateData) => { onSuccess = true })
 
          auth.checkReqForCASCookies(req) mustBe false
          auth.checkWhetherAlreadyLoggedIn mustBe false
@@ -223,9 +224,9 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
          when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
-         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { false })
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:LiftAuthStateData) => { false })
 
-         val redirect = auth.CASRedirect 
+         val redirect = S.request.map(req => auth.constructResponse(req)).openOr(ForbiddenResponse("unknown cas error"))
          redirect must haveClass[RedirectResponse]
          redirect match {
            case r:RedirectResponse => r.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis")
@@ -247,9 +248,9 @@ class CASAuthenticationSpec extends WebSpec with JUnit with MockitoSugar {
 
          when(httpClient.conn.receiveResponseHeader).thenReturn(response)
 
-         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:CASStateData) => { false })
+         val auth = new CASAuthenticator("realm", Some(httpClient.client), Some(testLDAP), () => false, (cs:LiftAuthStateData) => { false })
 
-         val redirect = auth.CASRedirect 
+         val redirect = S.request.map(req => auth.constructResponse(req)).openOr(ForbiddenResponse("unknown cas error"))
          redirect must haveClass[RedirectResponse]
          redirect match {
            case r:RedirectResponse => r.uri must beEqualTo("https://my.monash.edu.au/authentication/cas/login/?service=http%3A%2F%2Ftest.metl.edu%3A80%2Ftest%2Fthis%3Ffoo%3Dhbar%26testing%3Dtrue")

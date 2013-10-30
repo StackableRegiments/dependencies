@@ -14,11 +14,6 @@ import org.mockito.Matchers.{eq => the, any, anyInt}
 
 import java.util.concurrent.TimeUnit
 import java.io.IOException
-import org.apache.http.{HttpResponse, HttpStatus, HttpVersion, ProtocolVersion, HttpRequest, HttpEntityEnclosingRequest, HttpException}
-import org.apache.http.entity.StringEntity
-import org.apache.http.conn.{ClientConnectionManager, ManagedClientConnection, ClientConnectionRequest}
-import org.apache.http.conn.routing.HttpRoute
-import org.apache.http.message.{BasicStatusLine, BasicHeader, BasicHttpResponse}
 
 import org.junit.runner.RunWith
 import org.specs.runner.{JUnitSuiteRunner, JUnit}

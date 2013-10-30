@@ -1,5 +1,6 @@
 package com.metl.cas
 
+import com.metl.liftAuthenticator._
 import com.metl.utils._
 import com.metl.ldap._
 
@@ -10,54 +11,27 @@ import net.liftweb.http.provider.HTTPCookie
 import java.net.URLEncoder
 import org.apache.commons.io.IOUtils
 
-case class CASStateData(authenticated:Boolean,username:String,eligibleGroups:Seq[(String,String)],informationGroups:Seq[(String,String)])
-object CASStateDataForbidden extends CASStateData(false,"forbidden",List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]]) {}
-
-object casStateDevelopmentData {
-  lazy val all = List(
-    CASStateData(false,"Roger",List(("ou","Unrestricted"),("uid","UnauthenticatedRoger"),("ou","Student"),("enrolledsubject","PSY2011"),("enrolledsubject","ENG2011"),("enrolledsubject","PHS2012"),("enrolledsubject","BIO2011")),List(("givenname","Roger"),("sn","Dodger"),("mail","roger.dodger@monash.edu"),("cn","Rogey"),("initials","RD"),("gender","male"),("personaltitle","mr"))),
-    CASStateData(false,"Jane",List(("ou","Unrestricted"),("uid","UnauthenticatedJane"),("ou","Student"),("enrolledsubject","PSY2011"),("enrolledsubject","ENG2011"),("enrolledsubject","PHS2012"),("enrolledsubject","BIO2011")),List(("givenname","Jane"),("sn","Normal"),("mail","jane.normal@monash.edu"),("cn","Janey"),("initials","JN"),("gender","female"),("personaltitle","mrs"))),
-    CASStateData(false,"John",List(("ou","Unrestricted"),("uid","UnauthenticatedJohn"),("ou","Student"),("enrolledsubject","PSY2011"),("enrolledsubject","ENG2011"),("enrolledsubject","PHS2012"),("enrolledsubject","BIO2011")),List(("givenname","John"),("sn","Doe"),("mail","John.Doe@monash.edu"),("cn","Jonno"),("initials","JD"),("gender","male"),("personaltitle","mr"))), 
-    CASStateData(false,"Dick",List(("ou","Unrestricted"),("uid","UnauthenticatedDick"),("ou","Staff"),("monashteachingcommitment","PSY2011"),("monashteachingcommitment","ENG2011"),("monashteachingcommitment","PHS2012"),("monashteachingcommitment","BIO2011")),List(("givenname","Dick"),("sn","Tracey"),("mail","richard.tracey@monash.edu"),("cn","Dickey"),("initials","DT"),("gender","male"),("personaltitle","dr")))
-  )
-  def state(user:String)=all.filter(_.username == user).toList match{
-    case List(data, _) => data
-    case _ => CASStateData(false,user,List(("ou","Unrestricted"),("uid","Unauthenticated"+user),("ou","Student")),List(("givenname",user),("sn","Tracey"),("mail",user+"@monash.edu"),("cn",user+"y"),("initials",user.take(2)),("gender","male"),("personaltitle","dr")))
-  }
-  val default = all(0)
+class CASAuthenticationSystem(mod:CASAuthenticator) extends LiftAuthenticationSystem {
+  override def dispatchTableItemFilter = (r) => ((!mod.checkWhetherAlreadyLoggedIn) && (!mod.checkReqForCASCookies(r)))
+  override def dispatchTableItem(r:Req) = Full(mod.constructResponse(r))
 }
 
+class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: Option[IMeTLLDAP], alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) {
 
-object CASAuthentication {
-  def attachCASAuthenticator(mod:CASAuthenticator):Unit = {
-    LiftRules.dispatch.prepend {
-      case req if ((!mod.checkWhetherAlreadyLoggedIn) && (!mod.checkReqForCASCookies(req))) => () => {
-        Full(mod.CASRedirect) 
-      }
-    }
-  } 
-}
-
-object InSessionCASState extends SessionVar[CASStateData](CASStateDataForbidden)
-
-class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: Option[IMeTLLDAP], alreadyLoggedIn:() => Boolean,onSuccess:(CASStateData) => Unit) {
-
-  def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (CASStateData) => Unit) {
+  def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (LiftAuthStateData) => Unit) {
       this(realm, None, None, alreadyLoggedIn, onSuccess)
   }
 
   private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
   private val getLDAP: IMeTLLDAP = ldap.getOrElse(DisconnectedLDAP)
 
-  def getCasState = InSessionCASState.is
-
-  def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => getCasState.authenticated || alreadyLoggedIn())
+  override def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated)
 
   val monashCasUrl = "https://my.monash.edu.au/authentication/cas"
   def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", () => {
     val result = verifyCASTicket(req)
     if (result.authenticated) {
-      InSessionCASState.set(result)
+      InSessionLiftAuthState.set(result)
       onSuccess(result)
       true
     } else {
@@ -84,7 +58,7 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: 
      case _ => "%s://%s:%s/%s%s".format(originalRequest.request.scheme,url,port,path,newParams)
    }
   })
-  private def verifyCASTicket(req:Req) : CASStateData = Stopwatch.time("CASAuthenticator.verifyCASTicket", () => {
+  private def verifyCASTicket(req:Req) : LiftAuthStateData = Stopwatch.time("CASAuthenticator.verifyCASTicket", () => {
       req.param("ticket") match {
       case Full(ticket) =>
       {
@@ -95,21 +69,19 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: 
           user <- (success \\ "user");
           groups <- getLDAP.ou(List(user.text)).get(user.text);
           info <- getLDAP.info(List(user.text)).get(user.text)
-        ) yield CASStateData(true,user.text,groups,info)
+        ) yield LiftAuthStateData(true,user.text,groups,info)
         state match{
           case newState :: Nil if newState.authenticated == true => newState
-          case _ => CASStateDataForbidden
+          case _ => LiftAuthStateDataForbidden
         }
       }
-      case Empty => CASStateDataForbidden
-      case _ => CASStateDataForbidden
+      case Empty => LiftAuthStateDataForbidden
+      case _ => LiftAuthStateDataForbidden
     }
   })
   val redirectUrl = monashCasUrl + "/login/?service=%s" 
-  def CASRedirect = Stopwatch.time("CASAuthenticator.CASRedirect", () => {
-    S.request.map(req => {
+  override def constructResponse(req:Req) = Stopwatch.time("CASAuthenticator.constructReq",() => {
       val url = redirectUrl.format(URLEncoder.encode(ticketlessUrl(req),"utf-8"))
       new RedirectResponse(url, req)
-    }).openOr(new ForbiddenResponse(S ? "cas.unknown.error"))
   })
 }
