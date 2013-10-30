@@ -8,7 +8,7 @@ import net.liftweb.util._
 import net.liftweb.openid._
 import net.liftweb.common._
 import net.liftweb.http._
-import com.metl.cas._
+import com.metl.liftAuthenticator._
 import net.liftweb.http.SHtml._
 import WellKnownAttributes._
 import net.liftweb.http.js.JsCmds._
@@ -47,7 +47,7 @@ object OpenIdAuthenticator {
   }
 }
 
-class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:CASStateData => Unit) extends OpenIDVendor {
+class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuthStateData => Unit) extends OpenIDVendor {
 	private object OriginalRequestPath extends SessionVar[Box[String]](Empty)
 	private object attemptInProgress extends SessionVar[Boolean](false)
 	private object isLoggedIn extends SessionVar[Boolean](false)
@@ -87,7 +87,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:CASState
                      last <- attrs.get(LastName)) yield "%s%s".format(first,last) match {
                        case name =>{
                          println("identified ",name)
-                         val casData = CASStateData(true,name,List(("ou","sandbox"),("ou","unrestricted")),List(("FirstName",first),("LastName",last)))
+                         val casData = LiftAuthStateData(true,name,List(("ou","sandbox"),("ou","unrestricted")),List(("FirstName",first),("LastName",last)))
                          isLoggedIn(true)
                          onSuccess(casData)
                        }
