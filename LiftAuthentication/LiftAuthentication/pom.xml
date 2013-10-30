@@ -1,0 +1,178 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.metl</groupId>
+  <artifactId>LiftAuthentication</artifactId>
+  <version>1.0-SNAPSHOT</version>
+  <name>${project.artifactId}</name>
+  <description>My wonderfull scala app</description>
+  <inceptionYear>2010</inceptionYear>
+  <licenses>
+    <license>
+      <name>My License</name>
+      <url>http://....</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <properties>
+    <maven.compiler.source>1.5</maven.compiler.source>
+    <maven.compiler.target>1.5</maven.compiler.target>
+    <encoding>UTF-8</encoding>
+    <scala.version>2.9.0</scala.version>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>SonaType OSS Releases</id>
+      <name>SonaType Maven2 Repository</name>
+      <url>https://oss.sonatype.org/content/repositories/releases</url>
+    </repository>
+	<repository>
+		<id>eec-svn</id>
+		<name>eEducation Centre Maven Repository</name>
+		<url>svn:svn://refer.adm.monash.edu.au/maven2</url>
+	</repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>scala-tools.releases</id>
+      <name>Scala-Tools Maven2 Repository for Releases</name>
+      <url>http://scala-tools.org/repo-releases</url>
+    </pluginRepository>
+	 </pluginRepositories>
+  <dependencies>
+    <dependency>
+      <groupId>org.scala-lang</groupId>
+      <artifactId>scala-library</artifactId>
+      <version>${scala.version}</version>
+    </dependency>
+	<dependency>
+		<groupId>javax.servlet</groupId>
+		<artifactId>servlet-api</artifactId>
+		<version>2.5</version>
+	</dependency>
+    <!-- Test -->
+	<dependency>
+		<groupId>org.scalatest</groupId>
+		<artifactId>scalatest_2.9.1</artifactId>
+		<version>1.8</version>
+	</dependency>
+	<dependency>
+		<groupId>org.scala-tools.testing</groupId>
+		<artifactId>specs_2.9.1</artifactId>
+		<version>1.6.9</version>
+		<scope>test</scope>
+	</dependency>
+	<dependency>
+		<groupId>org.mockito</groupId>
+		<artifactId>mockito-core</artifactId>
+		<version>1.9.0</version>
+		<scope>test</scope>
+	</dependency>
+	<dependency>
+		<groupId>junit</groupId>
+		<artifactId>junit</artifactId>
+		<version>4.10</version>
+	</dependency>
+	<dependency>
+		<groupId>net.liftweb</groupId>
+		<artifactId>lift-testkit_2.9.0-1</artifactId>
+		<version>2.4</version>
+	</dependency>
+	<!-- end Test -->
+    <dependency>
+      <groupId>net.liftweb</groupId>
+      <artifactId>lift-util_2.9.0-1</artifactId>
+      <version>2.4</version>
+    </dependency>
+    <dependency>
+      <groupId>net.liftweb</groupId>
+      <artifactId>lift-widgets_2.9.0-1</artifactId>
+      <version>2.4</version>
+    </dependency>
+    <dependency>
+      <groupId>net.liftweb</groupId>
+      <artifactId>lift-mapper_2.9.0-1</artifactId>
+      <version>2.4</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+		<!-- start import maven svn wagon -->
+		<extensions>
+			<extension>
+				<groupId>com.google.code.maven-svn-wagon</groupId>
+				<artifactId>maven-svn-wagon</artifactId>
+				<version>1.4</version>
+			</extension>
+		</extensions>
+		<!-- end import maven svn wagon -->
+
+    <sourceDirectory>src/main/scala</sourceDirectory>
+    <testSourceDirectory>src/test/scala</testSourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.scala-tools</groupId>
+        <artifactId>maven-scala-plugin</artifactId>
+        <version>2.15.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>testCompile</goal>
+            </goals>
+            <configuration>
+              <args>
+                <arg>-make:transitive</arg>
+                <arg>-dependencyfile</arg>
+                <arg>${project.build.directory}/.scala_dependencies</arg>
+              </args>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+	  <plugin>
+		<groupId>org.apache.maven.plugins</groupId>
+		<artifactId>maven-surefire-plugin</artifactId>
+		<version>2.7</version>
+		<configuration>
+			<useSystemClassLoader>false</useSystemClassLoader>
+			<argLine>-Xmx512m</argLine>
+			<includes>
+				<include>**/*Unit.java</include>
+				<include>**/*Spec.java</include>
+			</includes>
+		</configuration>
+	  </plugin>
+	  <!-- enable scalatest -->
+	  <plugin>
+		  <groupId>org.scalatest</groupId>
+		  <artifactId>scalatest-maven-plugin</artifactId>
+		  <version>1.0-M2</version>
+			<configuration>
+				<reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
+				<junitxml>.</junitxml>
+				<includes>
+					<include>**/test/scala/**/*.scala</include>
+					<include>**/*Test.*</include>
+					<include>**/*Suite.*</include>
+				</includes>
+			</configuration>
+			<executions>
+				<execution>
+					<id>test</id>
+					<goals>
+						<goal>test</goal>
+					</goals>
+				</execution>
+			</executions>
+	  </plugin>
+    </plugins>
+  </build>
+	<distributionManagement>
+		<repository>
+			<id>eec-svn</id>
+			<url>svn:svn://refer.adm.monash.edu.au/maven2</url>
+		</repository>
+	</distributionManagement>
+</project>
