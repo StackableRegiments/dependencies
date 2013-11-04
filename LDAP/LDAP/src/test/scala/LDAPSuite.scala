@@ -19,6 +19,7 @@ import com.metl.utils._
 import javax.naming.directory.{BasicAttributes, BasicAttribute, SearchResult}
 
 class LDAPMockService extends LDAPSearch {
+    def withLDAPUsingCredentials(username:String,password:String,searchTerm:String,action:(List[SearchResult])=>Unit):Unit = {}
 
     def withLDAP(searchTerm:String,action:(List[SearchResult])=>Unit):Unit = {
         val attributes = new BasicAttributes 
@@ -50,6 +51,8 @@ object LDAPTestConfig {
 }
 
 class LDAPMockMultiService extends LDAPSearch {
+
+    def withLDAPUsingCredentials(username:String,password:String,searchTerm:String,action:(List[SearchResult])=>Unit):Unit = {}
 
     private def buildSearchResult(uid: String, cn: String, sn: String, givenname: String, 
       initials: String, mail: String, personaltitle: String, employeenumber: String,

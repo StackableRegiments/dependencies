@@ -9,6 +9,7 @@ import net.liftweb.common._
 import net.liftweb.util.Helpers._
 
 trait IMeTLLDAP {
+  def authenticate(username:String,password:String):Option[Boolean]
 	def simpleQuery(attrName:String,attrValue:String,returnType:String):List[String] 
 	def getAuthcateFromId(id:String):List[String] 
 	def getIdFromAuthcate(id:String):List[String]
@@ -18,12 +19,13 @@ trait IMeTLLDAP {
 	def getEligibleGroups(id:String):Option[Seq[Tuple2[String,String]]] 
 	def getInformationGroups(id:String):Option[Seq[Tuple2[String,String]]] 
 
-    def ou(names: Seq[String]): Map[String, Seq[(String,String)]] 
-    def info(names: Seq[String]): Map[String, Seq[(String,String)]]  
-    def humanNames(names: Seq[String]): Map[String, String] 
+  def ou(names: Seq[String]): Map[String, Seq[(String,String)]] 
+  def info(names: Seq[String]): Map[String, Seq[(String,String)]]  
+  def humanNames(names: Seq[String]): Map[String, String] 
 }
 
 object DisconnectedLDAP extends IMeTLLDAP {
+  override def authenticate(username:String,password:String) = None
  	override def simpleQuery(attrName:String,attrValue:String,returnType:String):List[String] = List.empty[String]
 	override def getAuthcateFromId(id:String):List[String] = List.empty[String]
 	override def getIdFromAuthcate(id:String):List[String] = List.empty[String]
@@ -40,24 +42,29 @@ object DisconnectedLDAP extends IMeTLLDAP {
 
 trait LDAPSearch {
 
-    def withLDAP(searchTerm:String,action:(List[SearchResult])=>Unit):Unit
+  def withLDAP(searchTerm:String,action:(List[SearchResult])=>Unit):Unit
+  def withLDAPUsingCredentials(user:String,password:String,searchTerm:String,action:(List[SearchResult])=>Unit,base:String,usernameIncludesBase:Boolean):Unit
 }
 
 class LDAPSearchService(directory:String,bindUser:String,password:String) extends LDAPSearch {
 
-  def withLDAP(searchTerm:String, action:(List[SearchResult])=> Unit): Unit = Stopwatch.time("LDAP.withLDAP", () => {
-		var env = new java.util.Hashtable[String,String]()
+  def withLDAPUsingCredentials(user:String,pass:String,searchTerm:String, action:(List[SearchResult])=> Unit,base:String = "o=Monash University, c=AU",usernameIncludesBase:Boolean = true):Unit = Stopwatch.time("LDAP.withLDAPUsingCredentials", () => {
+    var env = new java.util.Hashtable[String,String]()
+    val constructedUsername = usernameIncludesBase match {
+      case true => user
+      case false => "%s, %s".format(user,base)
+    }
 		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory")
 		env.put(Context.PROVIDER_URL,directory)
 		env.put(Context.SECURITY_AUTHENTICATION,"simple")
-		env.put(Context.SECURITY_PRINCIPAL,bindUser)
-		env.put(Context.SECURITY_CREDENTIALS,password)
+		env.put(Context.SECURITY_PRINCIPAL,constructedUsername)
+		env.put(Context.SECURITY_CREDENTIALS,pass)
 		try
 			{
 				val ctx = new InitialDirContext(env)
 				val controls = new SearchControls
 				controls.setSearchScope(SearchControls.SUBTREE_SCOPE)
-				val results = ctx.search("o=Monash University, c=AU",searchTerm,controls)
+				val results = ctx.search(base,searchTerm,controls)
 				var resultEnumerations = List.empty[SearchResult]
 				while (results.hasMore){
 					resultEnumerations = results.next() :: resultEnumerations
@@ -74,12 +81,19 @@ class LDAPSearchService(directory:String,bindUser:String,password:String) extend
 			}
 		}
 	})
+
+  def withLDAP(searchTerm:String, action:(List[SearchResult])=> Unit): Unit = Stopwatch.time("LDAP.withLDAP", () => {
+    withLDAPUsingCredentials(bindUser,password,searchTerm,action)
+	})
 }
 
 class LDAPService(env: { val ldapSearch: LDAPSearch }) {
-    def withLDAP(searchTerm: String, action: (List[SearchResult]) => Unit): Unit = {
-        env.ldapSearch.withLDAP(searchTerm, action)
-    }
+  def withLDAP(searchTerm: String, action: (List[SearchResult]) => Unit): Unit = {
+    env.ldapSearch.withLDAP(searchTerm, action)
+  }
+  def withLDAPUsingCredentials(username:String,password:String, searchTerm:String,action: (List[SearchResult]) => Unit,base:String,usernameIncludesBase:Boolean): Unit = {
+    env.ldapSearch.withLDAPUsingCredentials(username,password,searchTerm,action,base,usernameIncludesBase) 
+  }
 }
 
 class LDAPConfig(directory:String,bindUser:String,password:String) {
@@ -88,8 +102,31 @@ class LDAPConfig(directory:String,bindUser:String,password:String) {
 }
 
 class LDAP(env : { val ldap: LDAPService }) extends IMeTLLDAP {
-    val groups = Seq("ou","monashenrolledsubject","monashteachingcommitment","o","c")
-    val infoGroups = Seq("sn","givenname","initials","mail","cn","jpegphoto","gender","personaltitle","employeenumber")
+  val groups = Seq("ou","monashenrolledsubject","monashteachingcommitment","o","c")
+  val infoGroups = Seq("sn","givenname","initials","mail","cn","jpegphoto","gender","personaltitle","employeenumber")
+
+  override def authenticate(username:String,password:String):Option[Boolean] = Stopwatch.time("LDAP.authenticate", () => {
+    println("LDAP - auth begin")
+    var output:Option[Boolean] = None
+    val usernameCheckType = "uid"
+    var recordOutput:Option[String] = None
+    val func = (n:List[SearchResult]) => {
+      println("first pass raw result: %s".format(n))
+			recordOutput = n.take(1).map(ne => ne.getName).headOption
+      println("first pass response: %s".format(recordOutput))
+    }
+    env.ldap.withLDAP("(%s=%s)".format(usernameCheckType,username),func)
+    val func2 = (n:List[SearchResult]) => {
+      println("second pass raw result: %s".format(n))
+      output = Some(n.length > 0)
+      println("second pass response: %s".format(output))
+    }
+    recordOutput.map(dn => {
+      env.ldap.withLDAPUsingCredentials(dn,password,"(%s=%s)".format(usernameCheckType,username),func2,"o=Monash University, c=AU",false)
+    })
+    println("LDAP - auth ended: %s".format(output))
+    output
+  })
 
 	override def simpleQuery(attrName:String,attrValue:String,returnType:String):List[String] = Stopwatch.time("LDAP.simpleQuery", () => {
 		var output = List.empty[String]

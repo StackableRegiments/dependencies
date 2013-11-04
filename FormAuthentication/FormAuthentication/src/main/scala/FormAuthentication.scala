@@ -59,6 +59,7 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
       try {
         val result = verifyCredentials(u,p)
         InSessionLiftAuthState(result)
+        onSuccess(result)
         Right(result.authenticated)
       } catch {
         case e:Throwable => {
@@ -70,23 +71,19 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
   }
   override def constructResponse(req:Req) = constructResponseWithMessages(req,List.empty[String]) 
   def constructResponseWithMessages(req:Req,additionalMessages:List[String] = List.empty[String]) = Stopwatch.time("FormAuthenticator.constructReq",() => {
-      var username = ""
-      var password = ""
       val loginPageNode =
         (
           formSelector #> {(formNode:NodeSeq) => {
             (
-              "%s *-".format(formSelector) #> <input type="hidden" name="path" value={req.uri}></input> &
-              "%s *-".format(formSelector) #> additionalMessages.map(am => {
+              "%s -*".format(formSelector) #> <input type="hidden" name="path" value={req.uri}></input> &
+              "%s -*".format(formSelector) #> additionalMessages.map(am => {
                 <div class="loginError">{am}</div>
               }) &
               "%s [method]".format(formSelector) #> "POST" &
-              "%s [action]".format(formSelector) #> "/ldapLogon" &
+              "%s [action]".format(formSelector) #> "/formLogon" &
 // these next two lines aren't working, and I'm not sure why not
               "%s [name]".format(usernameSelector) #> "username" &
-              "%s [name]".format(passwordSelector) #> "password" &
-              "%s *+".format(formSelector) #> <input type="submit" value="Logon"></input> &
-              "%s *-".format(formSelector) #> additionalMessages.map(m => <div class="error">m</div>)
+              "%s [name]".format(passwordSelector) #> "password"
             ).apply(formNode) 
           }} 
         ).apply(loginPage)
