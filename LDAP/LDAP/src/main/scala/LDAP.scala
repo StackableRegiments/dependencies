@@ -106,25 +106,18 @@ class LDAP(env : { val ldap: LDAPService }) extends IMeTLLDAP {
   val infoGroups = Seq("sn","givenname","initials","mail","cn","jpegphoto","gender","personaltitle","employeenumber")
 
   override def authenticate(username:String,password:String):Option[Boolean] = Stopwatch.time("LDAP.authenticate", () => {
-    //println("LDAP - auth begin")
-    var output:Option[Boolean] = None
     val usernameCheckType = "uid"
     var recordOutput:Option[String] = None
     val func = (n:List[SearchResult]) => {
-      //println("first pass raw result: %s".format(n))
 			recordOutput = n.take(1).map(ne => ne.getName).headOption
-      //println("first pass response: %s".format(recordOutput))
     }
     env.ldap.withLDAP("(%s=%s)".format(usernameCheckType,username),func)
     val func2 = (n:List[SearchResult]) => {
-      //println("second pass raw result: %s".format(n))
       output = Some(n.length > 0)
-      //println("second pass response: %s".format(output))
     }
     recordOutput.map(dn => {
       env.ldap.withLDAPUsingCredentials(dn,password,"(%s=%s)".format(usernameCheckType,username),func2,"o=Monash University, c=AU",false)
     })
-    //println("LDAP - auth ended: %s".format(output))
     output
   })
 

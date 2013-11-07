@@ -2,7 +2,6 @@ package com.metl.cas
 
 import com.metl.liftAuthenticator._
 import com.metl.utils._
-import com.metl.ldap._
 
 import net.liftweb.http._
 import net.liftweb.common._
@@ -16,14 +15,13 @@ class CASAuthenticationSystem(mod:CASAuthenticator) extends LiftAuthenticationSy
   override def dispatchTableItem(r:Req) = Full(mod.constructResponse(r))
 }
 
-class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: Option[IMeTLLDAP], alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) {
+class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) {
 
   def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (LiftAuthStateData) => Unit) {
-      this(realm, None, None, alreadyLoggedIn, onSuccess)
+      this(realm, None, alreadyLoggedIn, onSuccess)
   }
 
   private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
-  private val getLDAP: IMeTLLDAP = ldap.getOrElse(DisconnectedLDAP)
 
   override def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated)
 
@@ -65,11 +63,10 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], ldap: 
         val verifyUrl = monashCasUrl + "/serviceValidate?ticket=%s&service=%s"
         val casValidityResponse = getHttpClient.getAsString(verifyUrl.format(ticket,URLEncoder.encode(ticketlessUrl(req), "utf-8")))
         val casValidityResponseXml = xml.XML.loadString(casValidityResponse)
-        val state = for(success <- (casValidityResponseXml \\ "authenticationSuccess");
-          user <- (success \\ "user");
-          groups <- getLDAP.ou(List(user.text)).get(user.text);
-          info <- getLDAP.info(List(user.text)).get(user.text)
-        ) yield LiftAuthStateData(true,user.text,groups,info)
+        val state = for (
+          success <- (casValidityResponseXml \\ "authenticationSuccess");
+          user <- (success \\ "user")
+        ) yield LiftAuthStateData(true,user.text,List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]])
         state match{
           case newState :: Nil if newState.authenticated == true => newState
           case _ => LiftAuthStateDataForbidden
