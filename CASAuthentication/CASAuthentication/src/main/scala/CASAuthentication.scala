@@ -15,17 +15,20 @@ class CASAuthenticationSystem(mod:CASAuthenticator) extends LiftAuthenticationSy
   override def dispatchTableItem(r:Req) = Full(mod.constructResponse(r))
 }
 
-class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) {
+class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHttpClient], alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) {
 
-  def this(realm: String, alreadyLoggedIn: () => Boolean, onSuccess: (LiftAuthStateData) => Unit) {
-      this(realm, None, alreadyLoggedIn, onSuccess)
+  protected val monashCasUrl = baseUrl
+  protected val serviceValidatePath = "/serviceValidate"
+  protected val loginPath = "/login/"
+
+  def this(realm: String, baseUrl:String, alreadyLoggedIn: () => Boolean, onSuccess: (LiftAuthStateData) => Unit) {
+      this(realm, baseUrl, None, alreadyLoggedIn, onSuccess)
   }
 
   private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
 
   override def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated)
 
-  val monashCasUrl = "https://my.monash.edu.au/authentication/cas"
   def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", () => {
     val result = verifyCASTicket(req)
     if (result.authenticated) {
@@ -60,7 +63,7 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alread
       req.param("ticket") match {
       case Full(ticket) =>
       {
-        val verifyUrl = monashCasUrl + "/serviceValidate?ticket=%s&service=%s"
+        val verifyUrl = monashCasUrl + serviceValidatePath +"?ticket=%s&service=%s"
         val casValidityResponse = getHttpClient.getAsString(verifyUrl.format(ticket,URLEncoder.encode(ticketlessUrl(req), "utf-8")))
         val casValidityResponseXml = xml.XML.loadString(casValidityResponse)
         val state = for (
@@ -76,7 +79,7 @@ class CASAuthenticator(realm:String, httpClient: Option[IMeTLHttpClient], alread
       case _ => LiftAuthStateDataForbidden
     }
   })
-  val redirectUrl = monashCasUrl + "/login/?service=%s" 
+  val redirectUrl = monashCasUrl + loginPath + "?service=%s" 
   override def constructResponse(req:Req) = Stopwatch.time("CASAuthenticator.constructReq",() => {
       val url = redirectUrl.format(URLEncoder.encode(ticketlessUrl(req),"utf-8"))
       new RedirectResponse(url, req)
