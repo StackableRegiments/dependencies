@@ -28,7 +28,7 @@ class LDAPAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
   l.authenticate(u,p) match {
     case Some(true) => {
       println("successful auth")
-      LiftAuthStateData(true,u,l.getEligibleGroups(u).getOrElse(List.empty[Tuple2[String,String]]),l.getInformationGroups(u).getOrElse(List.empty[Tuple2[String,String]]))
+      LiftAuthStateData(true,u,List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]])
     }
     case _ => {
       println("failed auth")

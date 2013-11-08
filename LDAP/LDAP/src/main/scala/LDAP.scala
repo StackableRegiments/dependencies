@@ -63,7 +63,7 @@ class LDAPSearchService(directory:String,incomingBindBase:String,bindUser:String
 	})
 
   def withLDAP(searchTerm:String, action:(List[SearchResult])=> Unit): Unit = Stopwatch.time("LDAP.withLDAP", () => {
-    withLDAPUsingCredentials(bindUser,password,searchTerm,action)
+    withLDAPUsingCredentials(bindUser,password,searchTerm,action,bindBase,false)
 	})
 }
 
