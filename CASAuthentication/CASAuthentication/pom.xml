@@ -76,7 +76,7 @@
 	</dependency>
 	<dependency>
 		<groupId>com.metl</groupId>
-		<artifactId>liftAuthentication</artifactId>
+		<artifactId>LiftAuthentication</artifactId>
 		<version>1.0-SNAPSHOT</version>
 	</dependency>
 	<dependency>

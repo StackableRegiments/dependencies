@@ -26,7 +26,7 @@ trait LDAPSearch {
   def withLDAPUsingCredentials(user:String,password:String,searchTerm:String,action:(List[SearchResult])=>Unit,base:String,usernameIncludesBase:Boolean):Unit
 }
 
-class LDAPSearchService(directory:String,incomingBindBase:String,bindUser:String,password:String) extends LDAPSearch {
+class LDAPSearchService(directory:String,incomingBindBase:String,bindUser:String,password:String,secure:Boolean = false) extends LDAPSearch {
   val bindBase = incomingBindBase 
   def withLDAPUsingCredentials(user:String,pass:String,searchTerm:String, action:(List[SearchResult])=> Unit,base:String = bindBase,usernameIncludesBase:Boolean = true):Unit = Stopwatch.time("LDAP.withLDAPUsingCredentials", () => {
     var env = new java.util.Hashtable[String,String]()
@@ -36,6 +36,9 @@ class LDAPSearchService(directory:String,incomingBindBase:String,bindUser:String
     }
 		env.put(Context.INITIAL_CONTEXT_FACTORY,"com.sun.jndi.ldap.LdapCtxFactory")
 		env.put(Context.PROVIDER_URL,directory)
+    if (secure){
+      env.put(Context.SECURITY_PROTOCOL, "ssl") 
+    }
 		env.put(Context.SECURITY_AUTHENTICATION,"simple")
 		env.put(Context.SECURITY_PRINCIPAL,constructedUsername)
 		env.put(Context.SECURITY_CREDENTIALS,pass)
@@ -77,8 +80,8 @@ class LDAPService(env: { val ldapSearch: LDAPSearch }) {
   }
 }
 
-class LDAPConfig(directory:String,bindUser:String,password:String,bindBase:String) {
-  lazy val ldapSearch = new LDAPSearchService(directory,bindBase,bindUser,password)
+class LDAPConfig(directory:String,bindUser:String,password:String,bindBase:String,secure:Boolean = false) {
+  lazy val ldapSearch = new LDAPSearchService(directory,bindBase,bindUser,password,secure)
   lazy val ldap = new LDAPService(this)
 }
 
