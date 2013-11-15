@@ -72,31 +72,7 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
     response.openOr(Left(new Exception("username or password not specified")))
   }
   protected def makeUrlFromReq(req:Req):String = {
-    val scheme = req.request.scheme
-    val url = req.request.serverName
-    val port = req.request.serverPort
-    val path =req.path.wholePath.mkString("/")
-    val newParams = req.params.toList.sortBy(_._1).foldLeft("")((acc,param) => param match { 
-      case Tuple2(paramName,listOfParams) => {
-        val newParams = listOfParams.map(paramValue => {
-          "%s=%s".format(URLEncoder.encode(paramName,"utf-8"), URLEncoder.encode(paramValue,"utf-8"))
-        }).mkString("&")
-        acc match {
-          case "" => acc+"?"+newParams
-          case _ => acc+"&"+newParams
-        } 
-      }
-      case _ => acc
-    })
-    val result = "%s://%s:%s/%s%s".format(scheme,url,port,path,newParams)
-    println("made new uri from req: %s".format(result))
-    println("req.uri: %s".format(req.uri))
-    println("req.request.uri: %s".format(req.request.uri))
-    println("req.request.queryString: %s".format(req.request.queryString))
-    result
-    val newResult = "%s%s".format(req.uri,req.request.queryString.map(qs => "?%s".format(qs)).openOr("")) 
-    println("made new uri from req: %s".format(newResult))
-    newResult
+    "%s%s".format(req.uri,req.request.queryString.map(qs => "?%s".format(qs)).openOr("")) 
   }
   override def constructResponse(req:Req) = constructResponseWithMessages(req,List.empty[String]) 
   def constructResponseWithMessages(req:Req,additionalMessages:List[String] = List.empty[String]) = Stopwatch.time("FormAuthenticator.constructReq",() => {
