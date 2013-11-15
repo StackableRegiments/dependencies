@@ -17,6 +17,8 @@ import scala.collection.immutable.List
 import net.liftweb.http.provider.HTTPCookie
 import org.apache.commons.io.IOUtils
 
+import java.net.URLEncoder
+
 class FormAuthenticationSystem(mod:FormAuthenticator) extends LiftAuthenticationSystem {
   override def dispatchTableItemFilter = (r) => false
   protected def dispatchTableItemFilterInternal:Req=>Boolean = (r) => !mod.checkWhetherAlreadyLoggedIn
@@ -69,13 +71,32 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
     }
     response.openOr(Left(new Exception("username or password not specified")))
   }
+  protected def makeUrlFromReq(req:Req):String = {
+    val scheme = req.request.scheme
+    val url = req.request.serverName
+    val port = req.request.serverPort
+    val path =req.path.wholePath.mkString("/")
+    val newParams = req.params.toList.sortBy(_._1).foldLeft("")((acc,param) => param match { 
+      case Tuple2(paramName,listOfParams) => {
+        val newParams = listOfParams.map(paramValue => {
+          "%s=%s".format(URLEncoder.encode(paramName,"utf-8"), URLEncoder.encode(paramValue,"utf-8")).mkString("&")
+        })
+        acc match {
+          case "" => acc+"?"+newParams
+          case _ => acc+"&"+newParams
+        } 
+      }
+      case _ => acc
+    })
+    "%://%s:%s/%s%s".format(scheme,url,port,path,newParams)
+  }
   override def constructResponse(req:Req) = constructResponseWithMessages(req,List.empty[String]) 
   def constructResponseWithMessages(req:Req,additionalMessages:List[String] = List.empty[String]) = Stopwatch.time("FormAuthenticator.constructReq",() => {
       val loginPageNode =
         (
           formSelector #> {(formNode:NodeSeq) => {
             (
-              "%s -*".format(formSelector) #> <input type="hidden" name="path" value={req.uri}></input> &
+              "%s -*".format(formSelector) #> <input type="hidden" name="path" value={makeUrlFromReq(req)}></input> &
               "%s -*".format(formSelector) #> additionalMessages.map(am => {
                 <div class="loginError">{am}</div>
               }) &
