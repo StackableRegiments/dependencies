@@ -79,8 +79,8 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
     val newParams = req.params.toList.sortBy(_._1).foldLeft("")((acc,param) => param match { 
       case Tuple2(paramName,listOfParams) => {
         val newParams = listOfParams.map(paramValue => {
-          "%s=%s".format(URLEncoder.encode(paramName,"utf-8"), URLEncoder.encode(paramValue,"utf-8")).mkString("&")
-        })
+          "%s=%s".format(URLEncoder.encode(paramName,"utf-8"), URLEncoder.encode(paramValue,"utf-8"))
+        }).mkString("&")
         acc match {
           case "" => acc+"?"+newParams
           case _ => acc+"&"+newParams
@@ -88,7 +88,15 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
       }
       case _ => acc
     })
-    "%://%s:%s/%s%s".format(scheme,url,port,path,newParams)
+    val result = "%s://%s:%s/%s%s".format(scheme,url,port,path,newParams)
+    println("made new uri from req: %s".format(result))
+    println("req.uri: %s".format(req.uri))
+    println("req.request.uri: %s".format(req.request.uri))
+    println("req.request.queryString: %s".format(req.request.queryString))
+    result
+    val newResult = "%s%s".format(req.uri,req.request.queryString.map(qs => "?%s".format(qs)).openOr("")) 
+    println("made new uri from req: %s".format(newResult))
+    newResult
   }
   override def constructResponse(req:Req) = constructResponseWithMessages(req,List.empty[String]) 
   def constructResponseWithMessages(req:Req,additionalMessages:List[String] = List.empty[String]) = Stopwatch.time("FormAuthenticator.constructReq",() => {
