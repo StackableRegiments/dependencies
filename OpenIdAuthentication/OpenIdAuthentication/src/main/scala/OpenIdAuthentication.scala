@@ -111,7 +111,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
   }
 
 
-  def generateHostAndPath(r:Req):String = {
+  def generateHostAndPort(r:Req):String = {
     val originalHost = r.request.serverName
     val originalPort = r.request.serverPort
     val originalScheme = r.request.scheme
@@ -146,8 +146,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
       }
       case _ => originalHost
     })
-    var path = r.path.wholePath.mkString("/")
-    "%s://%s:%s/%s".format(scheme,host,port,path)
+    "%s://%s:%s".format(scheme,host,port)
   }
 
   def generateAuthRequest(r:Req,userSuppliedString:String,targetUrl:String):LiftResponse = {
@@ -157,9 +156,9 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
     // configure the return_to URL where your application will receive  
     // the authentication responses from the OpenID provider  
     //val returnToUrl = S.encodeURL(S.hostAndPath + targetUrl)  
-    val hostAndPath = generateHostAndPath(r)
+    val hostAndPort = generateHostAndPort(r)
     
-    val returnToUrl = S.encodeURL("%s/%s".format(hostAndPath,targetUrl))  
+    val returnToUrl = S.encodeURL("%s/%s".format(hostAndPort,targetUrl))  
     println("returnToUrl: %s".format(returnToUrl)) 
     // perform discovery on the user-supplied identifier  
     val discoveries = manager.discover(userSuppliedString)  
