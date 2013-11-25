@@ -28,20 +28,16 @@ object OpenIdEndpoint {
 	def empty:Unit = endpoints = Map.empty[String,OpenIdEndpoint]
 	def getAll:List[OpenIdEndpoint] = endpoints.values.toList
 	List(
-		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty)
-/*		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty),
-	//	OpenIdEndpoint("GoogleProfile",(s) => "http://www.google.com/profiles/%s".format(s),"http://certainToFail.com",Full("google profile name")),
+		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty),
 		OpenIdEndpoint("yahoo",(s) => "https://me.yahoo.com","http://certainToFail.com",Empty),
 		OpenIdEndpoint("MyOpenID",(s) => "http://%s.myopenid.com".format(s),"http://certainToFail.com",Full("MyOpenID username")),
-		//OpenIdEndpoint("aol",(s) => "https://www.aol.com/","http://certainToFail.com",Empty),
 		OpenIdEndpoint("AOL",(s) => "http://openid.aol.com/%s".format(s),"http://certainToFail.com",Full("AOL screen name")),
 		OpenIdEndpoint("LiveJournal",(s) => "http://%s.livejournal.com/".format(s),"http://certainToFail.com",Full("LiveJournal username")),
-		OpenIdEndpoint("Wordpress",(s) => "http://%s.wordpress.com/".format(s),"http://certainToFail.com",Full("Worldpress.com username")),
-		OpenIdEndpoint("Blogger",(s) => "http://%s.blogspot.com/".format(s),"http://certainToFail.com",Full("Bloger account")),
+		OpenIdEndpoint("Wordpress",(s) => "http://%s.wordpress.com/".format(s),"http://certainToFail.com",Full("Wordpress.com username")),
+		OpenIdEndpoint("Blogger",(s) => "http://%s.blogspot.com/".format(s),"http://certainToFail.com",Full("Blogger account")),
 		OpenIdEndpoint("Verisign",(s) => "http://%s.pip.verisignlabs.com/".format(s),"http:certainToFail.com",Full("Verisign username")),
 		OpenIdEndpoint("ClickPass",(s) => "http://clickpass.com/public/%s".format(s),"http://certainToFail.com",Full("ClickPass username")),
 		OpenIdEndpoint("ClaimID",(s) => "http://claimid.com/%s".format(s),"http://certainToFail.com",Full("ClaimID username"))
-*/
 	).foreach(e => add(e))	
 }
 
@@ -52,7 +48,7 @@ object OpenIdAuthenticator {
   }
 }
 
-class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuthStateData => Unit) extends OpenIDVendor {
+class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuthStateData => Unit,endpoints:Box[List[OpenIdEndpoint]] = Empty) extends OpenIDVendor {
 	private object OriginalRequestPath extends SessionVar[Box[String]](Empty)
 	private object attemptInProgress extends SessionVar[Boolean](false)
 	private object isLoggedIn extends SessionVar[Boolean](false)
@@ -62,6 +58,16 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
   protected val overrideScheme:Box[String] = Empty
 
   protected val manager = OpenIDObject.is.manager
+
+  protected def getEndpointByName(eName:String):Box[OpenIdEndpoint] = {
+    endpoints.map(es => es.find(e => e.name == eName) match {
+      case Some(e) => Full(e)
+      case _ => Empty
+    }).openOr(OpenIdEndpoint.find(eName))
+  }
+  protected def getAllEndpoints:List[OpenIdEndpoint] = {
+    endpoints.openOr(OpenIdEndpoint.getAll)
+  }
 
 	type UserType = Identifier
 	type ConsumerType = OpenIDConsumer[UserType]
@@ -83,22 +89,22 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
     //case r @ Req(PathRoot :: ResponsePath :: _, "", _) =>
     case r @ Req("openid" :: "response" :: _, _, _) =>
       () => {
-				println("openId.postPf")
+				//println("openId.postPf")
         for (req <- S.request;
              ret <- {
-							 println("generating ret from req: %s".format(req))
+							 //println("generating ret from req: %s".format(req))
 							 attemptInProgress(false)
                //val (id, res) = OpenIDObject.is.verifyResponse(req.request)
                val (id, res) = verifyResponse(req.request)
-							 println("verifiedResponse: %s".format((id,res)))
+							 //println("verifiedResponse: %s".format((id,res)))
                id.map(i=>{
                  val attrs = WellKnownAttributes.attributeValues(res.getAuthResponse)
-                 println("attrs")
-                 attrs.map(println)
+                 //println("attrs")
+                 //attrs.map(println)
                  for(first <- attrs.get(FirstName);
                      last <- attrs.get(LastName)) yield "%s%s".format(first,last) match {
                        case name =>{
-                         println("identified ",name)
+                         //println("identified ",name)
                          val casData = LiftAuthStateData(true,name,List(("ou","sandbox"),("ou","unrestricted")),List(("FirstName",first),("LastName",last)))
                          isLoggedIn(true)
                          onSuccess(casData)
@@ -110,7 +116,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
                  case _ => {
                    postLogin(id, res)
                    val rb = OriginalRequestPath.is
-									 println("redirecting back to: %s".format(rb))
+									 //println("redirecting back to: %s".format(rb))
                    Full(RedirectResponse(rb openOr "/", S responseCookies :_*))
                  }
                }
@@ -189,7 +195,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
       receivingURL += "?" + queryString;  
     }  
   
-    println("receivingUrl: %s (<= %s)".format(receivingURL,OriginalRequestPath.is))
+    //println("receivingUrl: %s (<= %s)".format(receivingURL,OriginalRequestPath.is))
     
     // verify the response; ConsumerManager needs to be the same  
     // (static) instance used to place the authentication request  
@@ -212,7 +218,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
     val hostAndPort = generateHostAndPort(r)
     
     val returnToUrl = S.encodeURL("%s/%s".format(hostAndPort,targetUrl))  
-    println("returnToUrl: %s".format(returnToUrl)) 
+    //println("returnToUrl: %s".format(returnToUrl)) 
     // perform discovery on the user-supplied identifier  
     val discoveries = manager.discover(userSuppliedString)  
   
@@ -263,7 +269,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 
   def prePf:LiftRules.DispatchPF = NamedPF("openIdPreLogin") {
 		case r@Req("openIdGoTo" :: choice :: usernameString :: Nil,_,_) => () => {
-			OpenIdEndpoint.find(choice).map(we => {
+			getEndpointByName(choice).map(we => {
 				attemptInProgress(true)
 				generateAuthRequest(r,we.generateUrlWithUsername(usernameString),"%s/%s".format(PathRoot,ResponsePath))
         //OpenIDObject.is.authRequest(we.generateUrlWithUsername(usernameString),"/%s/%s".format(PathRoot,ResponsePath))
@@ -271,7 +277,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 		}
     case r@Req("openIdGoTo" :: choice :: Nil,_,_) => () => {
 			attemptInProgress(false)
-			OpenIdEndpoint.find(choice).map(we => {
+			getEndpointByName(choice).map(we => {
 				we.usernameDescriptor match {
 					case Full(argDesc) => {
 						val pathName = "/openIdGoTo/"+choice
@@ -325,18 +331,28 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
       }
 
       OriginalRequestPath(Full(finalLocation))
-      Full(XhtmlResponse(
-				<html xmlns="http://www.w3.org/1999/xhtml">
-					<body>
-						<div>
-						{
-							OpenIdEndpoint.getAll.map(we => {
-								a(<span><div><img alt={we.name} src={we.imageSrc}/></div><div>{we.name}</div></span>,RedirectTo("/openIdGoTo/"+we.name))
-							})
-						}</div>
-					</body>
-				</html>
-      ,Empty,Nil,Nil,200,true))
+      getAllEndpoints match {
+        case Nil => {
+          Full(UnauthorizedResponse(finalLocation))
+        }
+        case List(onlyOne) => {
+          Full(RedirectResponse("/openIdGoTo/"+onlyOne.name))  
+        }
+        case moreThanOne:List[OpenIdEndpoint] => {
+          Full(XhtmlResponse(
+            <html xmlns="http://www.w3.org/1999/xhtml">
+              <body>
+                <div>
+                {
+                  moreThanOne.map(we => {
+                    a(<span><div><img alt={we.name} src={we.imageSrc}/></div><div>{we.name}</div></span>,RedirectTo("/openIdGoTo/"+we.name))
+                  })
+                }</div>
+              </body>
+            </html>
+          ,Empty,Nil,Nil,200,true))
+        }
+      }
     }
   }
 	override def logUserOut:Unit = {}
