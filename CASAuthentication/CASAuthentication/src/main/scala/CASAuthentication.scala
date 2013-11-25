@@ -16,7 +16,9 @@ class CASAuthenticationSystem(mod:CASAuthenticator) extends LiftAuthenticationSy
 }
 
 class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHttpClient], alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) {
-
+  protected val overrideHost:Box[String] = Empty
+  protected val overridePort:Box[Int] = Empty
+  protected val overrideScheme:Box[String] = Empty
   protected val monashCasUrl = baseUrl
   protected val serviceValidatePath = "/serviceValidate"
   protected val loginPath = "/login/"
@@ -40,8 +42,9 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
     }
   })
   private def ticketlessUrl(originalRequest : Req):String = Stopwatch.time("CASAuthenticator.ticketlessUrl", () => {
-    val url = originalRequest.request.serverName
-    val port = originalRequest.request.serverPort
+    val scheme = overrideScheme.openOr(originalRequest.request.scheme)
+    val url = overrideHost.openOr(originalRequest.request.serverName)
+    val port = overridePort.openOr(originalRequest.request.serverPort)
     val path = originalRequest.path.wholePath.mkString("/")
     val newParams = originalRequest.params.toList.sortBy(_._1).foldLeft("")((acc, param) => param match {
        case Tuple2(paramName,listOfParams) if (paramName.toLowerCase == "ticket") => acc
@@ -55,8 +58,8 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
        case _ => acc
      })
    newParams.length match {
-     case 0 => "%s://%s:%s/%s".format(originalRequest.request.scheme,url,port,path)
-     case _ => "%s://%s:%s/%s%s".format(originalRequest.request.scheme,url,port,path,newParams)
+     case 0 => "%s://%s:%s/%s".format(scheme,url,port,path)
+     case _ => "%s://%s:%s/%s%s".format(scheme,url,port,path,newParams)
    }
   })
   private def verifyCASTicket(req:Req) : LiftAuthStateData = Stopwatch.time("CASAuthenticator.verifyCASTicket", () => {

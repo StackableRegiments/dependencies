@@ -52,6 +52,10 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 	private object attemptInProgress extends SessionVar[Boolean](false)
 	private object isLoggedIn extends SessionVar[Boolean](false)
 
+  protected val overrideHost:Box[String] = Empty
+  protected val overridePort:Box[Int] = Empty
+  protected val overrideScheme:Box[String] = Empty
+
 	type UserType = Identifier
 	type ConsumerType = OpenIDConsumer[UserType]
   def ext(di: DiscoveryInformation, authReq: AuthRequest): Unit = {
@@ -106,11 +110,111 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
       }
   }
 
+
+  def generateHostAndPath(r:Req):String = {
+    val originalHost = r.request.serverName
+    val originalPort = r.request.serverPort
+    val originalScheme = r.request.scheme
+    var scheme = overrideScheme.openOr(r.header("X_FORWARDED_PROTO") match {
+      case Full(s) if s.length > 0 => s
+      case _ => originalScheme
+    })
+    var port = overridePort.openOr(r.header("X_FORWARDED_PORT") match {
+      case Full(s) if s.length > 0 => {
+        try {
+          s.toInt
+        } catch {
+          case e:Throwable => originalPort
+        }
+      }
+      case _ => originalPort
+    })
+    var host = overrideHost.openOr(r.header("X-FORWARDED-HOST") match {
+      case Full(hostAndPort) if hostAndPort.length > 0 => {
+        hostAndPort.split(":") match {
+          case Array(h,p) => {
+            try {
+              port = p.toInt
+            } catch {
+              case e:Throwable => {}
+            }
+            h 
+          }
+          case Array(h) => h 
+          case _ => originalHost
+        }
+      }
+      case _ => originalHost
+    })
+    var path = r.path.wholePath.mkString("/")
+    "%s://%s:%s/%s".format(scheme,host,port,path)
+  }
+
+  def generateAuthRequest(r:Req,userSuppliedString:String,targetUrl:String):LiftResponse = {
+    //this is just so that I can override the original scheme behaviour at the right moment.  This is from http://scala-tools.org/mvnsites/liftweb-2.0/framework/scaladocs/net/liftweb/openid/OpenID.scala.html line 200
+
+    val manager = OpenIDObject.is.manager
+    // configure the return_to URL where your application will receive  
+    // the authentication responses from the OpenID provider  
+    //val returnToUrl = S.encodeURL(S.hostAndPath + targetUrl)  
+    val hostAndPath = generateHostAndPath(r)
+    
+    val returnToUrl = S.encodeURL("%s/%s".format(hostAndPath,targetUrl))  
+    println("returnToUrl: %s".format(returnToUrl)) 
+    // perform discovery on the user-supplied identifier  
+    val discoveries = manager.discover(userSuppliedString)  
+  
+    // attempt to associate with the OpenID provider  
+    // and retrieve one service endpoint for authentication  
+    val discovered = manager.associate(discoveries)  
+  
+    S.containerSession.foreach(_.setAttribute("openid-disc", discovered))  
+  
+    // obtain a AuthRequest message to be sent to the OpenID provider  
+    val authReq = manager.authenticate(discovered, returnToUrl)  
+  
+    OpenIDObject.is.beforeAuth.foreach(f => f(discovered, authReq))  
+      
+    if (! discovered.isVersion2() )  
+    {  
+      // Option 1: GET HTTP-redirect to the OpenID Provider endpoint  
+      // The only method supported in OpenID 1.x  
+      // redirect-URL usually limited ~2048 bytes  
+      RedirectResponse(authReq.getDestinationUrl(true))  
+    }  
+    else  
+    {  
+      // Option 2: HTML FORM Redirection (Allows payloads >2048 bytes)  
+      val pm =  authReq.getParameterMap()  
+      val info: Seq[(String, String)] = pm.keySet.toArray.  
+      map(k => (k.toString, pm.get(k).toString))  
+  
+      XhtmlResponse(  
+        <html xmlns="http://www.w3.org/1999/xhtml">  
+          <head>  
+            <title>OpenID HTML FORM Redirection</title>  
+          </head>  
+          <body onload="document.forms['openid-form-redirection'].submit();">  
+            <form name="openid-form-redirection" action={authReq.getDestinationUrl(false)} method="post" accept-charset="utf-8">  
+              {  
+                info.map{ case(key, value) =>  
+                    <input type="hidden" name={key} value={value}/>  
+                }  
+              }  
+              <button type="submit">Continue...</button>  
+            </form>  
+          </body>  
+        </html>, Empty, Nil, Nil, 200, true)  
+    }  
+    
+  }
+
   def prePf:LiftRules.DispatchPF = NamedPF("openIdPreLogin") {
-		case Req("openIdGoTo" :: choice :: usernameString :: Nil,_,_) => () => {
+		case r@Req("openIdGoTo" :: choice :: usernameString :: Nil,_,_) => () => {
 			OpenIdEndpoint.find(choice).map(we => {
 				attemptInProgress(true)
-				OpenIDObject.is.authRequest(we.generateUrlWithUsername(usernameString),"/%s/%s".format(PathRoot,ResponsePath))
+				generateAuthRequest(r,we.generateUrlWithUsername(usernameString),"/%s/%s".format(PathRoot,ResponsePath))
+        //OpenIDObject.is.authRequest(we.generateUrlWithUsername(usernameString),"/%s/%s".format(PathRoot,ResponsePath))
 			})
 		}
     case r@Req("openIdGoTo" :: choice :: Nil,_,_) => () => {
@@ -123,7 +227,8 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 						r.param(usernameParamName) match {
 							case Full(u) => {
 								attemptInProgress(true)
-								OpenIDObject.is.authRequest(we.generateUrlWithUsername(u), "/"+PathRoot+"/"+ResponsePath)
+                generateAuthRequest(r,we.generateUrlWithUsername(u),"/%s/%s".format(PathRoot,ResponsePath))
+                //OpenIDObject.is.authRequest(we.generateUrlWithUsername(u), "/"+PathRoot+"/"+ResponsePath)
 							}
 							case _ => {
 								val xml = <html xmlns="http://www.w3.org/1999/xhtml">
@@ -143,7 +248,8 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 					}
 					case _ => {
 						attemptInProgress(true)
-						OpenIDObject.is.authRequest(we.generateUrlWithUsername(""), "/"+PathRoot+"/"+ResponsePath)
+            generateAuthRequest(r,we.generateUrlWithUsername(""),"/%s/%s".format(PathRoot,ResponsePath))
+						//OpenIDObject.is.authRequest(we.generateUrlWithUsername(""), "/"+PathRoot+"/"+ResponsePath)
 					}
 				}
       })
