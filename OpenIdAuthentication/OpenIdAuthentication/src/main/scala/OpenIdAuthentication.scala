@@ -2,12 +2,15 @@ package com.metl.auth
 
 import _root_.org.openid4java.discovery._
 import _root_.org.openid4java.message.AuthRequest
+import _root_.org.openid4java.message.ParameterList
 import _root_.org.openid4java.consumer._
 import net.liftweb._
 import net.liftweb.util._
+import net.liftweb.util.Helpers._
 import net.liftweb.openid._
 import net.liftweb.common._
 import net.liftweb.http._
+import provider._
 import com.metl.liftAuthenticator._
 import net.liftweb.http.SHtml._
 import WellKnownAttributes._
@@ -25,7 +28,8 @@ object OpenIdEndpoint {
 	def empty:Unit = endpoints = Map.empty[String,OpenIdEndpoint]
 	def getAll:List[OpenIdEndpoint] = endpoints.values.toList
 	List(
-		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty),
+		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty)
+/*		OpenIdEndpoint("gmail",(s) => "https://www.google.com/accounts/o8/id","http://certainToFail.com",Empty),
 	//	OpenIdEndpoint("GoogleProfile",(s) => "http://www.google.com/profiles/%s".format(s),"http://certainToFail.com",Full("google profile name")),
 		OpenIdEndpoint("yahoo",(s) => "https://me.yahoo.com","http://certainToFail.com",Empty),
 		OpenIdEndpoint("MyOpenID",(s) => "http://%s.myopenid.com".format(s),"http://certainToFail.com",Full("MyOpenID username")),
@@ -37,6 +41,7 @@ object OpenIdEndpoint {
 		OpenIdEndpoint("Verisign",(s) => "http://%s.pip.verisignlabs.com/".format(s),"http:certainToFail.com",Full("Verisign username")),
 		OpenIdEndpoint("ClickPass",(s) => "http://clickpass.com/public/%s".format(s),"http://certainToFail.com",Full("ClickPass username")),
 		OpenIdEndpoint("ClaimID",(s) => "http://claimid.com/%s".format(s),"http://certainToFail.com",Full("ClaimID username"))
+*/
 	).foreach(e => add(e))	
 }
 
@@ -55,6 +60,8 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
   protected val overrideHost:Box[String] = Empty
   protected val overridePort:Box[Int] = Empty
   protected val overrideScheme:Box[String] = Empty
+
+  protected val manager = OpenIDObject.is.manager
 
 	type UserType = Identifier
 	type ConsumerType = OpenIDConsumer[UserType]
@@ -81,7 +88,8 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
              ret <- {
 							 println("generating ret from req: %s".format(req))
 							 attemptInProgress(false)
-               val (id, res) = OpenIDObject.is.verifyResponse(req.request)
+               //val (id, res) = OpenIDObject.is.verifyResponse(req.request)
+               val (id, res) = verifyResponse(req.request)
 							 println("verifiedResponse: %s".format((id,res)))
                id.map(i=>{
                  val attrs = WellKnownAttributes.attributeValues(res.getAuthResponse)
@@ -110,8 +118,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
       }
   }
 
-
-  def generateHostAndPort(r:Req):String = {
+  protected def generateHostAndPort(r:Req):String = {
     val originalHost = r.request.serverName
     val originalPort = r.request.serverPort
     val originalScheme = r.request.scheme
@@ -149,10 +156,56 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
     "%s://%s:%s".format(scheme,host,port)
   }
 
-  def generateAuthRequest(r:Req,userSuppliedString:String,targetUrl:String):LiftResponse = {
+
+  protected def verifyResponse(httpReq: HTTPRequest): (Box[Identifier], VerificationResult) =  
+    //this is just so that I can override the original scheme behaviour at the right moment.  This is from http://scala-tools.org/mvnsites/liftweb-2.0/framework/scaladocs/net/liftweb/openid/OpenID.scala.html line 200
+  {  
+    // extract the parameters from the authentication response  
+    // (which comes in as a HTTP request from the OpenID provider)  
+    val paramMap = new java.util.HashMap[String, String]  
+    httpReq.params.foreach(e => paramMap.put(e.name, e.values.firstOption getOrElse null))  
+    val response =  new ParameterList(paramMap);  
+  
+    // retrieve the previously stored discovery information  
+    val discovered = httpReq.session.attribute("openid-disc") match {  
+      case d: DiscoveryInformation => d  
+      case _ => throw ResponseShortcutException.redirect("/")  
+    }  
+  
+    // extract the receiving URL from the HTTP request  
+    //var receivingURL = httpReq.url  
+    //modifying the receivingURL to take note of the http overrides
+    var receivingURL = httpReq.url  
+    val parts = receivingURL.split(":")
+    val origScheme = parts.head
+    val origHost = parts.drop(1).head
+    val remainingParts = parts.drop(2).head.split("/")
+    val origPort = remainingParts.head
+    val pathParts = remainingParts.drop(1)
+    receivingURL = List(List(overrideScheme.openOr(origScheme),overrideHost.map(oh => "//"+oh).openOr(origHost),overridePort.openOr(origPort)).mkString(":"),pathParts.mkString("/")).mkString("/")
+
+    val queryString = httpReq.queryString openOr ""  
+    if (queryString != null && queryString.length() > 0) {  
+      receivingURL += "?" + queryString;  
+    }  
+  
+    println("receivingUrl: %s (<= %s)".format(receivingURL,OriginalRequestPath.is))
+    
+    // verify the response; ConsumerManager needs to be the same  
+    // (static) instance used to place the authentication request  
+    val verification = manager.verify(receivingURL.toString(),  
+                                      response, discovered)  
+  
+    // examine the verification result and extract the verified identifier  
+  
+    val verified = verification.getVerifiedId();  
+  
+    (Box.legacyNullTest(verified), verification)  
+  }  
+
+  protected def generateAuthRequest(r:Req,userSuppliedString:String,targetUrl:String):LiftResponse = {
     //this is just so that I can override the original scheme behaviour at the right moment.  This is from http://scala-tools.org/mvnsites/liftweb-2.0/framework/scaladocs/net/liftweb/openid/OpenID.scala.html line 200
 
-    val manager = OpenIDObject.is.manager
     // configure the return_to URL where your application will receive  
     // the authentication responses from the OpenID provider  
     //val returnToUrl = S.encodeURL(S.hostAndPath + targetUrl)  
@@ -212,7 +265,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 		case r@Req("openIdGoTo" :: choice :: usernameString :: Nil,_,_) => () => {
 			OpenIdEndpoint.find(choice).map(we => {
 				attemptInProgress(true)
-				generateAuthRequest(r,we.generateUrlWithUsername(usernameString),"/%s/%s".format(PathRoot,ResponsePath))
+				generateAuthRequest(r,we.generateUrlWithUsername(usernameString),"%s/%s".format(PathRoot,ResponsePath))
         //OpenIDObject.is.authRequest(we.generateUrlWithUsername(usernameString),"/%s/%s".format(PathRoot,ResponsePath))
 			})
 		}
@@ -226,7 +279,7 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 						r.param(usernameParamName) match {
 							case Full(u) => {
 								attemptInProgress(true)
-                generateAuthRequest(r,we.generateUrlWithUsername(u),"/%s/%s".format(PathRoot,ResponsePath))
+                generateAuthRequest(r,we.generateUrlWithUsername(u),"%s/%s".format(PathRoot,ResponsePath))
                 //OpenIDObject.is.authRequest(we.generateUrlWithUsername(u), "/"+PathRoot+"/"+ResponsePath)
 							}
 							case _ => {
@@ -247,14 +300,31 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
 					}
 					case _ => {
 						attemptInProgress(true)
-            generateAuthRequest(r,we.generateUrlWithUsername(""),"/%s/%s".format(PathRoot,ResponsePath))
-						//OpenIDObject.is.authRequest(we.generateUrlWithUsername(""), "/"+PathRoot+"/"+ResponsePath)
+            generateAuthRequest(r,we.generateUrlWithUsername(""),"%s/%s".format(PathRoot,ResponsePath))
 					}
 				}
       })
     }
     case r:Req if (!attemptInProgress.is && !isLoggedIn.is && !alreadyLoggedIn) => () => {
-      OriginalRequestPath(Full(r.hostAndPath))
+      val hostAndPort = generateHostAndPort(r)
+      val path = r.path.wholePath.mkString("/")
+      val newParams = r.params.toList.sortBy(_._1).foldLeft("")((acc, param) => param match {
+        case Tuple2(paramName,listOfParams) if (paramName.toLowerCase == "ticket") => acc
+        case Tuple2(paramName,listOfParams) => {
+          val newItem = listOfParams.map(paramValue => "%s=%s".format(urlEncode(paramName),urlEncode(paramValue))).mkString("&")
+          acc match {
+            case "" => acc+"?"+newItem
+            case _ => acc+"&"+newItem
+          }
+        }
+        case _ => acc
+      })
+      val finalLocation = newParams.length match {
+        case 0 => "%s/%s".format(hostAndPort,path)
+        case _ => "%s/%s%s".format(hostAndPort,path,newParams)
+      }
+
+      OriginalRequestPath(Full(finalLocation))
       Full(XhtmlResponse(
 				<html xmlns="http://www.w3.org/1999/xhtml">
 					<body>
