@@ -122,6 +122,11 @@ class OpenIdAuthenticator(incomingAlreadyLoggedIn:()=>Boolean,onSuccess:LiftAuth
                }
              }) yield ret
       }
+    case r:Req if attemptInProgress.is && !alreadyLoggedIn => () => {
+      attemptInProgress(false)
+      isLoggedIn(false)
+      Full(RedirectResponse("/", S responseCookies :_*))
+    }
   }
 
   protected def generateHostAndPort(r:Req):String = {
