@@ -1,4 +1,5 @@
-package com.metl
+/*
+ package com.metl
 
 import net.liftweb.util._
 import net.liftweb.common._
@@ -132,3 +133,4 @@ class SynchronizedMapSuite extends FunSuite with AsyncAssertions with ShouldMatc
         }
     }
 }
+*/

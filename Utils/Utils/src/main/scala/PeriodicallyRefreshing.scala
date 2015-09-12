@@ -2,7 +2,7 @@ package com.metl.utils
 
 import net.liftweb.http._
 import net.liftweb.common._
-import net.liftweb.util.ActorPing
+import net.liftweb.util.Schedule
 import net.liftweb.util.Helpers.TimeSpan
 import net.liftweb.actor.LiftActor
 
@@ -10,7 +10,7 @@ case object Refresh
 class PeriodicallyRefreshingVar[T](acceptedStaleTime:TimeSpan, valueCreationFunc:()=>T) extends LiftActor{
 	private var lastResult:T = valueCreationFunc()
 	scheduleRecheck
-	private def scheduleRecheck:Unit = ActorPing.schedule(this,Refresh,acceptedStaleTime:TimeSpan)
+	private def scheduleRecheck:Unit = Schedule.schedule(this,Refresh,acceptedStaleTime:TimeSpan)
 	private def doGet:Unit = {
 		lastResult = valueCreationFunc()
 		scheduleRecheck	
@@ -33,7 +33,7 @@ class ChangeNotifyingSessionVar[T](dflt: =>T) extends SessionVar[T](dflt){
 }
 /*
 class PeriodicallyExpiringMap[A,B](frequency:TimeSpan) extends LiftActor{
-	private def scheduleRecheck:Unit = ActorPing.schedule(this,Refresh,frequency:TimeSpan)
+	private def scheduleRecheck:Unit = Schedule.schedule(this,Refresh,frequency:TimeSpan)
 	def apply(k:A) = {
 	}
 	private def checkForExpiry = {

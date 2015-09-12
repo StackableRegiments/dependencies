@@ -17,7 +17,7 @@ import java.util.concurrent._
 import java.util.concurrent.TimeUnit._
 import javax.net.ssl._
 import java.security.cert._
-import scala.actors.Futures._
+//import scala.actors.Futures._
 import java.util.ArrayList
 import org.apache.http.protocol.HTTP
 import java.net.URLEncoder
@@ -409,18 +409,6 @@ object Http{
   def getAuthedClient(username:String,password:String,domain:String = "*") = Stopwatch.time("Http.getAuthedClient", () => {
     val client = new CleanHttpClient(getConnectionManager)
     client.addAuthorization(domain,username,password)
-    client
-  })
-  def getCASEDClient(uri:String,username:String,password:String):CleanHttpClient = Stopwatch.time("Http.getCASEDClient", () => {
-    val client = getClient
-		val requestUri = "/authentication/cas/login/?service=%s".format(URLEncoder.encode(uri,"UTF-8"))
-    val serviceGetUrl = "https://my.monash.edu.au%s".format(requestUri)
-    val postUrl = "https://my.monash.edu.au/login/"
-		val setupPost = client.getExpectingHTTPResponse(serviceGetUrl)
-		val hiddenItems = HtmlParser.getAttributesForElementsByAttValue(setupPost.responseAsString,"type","hidden").map(n => (n("name"),n("value")))
-    val postItemList = hiddenItems ::: List(("username",username),("password",password)).asInstanceOf[List[(String,String)]]
-    val response1 = client.postFormExpectingHTTPResponse(postUrl,postItemList)
-		val response2 = client.getExpectingHTTPResponse(serviceGetUrl)
     client
   })
   def cloneClient(incoming:CleanHttpClient):CleanHttpClient = Stopwatch.time("Http.cloneClient", () => {

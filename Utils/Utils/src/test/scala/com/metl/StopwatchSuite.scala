@@ -1,4 +1,5 @@
-package com.metl
+/*
+ package com.metl
 
 import net.liftweb.util._
 import net.liftweb.common._
@@ -8,13 +9,6 @@ import matchers.MustMatchers
 import concurrent.AsyncAssertions
 
 import com.metl.utils._ 
-
-/* usage
-
-Stopwatch.time("Function being timed", () => {
-      action
-	}
-*/
 
 class StopwatchSuite extends FunSuite with AsyncAssertions with MustMatchers {
 
@@ -45,3 +39,4 @@ class StopwatchSuite extends FunSuite with AsyncAssertions with MustMatchers {
         assert(result === 4)
     }
 }
+*/

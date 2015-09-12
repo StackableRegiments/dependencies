@@ -1,3 +1,4 @@
+/*
 package com.metl
 
 import net.liftweb.util._
@@ -684,55 +685,7 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
             verify(f.connMgr, times(2)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
         }
     }
-/*
-    test("response available after unimplemented statuscode exception") { 
-        forAll (getFunctions) { (action, expectedResult) =>
-            val f = clientWithCustomResponse((conn) =>
-            {
-              var unimplementedResponse = prepareHttpResponse("Unimplemented", HttpStatus.SC_USE_PROXY)
 
-              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
-              when(conn.receiveResponseHeader).thenReturn(unimplementedResponse).thenReturn(contentResponse)
-            })
-         
-            val result = action match {
-                case Get => f.client.get(mockUri)
-                case GetAsBytes => f.client.getAsBytes(mockUri)
-                case GetAsString => f.client.getAsString(mockUri)
-            }
-         
-            assert(result === expectedResult)
-            verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
-        }
-    }
-
-    test("response available after unimplemented statuscode exception with additional header") { 
-        forAll (getFunctions) { (action, expectedResult) =>
-            val f = clientWithCustomResponse((conn) =>
-            {
-              var unimplementedResponse = prepareHttpResponse("Unimplemented", HttpStatus.SC_USE_PROXY)
-
-              var contentResponse = prepareHttpResponse("Whatever", HttpStatus.SC_OK)
-              contentResponse.addHeader(new BasicHeader("Set-Cookie", "UserID=testing"))
-
-              when(conn.isResponseAvailable(anyInt)).thenReturn(true)
-              when(conn.receiveResponseHeader).thenReturn(unimplementedResponse).thenReturn(contentResponse)
-            })
-         
-            val result = action match {
-                case Get => f.client.get(mockUri, additionalHeader)
-                case GetAsBytes => f.client.getAsBytes(mockUri, additionalHeader)
-                case GetAsString => f.client.getAsString(mockUri, additionalHeader)
-            }
-         
-            assert(result === expectedResult)
-            verify(f.connMgr, times(1)).releaseConnection(any(classOf[ManagedClientConnection]), anyInt, any(classOf[TimeUnit]))
-        }
-    }
-*/
     test("post bytes using the connection") { 
 
         val f = clientWithResponse("Whatever", HttpStatus.SC_OK)
@@ -803,3 +756,4 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
         verify(f.conn).flush
     }
 }
+*/
