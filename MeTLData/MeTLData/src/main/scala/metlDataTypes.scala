@@ -139,21 +139,34 @@ object Permissions{
   def default(server:ServerConfiguration = ServerConfiguration.default) = Permissions(server,false,true,false)
 }
 
-case class MeTLXml(server:ServerConfiguration)
+class MeTLXml(val server:ServerConfiguration){
+  override def equals(a:Any) = a match {
+    case MeTLXml(aServer) => aServer == server
+    case _ => false
+  }
+}
 object MeTLXml {
+  def apply(server:ServerConfiguration) = new MeTLXml(server)
+  def unapply(in:MeTLXml) = Some((in.server))
   def empty = MeTLXml(ServerConfiguration.empty)
 }
 
-case class MeTLStanza(override val server:ServerConfiguration,author:String,timestamp:Long) extends MeTLXml(server){
+class MeTLStanza(override val server:ServerConfiguration,val author:String,val timestamp:Long) extends MeTLXml(server){
   def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLStanza = Stopwatch.time("MeTLStanza.adjustTimestamp", () => {
     MeTLStanza(server,author,newTime)
   })
+  override def equals(a:Any) = a match {
+    case MeTLStanza(aServer,aAuthor,aTimestamp) => aServer == server && aAuthor == author && aTimestamp == timestamp
+    case _ => false
+  }
 }
 object MeTLStanza{
+  def apply(server:ServerConfiguration,author:String,timestamp:Long) = new MeTLStanza(server,author,timestamp)
+  def unapply(in:MeTLStanza) = Some((in.server,in.author,in.timestamp))
   def empty = MeTLStanza(ServerConfiguration.empty,"",0L)
 }
 
-case class MeTLCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,target:String,privacy:Privacy,slide:String,identity:String,scaleFactorX:Double = 1.0,scaleFactorY:Double = 1.0) extends MeTLStanza(server,author,timestamp) {
+class MeTLCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,val target:String,val privacy:Privacy,val slide:String,val identity:String,val scaleFactorX:Double = 1.0,val scaleFactorY:Double = 1.0) extends MeTLStanza(server,author,timestamp) {
   protected def genNewIdentity(role:String) = "%s:%s:%s_from:%s".format(new java.util.Date().getTime.toString,author,role,identity).reverse.take(256).reverse
   def left:Double = 0.0
   def right:Double = 0.0
@@ -169,8 +182,14 @@ case class MeTLCanvasContent(override val server:ServerConfiguration,override va
   def isDirtiedBy(other:MeTLCanvasContent):Boolean = false
   def isDirtierFor(other:MeTLCanvasContent):Boolean = false
   def generateNewIdentity(descriptor:String):MeTLCanvasContent = MeTLCanvasContent(server,author,timestamp,target,privacy,slide,genNewIdentity("newCanvasContent:"+descriptor),scaleFactorX,scaleFactorY)
+  override def equals(a:Any) = a match {
+    case MeTLCanvasContent(aServer,aAuthor,aTimestamp,aTarget,aPrivacy,aSlide,aIdentity,aScaleFactorX,aScaleFactorY) => aServer == server && aAuthor == author && aTimestamp == timestamp && aTarget == target && aPrivacy == privacy && aSlide == slide && aIdentity == identity && aScaleFactorX == scaleFactorX && aScaleFactorY == scaleFactorY
+    case _ => false
+  }
 }
 object MeTLCanvasContent{
+  def apply(server:ServerConfiguration,author:String,timestamp:Long,target:String,privacy:Privacy,slide:String,identity:String,scaleFactorX:Double = 1.0,scaleFactorY:Double = 1.0) = new MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
+  def unapply(in:MeTLCanvasContent) = Some((in.server,in.author,in.timestamp,in.target,in.privacy,in.slide,in.identity,in.scaleFactorX,in.scaleFactorY))
   def empty = MeTLCanvasContent(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","")
 }
 

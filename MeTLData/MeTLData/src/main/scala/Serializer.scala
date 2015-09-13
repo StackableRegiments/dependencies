@@ -45,6 +45,10 @@ abstract class Serializer {
   def fromPointList(input:List[Point]):AnyRef = throw new SerializationNotImplementedException
   def toColor(input:AnyRef):Color = throw new SerializationNotImplementedException
   def fromColor(input:Color):AnyRef = throw new SerializationNotImplementedException
+  def toMeTLXml(input:AnyRef):MeTLXml = throw new SerializationNotImplementedException
+  def fromMeTLXml(input:MeTLXml):T = throw new SerializationNotImplementedException
+  def toMeTLCanvasContent(input:AnyRef):MeTLCanvasContent = throw new SerializationNotImplementedException
+  def fromMeTLCanvasContent(input:MeTLCanvasContent):T = throw new SerializationNotImplementedException
   def fromMeTLStanza(input:MeTLStanza):T = input match {
     case i:MeTLInk => fromMeTLInk(i)
     case t:MeTLText => fromMeTLText(t)
@@ -57,6 +61,8 @@ abstract class Serializer {
     case qr:MeTLQuizResponse => fromMeTLQuizResponse(qr)
     case s:MeTLSubmission => fromSubmission(s)
     case m:MeTLMoveDelta => fromMeTLMoveDelta(m)
+    case cc:MeTLCanvasContent => fromMeTLCanvasContent(cc)
+    case mx:MeTLXml => fromMeTLXml(mx)
     case _ => throw new SerializationNotImplementedException
   }
 }
@@ -99,4 +105,8 @@ class PassthroughSerializer extends Serializer {
   override def fromPointList(input:List[Point]):AnyRef = input.asInstanceOf[AnyRef]
   override def toColor(input:AnyRef):Color = input.asInstanceOf[Color]
   override def fromColor(input:Color):AnyRef = input.asInstanceOf[AnyRef]
+  override def toMeTLXml(input:AnyRef):MeTLXml = input.asInstanceOf[MeTLXml]
+  override def fromMeTLXml(input:MeTLXml):T = input.asInstanceOf[Object]
+  override def toMeTLCanvasContent(input:AnyRef):MeTLCanvasContent = input.asInstanceOf[MeTLCanvasContent]
+  override def fromMeTLCanvasContent(input:MeTLCanvasContent):T = input.asInstanceOf[Object]
 }
