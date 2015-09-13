@@ -105,7 +105,14 @@ case object Clear extends ClientMessage("clearSingleton",Empty,Empty,(cm)=>{},No
 	override val content = NodeSeq.Empty
 	override def renderMessage = NodeSeq.Empty
 }
-case class InteractableMessage(scope:InteractableMessage=>NodeSeq,override val role:Box[String] = Empty,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) extends ClientMessage(id,role,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
+object InteractableMessage {
+  def apply(scope:InteractableMessage=>NodeSeq,role:Box[String] = Empty,incomingTitle:Box[String] = Empty,removalFunc:(ClientMessage)=>Unit = (cm) => {},cancellable:Boolean=true,template:NodeSeq = NodeSeq.Empty,messageSelector:String="",labelSelector:String="",contentSelector:String="",closeSelector:String="",id:String = nextFuncName) = new InteractableMessage(scope,role,incomingTitle,removalFunc,cancellable,template,messageSelector,labelSelector,contentSelector,closeSelector,id)
+  def unapply(in:InteractableMessage):Option[Tuple11[InteractableMessage=>NodeSeq,Box[String],Box[String],ClientMessage=>Unit,Boolean,NodeSeq,String,String,String,String,String]] = {
+    Some((in.scope,in.role,in.title,in.removalFunc,in.cancellable,in.template,in.messageSelector,in.labelSelector,in.contentSelector,in.closeSelector,in.id))
+  }
+}
+
+class InteractableMessage(val scope:InteractableMessage=>NodeSeq,override val role:Box[String] = Empty,val incomingTitle:Box[String] = Empty,val removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,val template:NodeSeq = NodeSeq.Empty,val messageSelector:String="",val labelSelector:String="",val contentSelector:String="",val closeSelector:String="",val id:String = nextFuncName) extends ClientMessage(id,role,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
   override val content = scope(this)
 	override val contentNode = ajaxForm(content)
 }

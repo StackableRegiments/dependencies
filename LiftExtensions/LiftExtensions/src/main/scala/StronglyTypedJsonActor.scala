@@ -31,14 +31,28 @@ object JNum{
     case _ => None
   }
 }
-case class ClientSideFunctionDefinition(name:String,args:List[String],serverSideFunc:List[Any]=>JValue,returnResultFunction:Box[String])
+class ClientSideFunctionDefinition(val name:String,val args:List[String],val serverSideFunc:List[Any]=>JValue,val returnResultFunction:Box[String]){
+}
+object ClientSideFunctionDefinition {
+  def apply(name:String,args:List[String],serverSideFunc:List[Any]=>JValue,returnResultFunction:Box[String]) = new ClientSideFunctionDefinition(name,args,serverSideFunc,returnResultFunction)
+  def unapply(in:ClientSideFunctionDefinition):Option[Tuple4[String,List[String],List[Any]=>JValue,Box[String]]] = {
+    Some((in.name,in.args,in.serverSideFunc,in.returnResultFunction))
+  }
+}
 abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 	protected val functionDefinitions:List[ClientSideFunctionDefinition]
 	private def createResponse(name:String,requestId:Option[String],success:Boolean,result:Option[JValue] = Empty):JsCmd = {
 		Call("serverResponse",JObject(List(JField("command",JString(name)),JField("success",JBool(success))) ::: requestId.map(r => List(JField("commandId",JString(r)))).getOrElse(List.empty[JField]) ::: result.map(r => List(JField("response",r))).getOrElse(List.empty[JField])))
 	}
-	case object ClientSideFunctionNotFound extends ClientSideFunction("no function",List.empty[String],(l) => JNull,Empty)
-	case class ClientSideFunction(name:String,args:List[String],serverSideFunc:List[Any]=>JValue,returnResultFunction:Box[String]){
+  object ClientSideFunction {
+    def apply(name:String,args:List[String],serverSideFunc:List[Any]=>JValue,returnResultFunction:Box[String]) = {
+      new ClientSideFunction(name,args,serverSideFunc,returnResultFunction)
+    }
+    def unapply(in:ClientSideFunction):Option[Tuple4[String,List[String],List[Any]=>JValue,Box[String]]] = {
+      Some((in.name,in.args,in.serverSideFunc,in.returnResultFunction))
+    }
+  }
+	class ClientSideFunction(val name:String,val args:List[String],val serverSideFunc:List[Any]=>JValue,val returnResultFunction:Box[String]){
 		private def deconstruct(input:JValue):Any = {
 			input match {
 				case j:JObject => j
@@ -107,6 +121,7 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 			case other => (false,Some(input.toString),Some(JObject(List(JField("error",JString("request didn't match function requirements")),JField("unknownParams",JString(other.toString))))))
 		}
 	}
+	case object ClientSideFunctionNotFound extends ClientSideFunction("no function",List.empty[String],(l) => JNull,Empty)
 	val strongFuncs = Map(functionDefinitions.map(fd => (fd.name,ClientSideFunction(fd.name,fd.args,fd.serverSideFunc,fd.returnResultFunction))):_*)
   val functions = NodeSeq.fromSeq(strongFuncs.values.map(_.jsCreationFunc).toList)
 	override def render = NodeSeq.Empty

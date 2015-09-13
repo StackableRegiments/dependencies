@@ -1,3 +1,4 @@
+/*
 package com.metl.liftExtensions
 
 import java.util.Date
@@ -52,3 +53,4 @@ class HttpCacherSpec extends WebSpec with JUnit {
         }
     }
 }
+*/
