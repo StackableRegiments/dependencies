@@ -1,4 +1,5 @@
-package com.metl.test
+/*
+ package com.metl.test
 
 import org.scalatest._
 import org.scalatest.FunSuite
@@ -420,3 +421,4 @@ class GenericXmlSerializerSuite extends FunSuite with GeneratorDrivenPropertyChe
 	   assert(xmlSerializer.config === ServerConfiguration.empty) 
 	}
 }
+*/

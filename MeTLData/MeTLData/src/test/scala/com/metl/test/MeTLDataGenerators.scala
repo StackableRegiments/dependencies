@@ -1,4 +1,5 @@
-package com.metl.test
+/*
+ package com.metl.test
 
 import org.scalacheck._
 import Gen._
@@ -206,3 +207,4 @@ trait MeTLDataGenerators {
         usersAreCompulsorilySynced <- arbitrary[Boolean]
     } yield Permissions(ServerConfiguration.empty, studentsCanOptionFriends, studentsCanPublish, usersAreCompulsorilySynced)
 }
+*/

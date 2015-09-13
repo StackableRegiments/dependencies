@@ -32,6 +32,10 @@ object JNum{
   }
 }
 class ClientSideFunctionDefinition(val name:String,val args:List[String],val serverSideFunc:List[Any]=>JValue,val returnResultFunction:Box[String]){
+  override def equals(a:Any) = a match {
+    case ClientSideFunctionDefinition(aName,aArgs,aServerSideFunc,aReturnResultFunction) => aName == name && aArgs == args && aServerSideFunc == serverSideFunc && aReturnResultFunction == returnResultFunction
+    case _ => false
+  }
 }
 object ClientSideFunctionDefinition {
   def apply(name:String,args:List[String],serverSideFunc:List[Any]=>JValue,returnResultFunction:Box[String]) = new ClientSideFunctionDefinition(name,args,serverSideFunc,returnResultFunction)
@@ -53,6 +57,11 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
     }
   }
 	class ClientSideFunction(val name:String,val args:List[String],val serverSideFunc:List[Any]=>JValue,val returnResultFunction:Box[String]){
+    override def equals(a:Any) = a match {
+      case ClientSideFunction(aName,aArgs,aServerSideFunc,aReturnResultFunction) => aName == name && aArgs == args && aServerSideFunc == serverSideFunc && aReturnResultFunction == returnResultFunction
+      case _ => false
+    }
+      
 		private def deconstruct(input:JValue):Any = {
 			input match {
 				case j:JObject => j

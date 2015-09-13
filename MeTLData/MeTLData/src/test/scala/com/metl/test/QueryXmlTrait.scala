@@ -1,4 +1,5 @@
-package com.metl.test
+/*
+ package com.metl.test
 
 import scala.xml._
 
@@ -28,3 +29,4 @@ trait QueryXml {
         }
     }
 }
+*/

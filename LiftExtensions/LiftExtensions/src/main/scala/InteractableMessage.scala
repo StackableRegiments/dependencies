@@ -115,6 +115,10 @@ object InteractableMessage {
 class InteractableMessage(val scope:InteractableMessage=>NodeSeq,override val role:Box[String] = Empty,val incomingTitle:Box[String] = Empty,val removalFunc:(ClientMessage)=>Unit = (cm) => {},override val cancellable:Boolean=true,val template:NodeSeq = NodeSeq.Empty,val messageSelector:String="",val labelSelector:String="",val contentSelector:String="",val closeSelector:String="",val id:String = nextFuncName) extends ClientMessage(id,role,incomingTitle,removalFunc,template,messageSelector,labelSelector,contentSelector,closeSelector){
   override val content = scope(this)
 	override val contentNode = ajaxForm(content)
+  override def equals(a:Any) = a match {
+    case InteractableMessage(aScope,aRole,aIncomingTitle,aRemovalFunc,aCancellable,aTemplate,aMessageSelector,aLabelSelector,aContentSelector,aCloseSelector,aId) => aScope == scope && aRole == role && aIncomingTitle == incomingTitle && aRemovalFunc == removalFunc && aCancellable == cancellable && aTemplate == template && aMessageSelector == messageSelector && aLabelSelector == labelSelector && aContentSelector == contentSelector && aCloseSelector == closeSelector && aId == id
+    case _ => false
+  }
 }
 
 case class SimpleTextAreaInteractableMessage(messageTitle:String,body:String,defaultValue:String,onChanged:(String)=>Boolean, customError:Box[()=>Unit] = Empty, override val role:Box[String] = Empty) extends InteractableMessage((i)=>{

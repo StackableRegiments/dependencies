@@ -1,3 +1,4 @@
+/*
 package com.metl.test
 
 import org.scalatest._
@@ -57,3 +58,4 @@ class MeTLCommandSuite extends FunSuite with GeneratorDrivenPropertyChecks with 
         }
     }
 }
+*/

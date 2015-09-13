@@ -1,4 +1,5 @@
-package com.metl.test
+/*
+ package com.metl.test
 
 import org.scalatest._
 import org.scalatest.FunSuite
@@ -123,3 +124,4 @@ class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with Be
         }
     }
 }
+*/
