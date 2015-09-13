@@ -35,7 +35,7 @@ class PrivacySerializer extends net.liftweb.json.Serializer[Privacy] {
     }
 }
 
-class JsonSerializerHelper {
+trait JsonSerializerHelper {
 
   lazy implicit val formats = Serialization.formats(NoTypeHints) + new PrivacySerializer
 
@@ -52,12 +52,9 @@ class JsonSerializerHelper {
   def getColorByName(input:JObject,name:String) = input.values(name).asInstanceOf[List[Any]]
 }
 
-class JsonSerializer(configName:String) extends Serializer{
+class JsonSerializer(configName:String) extends Serializer with JsonSerializerHelper {
   type T = JValue
   lazy val config = ServerConfiguration.configForName(configName)
-  val utils = new JsonSerializerHelper
-
-  implicit val formats = Serialization.formats(NoTypeHints)
 
   protected def parseMeTLContent(input:MeTLStanza):List[JField] = {
     List(
@@ -74,15 +71,15 @@ class JsonSerializer(configName:String) extends Serializer{
     )
   }
   protected def parseJObjForMeTLContent(input:JObject):ParsedMeTLContent = {
-    val author = (input \ "author").extract[String] //utils.getStringByName(input,"author")
-    val timestamp = utils.getLongByName(input,"timestamp")
+    val author = (input \ "author").extract[String] //getStringByName(input,"author")
+    val timestamp = getLongByName(input,"timestamp")
     ParsedMeTLContent(author,timestamp)
   }
   protected def parseJObjForCanvasContent(input:JObject):ParsedCanvasContent = {
-    val target = utils.getStringByName(input,"target")
-    val privacy = utils.getPrivacyByName(input,"privacy")
-    val slide = utils.getStringByName(input,"slide")
-    val identity = utils.getStringByName(input,"identity")
+    val target = getStringByName(input,"target")
+    val privacy = getPrivacyByName(input,"privacy")
+    val slide = getStringByName(input,"slide")
+    val identity = getStringByName(input,"identity")
     ParsedCanvasContent(target,privacy,slide,identity)
   }
   override def fromHistory(input:History):JValue = Stopwatch.time("JsonSerializer.fromHistory",() => {
@@ -102,13 +99,17 @@ class JsonSerializer(configName:String) extends Serializer{
   protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has", () => {
     input.values.contains(fieldName)
   })
+  protected def hasFields(input:JObject,fieldNames:List[String]) = Stopwatch.time("JsonSerializer.hasFields",() => {
+    val allValues = input.values
+    !fieldNames.exists(fn => !allValues.contains(fn))
+  })
   protected def isOfType(input:JObject,name:String) = Stopwatch.time("JsonSerializer.isOfType", () => {
     input.values("type") == name
   })
   protected def toJsObj(name:String,fields:List[JField]) = Stopwatch.time("JsonSerializer.toJsObj", () => {
     JObject(JField("type",JString(name)) :: fields)
   })
-  override def toMeTLStanza(input:JValue):MeTLStanza = Stopwatch.time("JsonSerializer.toMeTLStanza", () => {
+  override def toMeTLData(input:JValue):MeTLData = Stopwatch.time("JsonSerializer.toMeTLStanza", () => {
     input match {
       case jo:JObject if (isOfType(jo,"ink")) => toMeTLInk(jo)
       case jo:JObject if (isOfType(jo,"text")) => toMeTLText(jo)
@@ -121,9 +122,38 @@ class JsonSerializer(configName:String) extends Serializer{
       case jo:JObject if (isOfType(jo,"quizResponse")) => toMeTLQuizResponse(jo)
       case jo:JObject if (isOfType(jo,"moveDelta")) => toMeTLMoveDelta(jo)
       case jo:JObject if (isOfType(jo,"command")) => toMeTLCommand(jo)
-      case _ => MeTLStanza.empty
+      case other:JObject if hasFields(other,List("target","privacy","slide","identity")) => toMeTLUnhandledCanvasContent(other)
+      case other:JObject if hasFields(other,List("author","timestamp")) => toMeTLUnhandledStanza(other)
+      case other:JObject => toMeTLUnhandledData(other)
+      case nonObjectData => toMeTLUnhandledData(nonObjectData)
     }
   })
+  override def fromMeTLUnhandledData(i:MeTLUnhandledData[JValue]):JValue = i.unhandled
+  override def fromMeTLUnhandledStanza(i:MeTLUnhandledStanza[JValue]):JValue = i.unhandled
+  override def fromMeTLUnhandledCanvasContent(i:MeTLUnhandledCanvasContent[JValue]):JValue = i.unhandled
+  override def toMeTLUnhandledData(i:JValue) = MeTLUnhandledData(config,i)
+  override def toMeTLUnhandledStanza(i:JValue) = {
+    i match {
+      case input:JObject => {
+        val m = parseJObjForMeTLContent(input)
+        MeTLUnhandledStanza(config,m.author,m.timestamp,i)
+      }
+      case other => MeTLUnhandledStanza.empty[JValue](other)
+    }
+  }
+
+  override def toMeTLUnhandledCanvasContent(i:JValue) = {
+    i match {
+      case input:JObject => {
+        val cc = parseJObjForCanvasContent(input)
+        val m = parseJObjForMeTLContent(input)
+        MeTLUnhandledCanvasContent(config,m.author,m.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,1.0,1.0,i)
+      }
+      case other => MeTLUnhandledCanvasContent.empty[JValue](other)
+    }
+  }
+
+
   override def fromMeTLMoveDelta(input:MeTLMoveDelta):JValue = Stopwatch.time("JsonSerializer.fromMeTLMoveDelta",()=>{
     toJsObj("moveDelta",List(
       JField("inkIds",JArray(input.inkIds.map(JString).toList)),
@@ -144,17 +174,17 @@ class JsonSerializer(configName:String) extends Serializer{
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
         val cc = parseJObjForCanvasContent(input)
-        val inkIds = utils.getListOfStringsByName(input,"inkIds")
-        val textIds = utils.getListOfStringsByName(input,"textIds")
-        val imageIds = utils.getListOfStringsByName(input,"imageIds")
-        val xTranslate = utils.getDoubleByName(input,"xTranslate")
-        val yTranslate = utils.getDoubleByName(input,"yTranslate")
-        val xScale = utils.getDoubleByName(input,"xScale")
-        val yScale = utils.getDoubleByName(input,"yScale")
-        val newPrivacy = utils.getPrivacyByName(input,"newPrivacy")
-        val isDeleted = utils.getBooleanByName(input,"isDeleted")
-				val xOrigin = utils.getDoubleByName(input,"xOrigin")
-				val yOrigin = utils.getDoubleByName(input,"yOrigin")
+        val inkIds = getListOfStringsByName(input,"inkIds")
+        val textIds = getListOfStringsByName(input,"textIds")
+        val imageIds = getListOfStringsByName(input,"imageIds")
+        val xTranslate = getDoubleByName(input,"xTranslate")
+        val yTranslate = getDoubleByName(input,"yTranslate")
+        val xScale = getDoubleByName(input,"xScale")
+        val yScale = getDoubleByName(input,"yScale")
+        val newPrivacy = getPrivacyByName(input,"newPrivacy")
+        val isDeleted = getBooleanByName(input,"isDeleted")
+				val xOrigin = getDoubleByName(input,"xOrigin")
+				val yOrigin = getDoubleByName(input,"yOrigin")
         MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
       }
       case _ => MeTLMoveDelta.empty
@@ -165,12 +195,12 @@ class JsonSerializer(configName:String) extends Serializer{
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
         val cc = parseJObjForCanvasContent(input)
-        val checksum = utils.getDoubleByName(input,"checksum")
-        val startingSum = utils.getDoubleByName(input,"startingSum")
-        val points = toPointList(utils.getListOfDoublesByName(input,"points")).asInstanceOf[List[Point]]
-        val color = toColor(utils.getColorByName(input,"color"))
-        val thickness = utils.getDoubleByName(input,"thickness")
-        val isHighlighter = utils.getBooleanByName(input,"isHighlighter")
+        val checksum = getDoubleByName(input,"checksum")
+        val startingSum = getDoubleByName(input,"startingSum")
+        val points = toPointList(getListOfDoublesByName(input,"points")).asInstanceOf[List[Point]]
+        val color = toColor(getColorByName(input,"color"))
+        val thickness = getDoubleByName(input,"thickness")
+        val isHighlighter = getBooleanByName(input,"isHighlighter")
         MeTLInk(config,mc.author,mc.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,cc.target,cc.privacy,cc.slide,cc.identity)
       }
       case _ => MeTLInk.empty
@@ -192,14 +222,14 @@ class JsonSerializer(configName:String) extends Serializer{
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
         val cc = parseJObjForCanvasContent(input)
-        val tag = utils.getStringByName(input,"tag")
-        val source = Full(utils.getStringByName(input,"source"))
+        val tag = getStringByName(input,"tag")
+        val source = Full(getStringByName(input,"source"))
         val imageBytes = source.map(u => config.getResource(u))
         val pngBytes = Empty
-        val width = utils.getDoubleByName(input,"width")
-        val height = utils.getDoubleByName(input,"height")
-        val x = utils.getDoubleByName(input,"x")
-        val y = utils.getDoubleByName(input,"y")
+        val width = getDoubleByName(input,"width")
+        val height = getDoubleByName(input,"height")
+        val x = getDoubleByName(input,"x")
+        val y = getDoubleByName(input,"y")
         MeTLImage(config,mc.author,mc.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,cc.target,cc.privacy,cc.slide,cc.identity)
       }
       case _ => MeTLImage.empty
@@ -219,19 +249,19 @@ class JsonSerializer(configName:String) extends Serializer{
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
         val cc = parseJObjForCanvasContent(input)
-        val text = utils.getStringByName(input,"text")
-        val height = utils.getDoubleByName(input,"height")
-        val width = utils.getDoubleByName(input,"width")
-        val caret = utils.getIntByName(input,"caret")
-        val x = utils.getDoubleByName(input,"x")
-        val y = utils.getDoubleByName(input,"y")
-        val tag = utils.getStringByName(input,"tag")
-        val style = utils.getStringByName(input,"style")
-        val family = utils.getStringByName(input,"family")
-        val weight = utils.getStringByName(input,"weight")
-        val size = utils.getDoubleByName(input,"size")
-        val decoration = utils.getStringByName(input,"decoration")
-        val color = toColor(utils.getColorByName(input,"color"))
+        val text = getStringByName(input,"text")
+        val height = getDoubleByName(input,"height")
+        val width = getDoubleByName(input,"width")
+        val caret = getIntByName(input,"caret")
+        val x = getDoubleByName(input,"x")
+        val y = getDoubleByName(input,"y")
+        val tag = getStringByName(input,"tag")
+        val style = getStringByName(input,"style")
+        val family = getStringByName(input,"family")
+        val weight = getStringByName(input,"weight")
+        val size = getDoubleByName(input,"size")
+        val decoration = getStringByName(input,"decoration")
+        val color = toColor(getColorByName(input,"color"))
         MeTLText(config,mc.author,mc.timestamp,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,cc.identity,cc.target,cc.privacy,cc.slide,color)
       }
       case _ => MeTLText.empty
@@ -298,8 +328,8 @@ class JsonSerializer(configName:String) extends Serializer{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
-        val command = utils.getStringByName(input,"command")
-        val parameters = utils.getListOfStringsByName(input,"parameters")
+        val command = getStringByName(input,"command")
+        val parameters = getListOfStringsByName(input,"parameters")
         MeTLCommand(config,mc.author,mc.timestamp,command,parameters)
       }
       case _ => MeTLCommand.empty
@@ -316,12 +346,12 @@ class JsonSerializer(configName:String) extends Serializer{
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
 				val cc = parseJObjForCanvasContent(input)
-        val slide = utils.getIntByName(input,"slide")
-        val url = utils.getStringByName(input,"url")
-				val title = utils.getStringByName(input,"title")
-				val blacklist = utils.getListOfObjectsByName(input,"blacklist").map(blo => {
-					val username = utils.getStringByName(input,"username")
-					val highlight = toColor(utils.getColorByName(input,"highlight"))
+        val slide = getIntByName(input,"slide")
+        val url = getStringByName(input,"url")
+				val title = getStringByName(input,"title")
+				val blacklist = getListOfObjectsByName(input,"blacklist").map(blo => {
+					val username = getStringByName(input,"username")
+					val highlight = toColor(getColorByName(input,"highlight"))
 					SubmissionBlacklistedPerson(username,highlight)
 				}).toList
         MeTLSubmission(config,mc.author,mc.timestamp,title,slide,url,Empty,blacklist,cc.target,cc.privacy,cc.identity)
@@ -340,12 +370,12 @@ class JsonSerializer(configName:String) extends Serializer{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
-        val created = utils.getLongByName(input,"created")
-        val question = utils.getStringByName(input,"question")
-        val id = utils.getStringByName(input,"id")
-        val isDeleted = utils.getBooleanByName(input,"isDeleted")
-        val options = utils.getListOfObjectsByName(input,"options").map(o => toQuizOption(o))
-        val url = tryo(utils.getStringByName(input,"url"))
+        val created = getLongByName(input,"created")
+        val question = getStringByName(input,"question")
+        val id = getStringByName(input,"id")
+        val isDeleted = getBooleanByName(input,"isDeleted")
+        val options = getListOfObjectsByName(input,"options").map(o => toQuizOption(o))
+        val url = tryo(getStringByName(input,"url"))
         val quizImage = url.map(u =>config.getResource(u))
         MeTLQuiz(config,mc.author,mc.timestamp,created,question,id,url,quizImage,isDeleted,options)
       }
@@ -364,10 +394,10 @@ class JsonSerializer(configName:String) extends Serializer{
   def toQuizOption(i:JValue):QuizOption = Stopwatch.time("JsonSerializer.toQuizOption", () => {
     i match {
       case input:JObject => {
-        val name = utils.getStringByName(input,"name")
-        val text = utils.getStringByName(input,"text")
-        val correct = utils.getBooleanByName(input,"text")
-        val color = toColor(utils.getColorByName(input,"color"))
+        val name = getStringByName(input,"name")
+        val text = getStringByName(input,"text")
+        val correct = getBooleanByName(input,"text")
+        val color = toColor(getColorByName(input,"color"))
         QuizOption(name,text,correct,color)
       }
       case _ => QuizOption.empty
@@ -385,9 +415,9 @@ class JsonSerializer(configName:String) extends Serializer{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input)
-        val answer = utils.getStringByName(input,"answer")
-        val answerer = utils.getStringByName(input,"answerer")
-        val id = utils.getStringByName(input,"id")
+        val answer = getStringByName(input,"answer")
+        val answerer = getStringByName(input,"answerer")
+        val id = getStringByName(input,"id")
         MeTLQuizResponse(config,mc.author,mc.timestamp,answer,answerer,id)
       }
       case _ => MeTLQuizResponse.empty
@@ -404,16 +434,16 @@ class JsonSerializer(configName:String) extends Serializer{
   override def toConversation(i:JValue):Conversation = Stopwatch.time("JsonSerializer.toConversation", () => {
     i match {
       case input:JObject => {
-        val author = utils.getStringByName(input,"author")
-        val lastAccessed = utils.getLongByName(input,"lastAccessed")
-        val slides = utils.getListOfObjectsByName(input,"slides").map(s => toSlide(s)).toList
-        val subject = utils.getStringByName(input,"subject")
-        val tag = utils.getStringByName(input,"tag")
-        val jid = utils.getIntByName(input,"jid")
-        val title = utils.getStringByName(input,"title")
-        val created = utils.getStringByName(input,"created")
-        val permissions = toPermissions(utils.getObjectByName(input,"permissions"))
-				val thisConfig = utils.getStringByName(input,"configName") match {
+        val author = getStringByName(input,"author")
+        val lastAccessed = getLongByName(input,"lastAccessed")
+        val slides = getListOfObjectsByName(input,"slides").map(s => toSlide(s)).toList
+        val subject = getStringByName(input,"subject")
+        val tag = getStringByName(input,"tag")
+        val jid = getIntByName(input,"jid")
+        val title = getStringByName(input,"title")
+        val created = getStringByName(input,"created")
+        val permissions = toPermissions(getObjectByName(input,"permissions"))
+				val thisConfig = getStringByName(input,"configName") match {
 					case "" => config
 					case other => ServerConfiguration.configForName(other)
 				}
@@ -440,9 +470,9 @@ class JsonSerializer(configName:String) extends Serializer{
   override def toSlide(i:JValue):Slide = Stopwatch.time("JsonSerializer.toSlide", () => {
     i match {
       case input:JObject => {
-        val author = utils.getStringByName(input,"author")
-        val id = utils.getIntByName(input,"id")
-        val index = utils.getIntByName(input,"index")
+        val author = getStringByName(input,"author")
+        val id = getIntByName(input,"id")
+        val index = getIntByName(input,"index")
         Slide(config,author,id,index)
       }
       case _ => Slide.empty
@@ -458,9 +488,9 @@ class JsonSerializer(configName:String) extends Serializer{
   override def toPermissions(i:JValue):Permissions = Stopwatch.time("JsonSerializer.toPermissions", () => {
     i match {
       case input:JObject => {
-        val studentsCanOpenFriends = utils.getBooleanByName(input,"studentCanOpenFriends")
-        val studentsCanPublish = utils.getBooleanByName(input,"studentCanPublish")
-        val usersAreCompulsorilySynced = utils.getBooleanByName(input,"usersAreCompulsorilySynced")
+        val studentsCanOpenFriends = getBooleanByName(input,"studentCanOpenFriends")
+        val studentsCanPublish = getBooleanByName(input,"studentCanPublish")
+        val usersAreCompulsorilySynced = getBooleanByName(input,"usersAreCompulsorilySynced")
         Permissions(config,studentsCanOpenFriends,studentsCanPublish,usersAreCompulsorilySynced)
       }
       case _ => Permissions.default(config)

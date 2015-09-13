@@ -84,6 +84,91 @@ object Privacy extends Enumeration{
 }
 import Privacy._
 
+abstract class AudienceTarget {
+  def appliesTo(who:MeTLIdentity):Boolean
+}
+case class GroupAudience(group:MeTLGroup) extends AudienceTarget {
+  override def appliesTo(who:MeTLIdentity):Boolean = {
+    who match {
+      case mg:MeTLGroup => mg == group
+      case mu:MeTLUser => group.isMember(mu) || group.isOwner(mu)
+    }
+  }
+}
+case class UserAudience(user:MeTLUser) extends AudienceTarget {
+  override def appliesTo(who:MeTLIdentity):Boolean = who match {
+    case mg:MeTLGroup => mg.isOwner(user) || mg.isMember(user)
+    case mu:MeTLUser => mu == user
+  }
+}
+case object PublicAudience extends AudienceTarget {
+  override def appliesTo(who:MeTLIdentity):Boolean = true
+}
+case class CompoundAudience(whitelist:Seq[AudienceTarget],blacklist:Seq[AudienceTarget]) extends AudienceTarget {
+  override def appliesTo(who:MeTLIdentity):Boolean = whitelist.exists(_.appliesTo(who)) && !blacklist.exists(_.appliesTo(who))
+}
+
+abstract class MeTLIdentity(config:ServerConfiguration,val name:String){
+  override def equals(a:Any):Boolean = {
+    a match {
+      case m:MeTLIdentity => m.name == name
+      case _ => false
+    }
+  }
+}
+class MeTLUser(config:ServerConfiguration,override val name:String,val email:String,val groups:Seq[String]) extends MeTLIdentity(name){
+  override def equals(a:Any):Boolean = {
+    a match {
+      case m:MeTLUser => m.name == name && m.email == email
+      case _ => false
+    }
+  }
+}
+class MeTLGroup(config:ServerConfiguration,override val name:String,val email:String,val owners:Seq[MeTLIdentity],val members:Seq[MeTLIdentity]) extends MeTLIdentity(name) {
+  override def equals(a:Any):Boolean = {
+    a match {
+      case m:MeTLGroup => m.name == name && m.email == email
+      case _ => false
+    }
+  }
+  def isOwner(who:MeTLIdentity):Boolean = {
+    who match {
+      case u:MeTLUser => {
+        owners.exists{
+          case mu:MeTLUser => mu.name == u.name
+          case mg:MeTLGroup => mg.isMember(u)
+          case _ => false
+        }
+      }
+      case g:MeTLGroup => {
+        owners.exists{
+          case mu:MeTLUser => false
+          case mg:MeTLGroup => mg == g || mg.isMember(g)
+          case _ => false
+        }
+      }
+    }
+  }
+  def isMember(who:MeTLIdentity):Boolean = {
+    who match {
+      case u:MeTLUser => {
+        members.exists{
+          case mu:MeTLUser => mu.name == u.name
+          case mg:MeTLGroup => mg.isMember(u)
+          case _ => false
+        }
+      }
+      case g:MeTLGroup => {
+        members.exists{
+          case mu:MeTLUser => false
+          case mg:MeTLGroup => mg == g || mg.isMember(g)
+          case _ => false
+        }
+      }
+    }
+  }
+}
+
 case class Color(alpha:Int,red:Int,green:Int,blue:Int)
 object Color{
   def empty = Color(0,0,0,0)
@@ -94,12 +179,12 @@ case class Point(x:Double,y:Double,thickness:Double){
 object Point{
   val empty = Point(0.0,0.0,0.0)
 }
-case class Presentation(override val server:ServerConfiguration,conversation:Conversation,stanzas:Map[Int,List[MeTLStanza]] = Map.empty[Int,List[MeTLStanza]],metaData:List[Tuple2[String,String]] = List.empty[Tuple2[String,String]]) extends MeTLXml(server)
+case class Presentation(override val server:ServerConfiguration,conversation:Conversation,stanzas:Map[Int,List[MeTLStanza]] = Map.empty[Int,List[MeTLStanza]],metaData:List[Tuple2[String,String]] = List.empty[Tuple2[String,String]]) extends MeTLData(server)
 object Presentation{
   def emtpy = Presentation(ServerConfiguration.empty,Conversation.empty)
 }
 
-case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions, blackList:List[String] = List.empty[String]) extends MeTLXml(server){
+case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions, blackList:List[String] = List.empty[String]) extends MeTLData(server){
   def delete = Conversation(server,author,new Date().getTime,slides,"deleted",tag,jid,title,created,permissions,blackList)
   def rename(newTitle:String) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,newTitle,created,permissions,blackList)
   def replacePermissions(newPermissions:Permissions) = Conversation(server,author,new Date().getTime,slides,subject,tag,jid,title,created,newPermissions,blackList)
@@ -126,32 +211,38 @@ object Conversation{
   def empty = Conversation(ServerConfiguration.empty,"",0L,List.empty[Slide],"","",0,"","",Permissions.default(ServerConfiguration.empty))
 }
 
-case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE") extends MeTLXml(server){
+case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE") extends MeTLData(server){
   def replaceIndex(newIndex:Int) = Slide(server,author,id,newIndex,defaultHeight,defaultWidth,exposed,slideType)
 }
 object Slide{
   def empty = Slide(ServerConfiguration.empty,"",0,0)
 }
 
-case class Permissions(override val server:ServerConfiguration, studentsCanOpenFriends:Boolean,studentsCanPublish:Boolean,usersAreCompulsorilySynced:Boolean) extends MeTLXml(server)
+case class Permissions(override val server:ServerConfiguration, studentsCanOpenFriends:Boolean,studentsCanPublish:Boolean,usersAreCompulsorilySynced:Boolean) extends MeTLData(server)
 object Permissions{
   def empty = Permissions(ServerConfiguration.empty,false,false,false)
   def default(server:ServerConfiguration = ServerConfiguration.default) = Permissions(server,false,true,false)
 }
 
-class MeTLXml(val server:ServerConfiguration){
+class MeTLData(val server:ServerConfiguration){
   override def equals(a:Any) = a match {
-    case MeTLXml(aServer) => aServer == server
+    case MeTLData(aServer) => aServer == server
     case _ => false
   }
 }
-object MeTLXml {
-  def apply(server:ServerConfiguration) = new MeTLXml(server)
-  def unapply(in:MeTLXml) = Some((in.server))
-  def empty = MeTLXml(ServerConfiguration.empty)
+object MeTLData {
+  def apply(server:ServerConfiguration) = new MeTLData(server)
+  def unapply(in:MeTLData) = Some((in.server))
+  def empty = MeTLData(ServerConfiguration.empty)
 }
 
-class MeTLStanza(override val server:ServerConfiguration,val author:String,val timestamp:Long) extends MeTLXml(server){
+case class MeTLUnhandledData[T](override val server:ServerConfiguration,unhandled:T) extends MeTLData(server)
+object MeTLUnhandledData {
+  def empty[T] = MeTLUnhandledData[T](ServerConfiguration.empty,null.asInstanceOf[T])
+  def empty[T](unhandled:T) = MeTLUnhandledData[T](ServerConfiguration.empty,unhandled)
+}
+case class MeTLUnhandledStanza[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,unhandled:T) extends MeTLStanza(server,author,timestamp)
+class MeTLStanza(override val server:ServerConfiguration,val author:String,val timestamp:Long) extends MeTLData(server){
   def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLStanza = Stopwatch.time("MeTLStanza.adjustTimestamp", () => {
     MeTLStanza(server,author,newTime)
   })
@@ -160,12 +251,21 @@ class MeTLStanza(override val server:ServerConfiguration,val author:String,val t
     case _ => false
   }
 }
+object MeTLUnhandledStanza {
+  def empty[T] = MeTLUnhandledStanza[T](ServerConfiguration.empty,"",0L,null.asInstanceOf[T])
+  def empty[T](unhandled:T) = MeTLUnhandledStanza[T](ServerConfiguration.empty,"",0L,unhandled)
+}
 object MeTLStanza{
   def apply(server:ServerConfiguration,author:String,timestamp:Long) = new MeTLStanza(server,author,timestamp)
   def unapply(in:MeTLStanza) = Some((in.server,in.author,in.timestamp))
   def empty = MeTLStanza(ServerConfiguration.empty,"",0L)
 }
 
+case class MeTLUnhandledCanvasContent[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String,override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0,unhandled:T) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
+object MeTLUnhandledCanvasContent {
+  def empty[T] = MeTLUnhandledCanvasContent[T](ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",1.0,1.0,null.asInstanceOf[T])
+  def empty[T](unhandled:T) = MeTLUnhandledCanvasContent[T](ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",1.0,1.0,unhandled)
+}
 class MeTLCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,val target:String,val privacy:Privacy,val slide:String,val identity:String,val scaleFactorX:Double = 1.0,val scaleFactorY:Double = 1.0) extends MeTLStanza(server,author,timestamp) {
   protected def genNewIdentity(role:String) = "%s:%s:%s_from:%s".format(new java.util.Date().getTime.toString,author,role,identity).reverse.take(256).reverse
   def left:Double = 0.0
