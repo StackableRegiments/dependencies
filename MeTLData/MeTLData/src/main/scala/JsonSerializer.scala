@@ -59,7 +59,15 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   protected def parseMeTLContent(input:MeTLStanza):List[JField] = {
     List(
       JField("author",JString(input.author)),
-      JField("timestamp",JInt(input.timestamp))
+      JField("timestamp",JInt(input.timestamp)),
+      JField("audiences",JArray(input.audiences.map(a => {
+          JObject(List(
+            JField("domain",JString(a.domain)),
+            JField("name",JString(a.name)),
+            JField("type",JString(a.audienceType)),
+            JField("action",JString(a.action))
+          ))
+        })))
     )
   }
   protected def parseCanvasContent(input:MeTLCanvasContent):List[JField] = {
@@ -70,10 +78,23 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("identity",JString(input.identity))
     )
   }
-  protected def parseJObjForMeTLContent(input:JObject):ParsedMeTLContent = {
+  protected def parseJObjForMeTLContent(input:JObject,config:ServerConfiguration = ServerConfiguration.empty):ParsedMeTLContent = {
     val author = (input \ "author").extract[String] //getStringByName(input,"author")
     val timestamp = getLongByName(input,"timestamp")
-    ParsedMeTLContent(author,timestamp)
+    val audiences = ((input \ "audiences").extract[List[JObject]]).flatMap(a => {
+        try {
+          val domain = getStringByName(a,"domain")
+          val name = getStringByName(a,"name")
+          val audienceType = getStringByName(a,"type")
+          val action = getStringByName(a,"action")
+          Some(Audience(config,domain,name,audienceType,action))
+        } catch {
+          case e:Exception => {
+            None
+          }
+        }
+      })
+    ParsedMeTLContent(author,timestamp,audiences)
   }
   protected def parseJObjForCanvasContent(input:JObject):ParsedCanvasContent = {
     val target = getStringByName(input,"target")
@@ -135,8 +156,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLUnhandledStanza(i:JValue) = {
     i match {
       case input:JObject => {
-        val m = parseJObjForMeTLContent(input)
-        MeTLUnhandledStanza(config,m.author,m.timestamp,i)
+        val m = parseJObjForMeTLContent(input,config)
+        MeTLUnhandledStanza(config,m.author,m.timestamp,i,m.audiences)
       }
       case other => MeTLUnhandledStanza.empty[JValue](other)
     }
@@ -146,8 +167,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     i match {
       case input:JObject => {
         val cc = parseJObjForCanvasContent(input)
-        val m = parseJObjForMeTLContent(input)
-        MeTLUnhandledCanvasContent(config,m.author,m.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,1.0,1.0,i)
+        val m = parseJObjForMeTLContent(input,config)
+        MeTLUnhandledCanvasContent(config,m.author,m.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,m.audiences,1.0,1.0,i)
       }
       case other => MeTLUnhandledCanvasContent.empty[JValue](other)
     }
@@ -172,7 +193,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",()=>{
     i match{
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val cc = parseJObjForCanvasContent(input)
         val inkIds = getListOfStringsByName(input,"inkIds")
         val textIds = getListOfStringsByName(input,"textIds")
@@ -185,7 +206,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val isDeleted = getBooleanByName(input,"isDeleted")
 				val xOrigin = getDoubleByName(input,"xOrigin")
 				val yOrigin = getDoubleByName(input,"yOrigin")
-        MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
+        MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted,mc.audiences)
       }
       case _ => MeTLMoveDelta.empty
     }
@@ -193,7 +214,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLInk(i:JValue):MeTLInk = Stopwatch.time("JsonSerializer.toMeTLInk", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val cc = parseJObjForCanvasContent(input)
         val checksum = getDoubleByName(input,"checksum")
         val startingSum = getDoubleByName(input,"startingSum")
@@ -201,7 +222,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val color = toColor(getColorByName(input,"color"))
         val thickness = getDoubleByName(input,"thickness")
         val isHighlighter = getBooleanByName(input,"isHighlighter")
-        MeTLInk(config,mc.author,mc.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,cc.target,cc.privacy,cc.slide,cc.identity)
+        MeTLInk(config,mc.author,mc.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,cc.target,cc.privacy,cc.slide,cc.identity,mc.audiences)
       }
       case _ => MeTLInk.empty
     }
@@ -220,7 +241,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLImage(i:JValue):MeTLImage = Stopwatch.time("JsonSerializer.toMeTLImage", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val cc = parseJObjForCanvasContent(input)
         val tag = getStringByName(input,"tag")
         val source = Full(getStringByName(input,"source"))
@@ -230,7 +251,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val height = getDoubleByName(input,"height")
         val x = getDoubleByName(input,"x")
         val y = getDoubleByName(input,"y")
-        MeTLImage(config,mc.author,mc.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,cc.target,cc.privacy,cc.slide,cc.identity)
+        MeTLImage(config,mc.author,mc.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,cc.target,cc.privacy,cc.slide,cc.identity,mc.audiences)
       }
       case _ => MeTLImage.empty
     }
@@ -247,7 +268,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLText(i:JValue):MeTLText = Stopwatch.time("JsonSerializer.toMeTLText", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val cc = parseJObjForCanvasContent(input)
         val text = getStringByName(input,"text")
         val height = getDoubleByName(input,"height")
@@ -262,7 +283,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val size = getDoubleByName(input,"size")
         val decoration = getStringByName(input,"decoration")
         val color = toColor(getColorByName(input,"color"))
-        MeTLText(config,mc.author,mc.timestamp,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,cc.identity,cc.target,cc.privacy,cc.slide,color)
+        MeTLText(config,mc.author,mc.timestamp,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,cc.identity,cc.target,cc.privacy,cc.slide,color,mc.audiences)
       }
       case _ => MeTLText.empty
     }
@@ -288,9 +309,9 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLDirtyInk(i:JValue):MeTLDirtyInk = Stopwatch.time("JsonSerializer.toMeTLDirtyInk", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val cc = parseJObjForCanvasContent(input)
-        MeTLDirtyInk(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity)
+        MeTLDirtyInk(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,mc.audiences)
       }
       case _ => MeTLDirtyInk.empty
     }
@@ -301,9 +322,9 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLDirtyImage(i:JValue):MeTLDirtyImage = Stopwatch.time("JsonSerializer.toMeTLDirtyImage", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val cc = parseJObjForCanvasContent(input)
-        MeTLDirtyImage(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity)
+        MeTLDirtyImage(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,mc.audiences)
       }
       case _ => MeTLDirtyImage.empty
     }
@@ -314,9 +335,9 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLDirtyText(i:JValue):MeTLDirtyText = Stopwatch.time("JsonSerializer.toMeTLDirtyText", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val cc = parseJObjForCanvasContent(input)
-        MeTLDirtyText(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity)
+        MeTLDirtyText(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,mc.audiences)
       }
       case _ => MeTLDirtyText.empty
     }
@@ -327,10 +348,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLCommand(i:JValue):MeTLCommand = Stopwatch.time("JsonSerializer.toMeTLCommand", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val command = getStringByName(input,"command")
         val parameters = getListOfStringsByName(input,"parameters")
-        MeTLCommand(config,mc.author,mc.timestamp,command,parameters)
+        MeTLCommand(config,mc.author,mc.timestamp,command,parameters,mc.audiences)
       }
       case _ => MeTLCommand.empty
     }
@@ -344,7 +365,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toSubmission(i:JValue):MeTLSubmission = Stopwatch.time("JsonSerializer.toSubmission", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
 				val cc = parseJObjForCanvasContent(input)
         val slide = getIntByName(input,"slide")
         val url = getStringByName(input,"url")
@@ -354,7 +375,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
 					val highlight = toColor(getColorByName(input,"highlight"))
 					SubmissionBlacklistedPerson(username,highlight)
 				}).toList
-        MeTLSubmission(config,mc.author,mc.timestamp,title,slide,url,Empty,blacklist,cc.target,cc.privacy,cc.identity)
+        MeTLSubmission(config,mc.author,mc.timestamp,title,slide,url,Empty,blacklist,cc.target,cc.privacy,cc.identity,mc.audiences)
       }
       case _ => MeTLSubmission.empty
     }
@@ -369,7 +390,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLQuiz(i:JValue):MeTLQuiz = Stopwatch.time("JsonSerializer.toMeTLQuiz", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val created = getLongByName(input,"created")
         val question = getStringByName(input,"question")
         val id = getStringByName(input,"id")
@@ -377,7 +398,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val options = getListOfObjectsByName(input,"options").map(o => toQuizOption(o))
         val url = tryo(getStringByName(input,"url"))
         val quizImage = url.map(u =>config.getResource(u))
-        MeTLQuiz(config,mc.author,mc.timestamp,created,question,id,url,quizImage,isDeleted,options)
+        MeTLQuiz(config,mc.author,mc.timestamp,created,question,id,url,quizImage,isDeleted,options,mc.audiences)
       }
       case _ => MeTLQuiz.empty
     }
@@ -414,11 +435,11 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def toMeTLQuizResponse(i:JValue):MeTLQuizResponse = Stopwatch.time("JsonSerializer.toMeTLQuizResponse", () => {
     i match {
       case input:JObject => {
-        val mc = parseJObjForMeTLContent(input)
+        val mc = parseJObjForMeTLContent(input,config)
         val answer = getStringByName(input,"answer")
         val answerer = getStringByName(input,"answerer")
         val id = getStringByName(input,"id")
-        MeTLQuizResponse(config,mc.author,mc.timestamp,answer,answerer,id)
+        MeTLQuizResponse(config,mc.author,mc.timestamp,answer,answerer,id,mc.audiences)
       }
       case _ => MeTLQuizResponse.empty
     }
