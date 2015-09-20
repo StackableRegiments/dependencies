@@ -10,7 +10,7 @@ import java.awt.geom.AffineTransform
 import java.text._
 import javax.imageio.ImageIO
 import java.io.ByteArrayInputStream
-import com.bric.geom.BasicVectorizer
+//import com.bric.geom.BasicVectorizer
 import net.liftweb.util.Helpers._
 
 case class Dimensions(left:Double,top:Double,right:Double,bottom:Double,width:Double,height:Double)

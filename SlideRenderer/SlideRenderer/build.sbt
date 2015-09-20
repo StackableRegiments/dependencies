@@ -25,8 +25,6 @@ libraryDependencies ++= {
 		"org.specs2" %% "specs2" % "3.3.1" % "test",
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
-    "bric.geom" % "Vectorizer" % "0.9",
-
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
     "io.github.stackableregiments" %% "metldata" % "0.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
   )
