@@ -1,4 +1,3 @@
-/*
 package com.metl
 
 import net.liftweb.util._
@@ -51,4 +50,3 @@ class PeriodicallyRefreshingVarSuite extends FunSuite with AsyncAssertions with 
         w.await
     }
 }
-*/

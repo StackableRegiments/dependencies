@@ -1,4 +1,3 @@
-/*
 package com.metl
 
 import net.liftweb.util._
@@ -756,4 +755,3 @@ class HttpClientResponseSuite extends FunSuite with MockitoSugar with HttpClient
         verify(f.conn).flush
     }
 }
-*/

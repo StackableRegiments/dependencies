@@ -23,6 +23,7 @@ libraryDependencies ++= {
 		"org.scalatest" %% "scalatest" % "2.2.5" % "test",
     "org.scalaz.stream" %% "scalaz-stream" % "0.7.+",
 		"org.specs2" %% "specs2" % "3.3.1" % "test",
+		"org.specs2" %% "specs2-matcher-extra" % "3.3.1" % "test",
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
     "net.liftweb" %% "lift-webkit" % liftVersion,
@@ -30,10 +31,6 @@ libraryDependencies ++= {
     "net.sourceforge.htmlcleaner" % "htmlcleaner" % "2.2"
   )
 }
-
-scalaSource in Compile := baseDirectory.value / "src"
-
-scalaSource in Test := baseDirectory.value / "test"
 
 // increase the time between polling for file changes when using continuous execution
 pollInterval := 1000
@@ -51,7 +48,7 @@ publishTo := Some("sonatype" at "https://oss.sonatype.org/service/local/staging/
 ivyLoggingLevel := UpdateLogging.Full
 
 // disable updating dynamic revisions (including -SNAPSHOT versions)
-offline := true
+offline := false
 
 // set the prompt (for this build) to include the project id.
 shellPrompt in ThisBuild := { state => Project.extract(state).currentRef.project + "> " }
@@ -71,21 +68,10 @@ timingFormat := {
     DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
 }
 
-// fork a new JVM for 'run' and 'test:run'
-fork := true
-
-// fork a new JVM for 'test:run', but not 'run'
-fork in Test := true
+testOptions in Test += Tests.Argument("-eI")
 
 // add a JVM option to use when forking a JVM for 'run'
 javaOptions += "-Xmx2G"
-
-// only use a single thread for building
-//    parallelExecution := false
-
-// Execute tests in the current project serially
-//   Tests from other projects may still run concurrently.
-//    parallelExecution in Test := false
 
 // don't aggregate clean (See FullConfiguration for aggregation details)
 aggregate in clean := false
@@ -107,12 +93,6 @@ traceLevel := 10
 
 // only show stack traces up to the first sbt stack frame
 traceLevel := 0
-
-// Copy all managed dependencies to <build-root>/lib_managed/
-//   This is essentially a project-local cache and is different
-//   from the lib_managed/ in sbt 0.7.x.  There is only one
-//   lib_managed/ in the build root (not per-project).
-retrieveManaged := true
 
 credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
 

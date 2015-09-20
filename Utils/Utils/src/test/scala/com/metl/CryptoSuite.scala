@@ -1,4 +1,3 @@
-/*
 package com.metl
 
 import scala.xml._
@@ -134,4 +133,3 @@ class CryptoSuite extends FunSuite with CryptoSuiteBehaviours {
     testsFor(encryptAndDecrypt(aescbc))
     testsFor(xmlKeysNonRSA(aescbc))
 }
-*/

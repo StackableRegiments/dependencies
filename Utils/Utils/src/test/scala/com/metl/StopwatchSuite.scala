@@ -1,4 +1,3 @@
-/*
  package com.metl
 
 import net.liftweb.util._
@@ -39,4 +38,3 @@ class StopwatchSuite extends FunSuite with AsyncAssertions with MustMatchers {
         assert(result === 4)
     }
 }
-*/
