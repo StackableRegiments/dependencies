@@ -19,9 +19,10 @@ libraryDependencies ++= {
 
   Seq(
     "javax.servlet" % "javax.servlet-api" % "3.1.0",
-    "org.scala-lang" % "scala-library" % scalaVersion.toString,
+//    "org.scala-lang" % "scala-library" % scalaVersion.toString,
 		"org.scalatest" %% "scalatest" % "2.2.5" % "test",
     "org.scalaz.stream" %% "scalaz-stream" % "0.7.+",
+    "junit" % "junit" % "4.11",
     "org.specs2" % "specs2_2.11" % "2.3.13" % "test", //using an older version to support lift 2.6.2 WebSpec
 //		"org.specs2" %% "specs2" % "3.3.1" % "test",
 //		"org.specs2" %% "specs2-matcher-extra" % "3.3.1" % "test",    
