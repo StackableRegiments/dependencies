@@ -2,6 +2,7 @@ package com.metl.metl2011
 
 import com.metl.data._
 import com.metl.utils._
+import com.metl._
 
 import scala.xml._
 import net.liftweb.common._
@@ -18,16 +19,16 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
   private val metlUtils = new MeTL2011Utils(configName)
   override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLImage",() => {
     val newSource = input.source.map(u => metlUtils.deabsolutizeUri(u,config)).getOrElse(Empty)
-    val newImage = MeTLImage(input.server,input.author,input.timestamp,input.tag,newSource,input.imageBytes,input.pngBytes,input.width,input.height,input.x,input.y,input.target,input.privacy,input.slide,input.identity,input.scaleFactorX,input.scaleFactorY)
+    val newImage = MeTLImage(input.server,input.author,input.timestamp,input.tag,newSource,input.imageBytes,input.pngBytes,input.width,input.height,input.x,input.y,input.target,input.privacy,input.slide,input.identity,input.audiences,input.scaleFactorX,input.scaleFactorY)
     //println("serializing newImage for xmpp: %s".format(newImage))
     super.fromMeTLImage(newImage)
   })
   override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("MeTL2011XmlSerializer.toMeTLImage",() => {
     //println("deserializing image from xmpp: %s".format(input))
-    val m = utils.parseMeTLContent(input)
-    val c = utils.parseCanvasContent(input)
-    val tag = utils.getStringByName(input,"tag")
-    val source = utils.getStringByName(input,"source") match {
+    val m = parseMeTLContent(input)
+    val c = parseCanvasContent(input)
+    val tag = getStringByName(input,"tag")
+    val source = getStringByName(input,"source") match {
       case s:String if (s.length > 0 && s != "unknown url" && s != "none") => metlUtils.reabsolutizeUri(s,"Resource")
       case _ => Empty
     }
@@ -48,32 +49,32 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
         })
         else Empty
     }
-    val width = utils.getDoubleByName(input,"width")
-    val height = utils.getDoubleByName(input,"height")
-    val x = utils.getDoubleByName(input,"x")
-    val y = utils.getDoubleByName(input,"y")
-    MeTLImage(config,m.author,m.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,c.target,c.privacy,c.slide,c.identity)
+    val width = getDoubleByName(input,"width")
+    val height = getDoubleByName(input,"height")
+    val x = getDoubleByName(input,"x")
+    val y = getDoubleByName(input,"y")
+    MeTLImage(config,m.author,m.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,c.target,c.privacy,c.slide,c.identity,m.audiences)
   })
   override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("MeTL2011XmlSerializer.toMeTLCommand", () => {
-    val m = utils.parseMeTLContent(input)
+    val m = parseMeTLContent(input)
     val body = input match {
       case t:Text => t.toString.split(" ")
-      case e:Elem => utils.getStringByName(e,"body").split(" ")
+      case e:Elem => getStringByName(e,"body").split(" ")
       case other => other.toString.split(" ")
     }
     val comm = body.head
     val parameters = body.tail.toList
-    MeTLCommand(config,m.author,m.timestamp,comm,parameters)
+    MeTLCommand(config,m.author,m.timestamp,comm,parameters,m.audiences)
   })
   override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLCommand", () => {
     <body>{Text((input.command :: input.commandParameters).mkString(" "))}</body>
   })
   override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission", () => {
 		//println("submission attempted: %s".format(input))
-    val m = utils.parseMeTLContent(input)
-    val c = utils.parseCanvasContent(input)
-    val title = utils.getStringByName(input,"title")
-    val urlBox = utils.getStringByName(input,"url") match {
+    val m = parseMeTLContent(input)
+    val c = parseCanvasContent(input)
+    val title = getStringByName(input,"title")
+    val urlBox = getStringByName(input,"url") match {
 			case s:String if s.length > 0 => {
 				if (s.startsWith("http")) {
 					Full(s)
@@ -90,24 +91,24 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
 				config.getResource(url)
 		})
 		val url = urlBox.openOr("no valid url specified")
-    val blacklist = utils.getXmlByName(input,"blacklist").map(bl => {
-      val username = utils.getStringByName(bl,"username")
-      val highlight = utils.getColorByName(bl,"highlight")
+    val blacklist = getXmlByName(input,"blacklist").map(bl => {
+      val username = getStringByName(bl,"username")
+      val highlight = getColorByName(bl,"highlight")
       SubmissionBlacklistedPerson(username,highlight)
     }).toList
-    MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity)
+    MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity,m.audiences)
   })
   override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MeTL2011XmlSerializer.toMeTLQuiz", () => {
 		//println("quiz attempted: %s".format(input))
-    val m = utils.parseMeTLContent(input)
+    val m = parseMeTLContent(input)
 		try {
-			val created = utils.getLongByName(input,"created")
-			val question = utils.getStringByName(input,"question") match {
+			val created = getLongByName(input,"created")
+			val question = getStringByName(input,"question") match {
 				case q if (q.length > 0) => q
-				case _ => utils.getStringByName(input,"title")
+				case _ => getStringByName(input,"title")
 			}
-			val id = utils.getStringByName(input,"id")
-			val url = utils.getStringByName(input,"url") match {
+			val id = getStringByName(input,"id")
+			val url = getStringByName(input,"url") match {
 				case s:String if (s.length > 0 && s != "unknown url" && s != "none") => metlUtils.reabsolutizeUri(s,"Resource")
 				case _ => Empty
 			}
@@ -117,13 +118,13 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
 				else
 					config.getResource(u)
 			})
-			val isDeleted = utils.getBooleanByName(input,"isDeleted")
-			val options = utils.getXmlByName(input,"quizOption").map(qo => toQuizOption(qo)).toList
-			MeTLQuiz(config,m.author,m.timestamp,created,question,id,url,quizImage,isDeleted,options)
+			val isDeleted = getBooleanByName(input,"isDeleted")
+			val options = getXmlByName(input,"quizOption").map(qo => toQuizOption(qo)).toList
+			MeTLQuiz(config,m.author,m.timestamp,created,question,id,url,quizImage,isDeleted,options,m.audiences)
 		} catch {
 			case e:Throwable => {
 				println("failed to construct MeTLQuiz: %s -> %s".format(e,e.getMessage))
-				MeTLQuiz(config,m.author,m.timestamp,0L,"","",Empty,Empty,true,List.empty[QuizOption])	
+				MeTLQuiz(config,m.author,m.timestamp,0L,"","",Empty,Empty,true,List.empty[QuizOption],m.audiences)	
 			}
 		}
   })

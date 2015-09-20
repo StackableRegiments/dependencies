@@ -35,7 +35,7 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 				case downloadedBytes:Array[Byte] if downloadedBytes.length > 0 => {
 					val stream = new ByteArrayInputStream(downloadedBytes)
 					val zipStream = new java.util.zip.ZipInputStream(stream)
-					def parseMessages(inputStream:ZipInputStream):List[MeTLStanza] = {
+					def parseMessages(inputStream:ZipInputStream):List[MeTLData] = {
 						try {
 							inputStream.getNextEntry match {
 								case ze:ZipEntry if ze.getName.endsWith(".xml") => {
@@ -44,7 +44,7 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 										case Full(a) => a ::: parseMessages(inputStream)
 										case other => {
 											//println("Box Failure: %s".format(other))
-											List.empty[MeTLStanza] ::: parseMessages(inputStream)
+											List.empty[MeTLData] ::: parseMessages(inputStream)
 										}
 									} 
 								}
@@ -54,19 +54,22 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 								}
 								case other => {
 									//println("getNextEntry: other -> %s".format(other))
-									List.empty[MeTLStanza]
+									List.empty[MeTLData]
 								}
 							}
 						} catch {
 							case e:Throwable => {
 								//println("Exception: %s -> %s".format(e,e.getMessage))
-								List.empty[MeTLStanza]
+								List.empty[MeTLData]
 							}
 						}
 					}
 					val messages = Stopwatch.time("MeTL2011History.getMeTLHistory.unzipAndParse", () => parseMessages(zipStream).toList)
 					zipStream.close
-					Stopwatch.time("MeTL2011History.getMeTLHistory.makeHistory", () => makeHistory(jid.toString,messages))
+          Stopwatch.time("MeTL2011History.getMeTLHistory.makeHistory", () => makeHistory(jid.toString,messages.flatMap(message => message match {
+              case s:MeTLStanza => Some(s)
+              case _ => None
+            })))
 				}
 				case _ => makeHistory(jid.toString,List.empty[MeTLStanza])
 			}
@@ -74,9 +77,9 @@ class MeTL2011History(serverName:String,http:HttpProvider) extends HistoryRetrie
 			case e:Throwable => makeHistory(jid.toString,List.empty[MeTLStanza])
 		}
   })
-  def dailyXmlToListOfStanzas(input:NodeSeq):List[MeTLStanza] = Stopwatch.time("History.dailyXmlToListOfStanzas", () => {
+  def dailyXmlToListOfStanzas(input:NodeSeq):List[MeTLData] = Stopwatch.time("History.dailyXmlToListOfStanzas", () => {
     val serializer = new MeTL2011XmlSerializer(serverName,true)
-    val output = (input \\ "message").map(i => serializer.toMeTLStanza(i)).toList
+    val output = (input \\ "message").map(i => serializer.toMeTLData(i)).toList
 		//println("parsed %s messages from %s".format(output.length,input))
 //		output.foreach(s => println("PARSE: %s".format(s)))
 		output

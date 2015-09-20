@@ -11,6 +11,7 @@ import com.metl.data._
 import com.metl.utils._
 import com.metl.metl2011._
 
+/*
 case class MockHttpProvider(client:MockHttpClient) extends SimpleAuthedHttpProvider("user","password"){
   override def getClient = client
 }
@@ -76,7 +77,6 @@ object DummyConversations {
   val singleZip = loadZip("single.zip")
   val singleDetails = loadString("00/10000/details.xml")
 }
-/*
 class InMemoryMeggleSuite extends FunSuite with BeforeAndAfter with ShouldMatchers {
   test("Universe is sane") {
     2 should equal(2)

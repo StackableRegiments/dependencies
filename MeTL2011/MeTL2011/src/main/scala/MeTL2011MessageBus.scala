@@ -58,7 +58,7 @@ class XmppConnProvider(configName:String,hostname:String,username:String,passwor
 	}
 }
 
-class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configName:String,creator:XmppConnProvider) extends XmppConnection[MeTLStanza](u,p,r,h,d,None){
+class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configName:String,creator:XmppConnProvider) extends XmppConnection[MeTLData](u,p,r,h,d,None){
 	protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
 	private lazy val config = ServerConfiguration.configForName(configName)
 	
@@ -98,11 +98,15 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
 		subscribedBusses(d.location).remove(d)
 		creator.releaseConn(this)
 	}
-	override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
+	override def onMessageRecieved(room:String, messageType:String, message:MeTLData) = {
 		//println("XMPPMultiConn(%s):onMessageReceived(%s,%s)".format(this,room,messageType))
 		val targets = subscribedBusses(room).values
 		//println("XMPPMultiConn(%s):onMessageReceived.sendTo(%s)".format(this,targets))
-		targets.foreach(mb => mb.recieveStanzaFromRoom(message))
+    message match {
+      case s:MeTLStanza => targets.foreach(_.recieveStanzaFromRoom(s))
+      case _ => {}
+    }
+		//targets.foreach(mb => mb.recieveStanzaFromRoom(message))
 	}
 	override def onUntypedMessageRecieved(room:String,message:String) = {
     val parts = message.split(" ")
@@ -113,8 +117,8 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
 	}
 	override lazy val ignoredTypes = List("metlMetaData")
   override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","screenshotSubmission","submission","quiz","quizResponse","command","moveDelta","teacherstatus").map(item => {
-    val ser = (i:MeTLStanza) => {
-      val xml = serializer.fromMeTLStanza(i)
+    val ser = (i:MeTLData) => {
+      val xml = serializer.fromMeTLData(i)
       val messages = xml
       val head = messages.headOption
       head.map{
@@ -123,13 +127,13 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
       }.getOrElse(NodeSeq.Empty)
     }
     val deser = (s:NodeSeq) => {
-      serializer.toMeTLStanza(s)
+      serializer.toMeTLData(s)
     }
-    XmppDataType[MeTLStanza](item,ser,deser)
+    XmppDataType[MeTLData](item,ser,deser)
   })
 }
 
-class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLStanza](u,p,r,h,d,None,bus.notifyConnectionLost _,bus.notifyConnectionResumed _){
+class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLData](u,p,r,h,d,None,bus.notifyConnectionLost _,bus.notifyConnectionResumed _){
   protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
   private lazy val config = ServerConfiguration.configForName(configName)
 
@@ -146,8 +150,11 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:S
 		mbd.onConnectionRegained()
 	}	
 
-  override def onMessageRecieved(room:String, messageType:String, message:MeTLStanza) = {
-    bus.recieveStanzaFromRoom(message)
+  override def onMessageRecieved(room:String, messageType:String, message:MeTLData) = {
+    message match {
+      case s:MeTLStanza => bus.recieveStanzaFromRoom(s)
+      case _ => {}
+    }
   }
   override def onUntypedMessageRecieved(room:String,message:String) = {
     val parts = message.split(" ")
@@ -155,8 +162,8 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:S
   }
   override lazy val ignoredTypes = List("metlMetaData")
   override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","screenshotSubmission","submission","quiz","quizResponse","command","moveDelta","teacherstatus").map(item => {
-    val ser = (i:MeTLStanza) => {
-      val xml = serializer.fromMeTLStanza(i)
+    val ser = (i:MeTLData) => {
+      val xml = serializer.fromMeTLData(i)
       val messages = xml
       val head = messages.headOption
       head.map{
@@ -165,9 +172,9 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:S
       }.getOrElse(NodeSeq.Empty)
     }
     val deser = (s:NodeSeq) => {
-      serializer.toMeTLStanza(s)
+      serializer.toMeTLData(s)
     }
-    XmppDataType[MeTLStanza](item,ser,deser)
+    XmppDataType[MeTLData](item,ser,deser)
   })
 }
 
