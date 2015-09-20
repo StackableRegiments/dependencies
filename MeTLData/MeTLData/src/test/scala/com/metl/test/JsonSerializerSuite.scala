@@ -1,4 +1,3 @@
-/*
 package com.metl.test
 
 import org.scalatest._
@@ -24,18 +23,19 @@ import net.liftweb.json.Serialization.{read, write}
 class JsonSerializerHelperSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with MeTLDataGenerators {
 
     implicit val formats = Serialization.formats(NoTypeHints) + new PrivacySerializer
+    class InternalJsonSerializerHelper extends JsonSerializerHelper
     var jsonHelper: JsonSerializerHelper = _
 
     before {
-        jsonHelper = new JsonSerializerHelper
+        jsonHelper = new InternalJsonSerializerHelper()
     }
 
     val genListJDbl = for {
-        dbl <- Gen.containerOf1[List, Double](arbitrary[Double])
+        dbl <- Gen.containerOfN[List, Double](1,arbitrary[Double])
     } yield dbl.map(d => JDouble(d))
 
     val genListJStr = for {
-        str <- Gen.containerOf1[List, String](arbitrary[String])
+        str <- Gen.containerOfN[List, String](1,arbitrary[String])
     } yield str.map(s => JString(s)) 
 
     val genJObjListStr = for {
@@ -250,4 +250,3 @@ class JsonSerializerSuite extends FunSuite with GeneratorDrivenPropertyChecks wi
       }
     }
 }
-*/

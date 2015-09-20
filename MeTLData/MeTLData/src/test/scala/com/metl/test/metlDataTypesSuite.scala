@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -30,4 +29,3 @@ class ColorConverterSuite extends FunSuite {
     test("convert from rgb hex string to color") (pending)
     test("convert from argb hex string to color") (pending)
 }
-*/

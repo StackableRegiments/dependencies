@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -40,7 +39,7 @@ class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with Be
 						</image>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLImage]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLImage]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -63,9 +62,18 @@ class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with Be
 
 	test("serialize MeTLImage to xml") {
 		forAll (genImage) { (genImage: MeTLImage) =>
-		
-			val xml = xmlSerializer.fromMeTLImage(genImage)
-
+	
+    val xml = {
+      try {
+        xmlSerializer.fromMeTLImage(genImage)
+      } catch {
+        case e:Throwable => {
+          println("EXCEPTION: %s => %s\r\n%s".format(genImage,e.getMessage,e.getStackTraceString))
+          e.printStackTrace
+          NodeSeq.Empty
+        }
+      }
+    }
 			genImage should have (
 				server (ServerConfiguration.empty),
 				author ((xml \\ "author").text),
@@ -95,7 +103,7 @@ class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with Be
 						</dirtyImage>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLDirtyImage]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLDirtyImage]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -124,4 +132,3 @@ class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with Be
         }
     }
 }
-*/

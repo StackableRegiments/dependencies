@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -76,7 +75,7 @@ class MeTLTextExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks
 						</textbox>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content)
+		val result = xmlSerializer.toMeTLData(content)
 		assert(result === MeTLText(ServerConfiguration.empty, "eecrole", -1L, "Hello World!", 100.0, 200.0, 0, 120.0, 300.0, "eecrole:223445834582",
 			"Underline", "Helvetica", "Bold", 12.0, "Italics", "eecrole:223445834582", "test", Privacy.PRIVATE, "4", Color(255, 255, 0, 0)))
 	}
@@ -93,7 +92,7 @@ class MeTLTextExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks
 						</dirtyText>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLDirtyText]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLDirtyText]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -123,4 +122,3 @@ class MeTLTextExtractorSuite extends FunSuite with GeneratorDrivenPropertyChecks
         }
     }
 }
-*/

@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalacheck._
@@ -25,11 +24,11 @@ trait MeTLDataGenerators {
 	} yield Point(x, y, pressure) 
 
 	val genPointList = for {
-		p <- Gen.containerOf1[List, Point](genPoint)
+		p <- Gen.containerOfN[List, Point](1,genPoint)
 	} yield p
 
 	val genIdList = for {
-		i <- Gen.containerOf1[List, String](Gen.alphaStr)
+		i <- Gen.containerOfN[List, String](1,Gen.alphaStr)
 	} yield i
 
 	val validTimestamp = new java.util.Date().getTime()
@@ -40,6 +39,35 @@ trait MeTLDataGenerators {
 		b <- Gen.choose(0, 255)
 		a <- Gen.choose(0, 255)
 	} yield Color(a, r, g, b)
+
+  val genBoxOfBytes = for {
+    bytes <- Gen.containerOfN[Array,Byte](10,choose(0,255).map(_.toByte))
+  } yield Full(bytes)
+
+  val genBlacklistedPerson = for {
+    color <- genColor
+    name <- Gen.alphaStr
+  } yield SubmissionBlacklistedPerson(name,color)
+
+  val genBlacklist = for {
+    person <- genBlacklistedPerson
+    bl <- Gen.containerOfN[List,SubmissionBlacklistedPerson](1,person)
+  } yield bl
+
+  val genAudience = for {
+    domain <- Gen.alphaStr
+    name <- Gen.alphaStr
+    audienceType <- Gen.alphaStr
+    action <- Gen.alphaStr
+  } yield {
+    Audience(ServerConfiguration.empty,domain,name,audienceType,action)
+  }
+  val genAudiences = for {
+    audience <- genAudience
+    audiences <- Gen.containerOfN[List,Audience](1,audience)
+  } yield {
+    audiences
+  }
 
 	val genInk = for {
 		author <- Gen.alphaStr 
@@ -54,7 +82,8 @@ trait MeTLDataGenerators {
 		color <- genColor 
 		thickness <- arbitrary[Double]
 		isHighlighter <- arbitrary[Boolean]
-	} yield MeTLInk(ServerConfiguration.empty, author, timestamp, checksum, startingSum, points, color, thickness, isHighlighter, target, privacy, slide, identity)
+    audiences <- genAudiences
+	} yield MeTLInk(ServerConfiguration.empty, author, timestamp, checksum, startingSum, points, color, thickness, isHighlighter, target, privacy, slide, identity, audiences)
 
 	val genMoveDelta = for {
 		author <- Gen.alphaStr 
@@ -74,8 +103,8 @@ trait MeTLDataGenerators {
 		yScale <- arbitrary[Double]
 		newPrivacy <- genPrivacy
 		isDeleted <- arbitrary[Boolean]
-	} yield MeTLMoveDelta(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, xOrigin, yOrigin,
-        inkIds, textIds, imageIds, xTrans, yTrans, xScale, yScale, newPrivacy, isDeleted)
+    audiences <- genAudiences
+	} yield MeTLMoveDelta(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, xOrigin, yOrigin, inkIds, textIds, imageIds, xTrans, yTrans, xScale, yScale, newPrivacy, isDeleted, audiences)
 
 	val genImage = for {
 		author <- Gen.alphaStr 
@@ -90,8 +119,8 @@ trait MeTLDataGenerators {
 		width <- arbitrary[Double]
 		height <- arbitrary[Double]
 		source <- Gen.alphaStr map { s => if (!s.isEmpty) Full(s) else Full("unknown") }
-	} yield MeTLImage(ServerConfiguration.empty, author, timestamp, tag, source, Empty, Empty, 
-        width, height, x, y, target, privacy, slide, identity)
+    audiences <- genAudiences
+	} yield MeTLImage(ServerConfiguration.empty, author, timestamp, tag, source, Empty, Empty, width, height, x, y, target, privacy, slide, identity,audiences)
     // WrappedArray.make[Byte]
 
 	val genText = for {
@@ -114,8 +143,8 @@ trait MeTLDataGenerators {
 		y <- arbitrary[Double]
 		width <- arbitrary[Double]
 		height <- arbitrary[Double]
-	} yield MeTLText(ServerConfiguration.empty, author, timestamp, text, height, width, caret, x, y, tag, style, family, weight, size, decoration, identity, target, privacy,
-      slide, color)
+    audiences <- genAudiences
+	} yield MeTLText(ServerConfiguration.empty, author, timestamp, text, height, width, caret, x, y, tag, style, family, weight, size, decoration, identity, target, privacy, slide, color, audiences)
 
 	val genDirtyInk = for {
         author <- Gen.alphaStr
@@ -124,7 +153,8 @@ trait MeTLDataGenerators {
 		privacy <- genPrivacy
 		slide <- Gen.numStr 
 		identity <- Gen.alphaStr 
-	} yield MeTLDirtyInk(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity)
+    audiences <- genAudiences
+	} yield MeTLDirtyInk(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, audiences)
 
 	val genDirtyText = for {
         author <- Gen.alphaStr
@@ -133,7 +163,8 @@ trait MeTLDataGenerators {
 		privacy <- genPrivacy
 		slide <- Gen.numStr 
 		identity <- Gen.alphaStr 
-	} yield MeTLDirtyText(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity)
+    audiences <- genAudiences
+	} yield MeTLDirtyText(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, audiences)
 
 	val genDirtyImage = for {
         author <- Gen.alphaStr
@@ -142,14 +173,16 @@ trait MeTLDataGenerators {
 		privacy <- genPrivacy
 		slide <- Gen.numStr 
 		identity <- Gen.alphaStr 
-	} yield MeTLDirtyImage(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity)
+    audiences <- genAudiences
+	} yield MeTLDirtyImage(ServerConfiguration.empty, author, timestamp, target, privacy, slide, identity, audiences)
 
     val genCommand = for {
         author <- Gen.alphaStr
         timestamp <- validTimestamp
         command <- Gen.alphaStr
-        commandParams <- Gen.containerOf1[List, String](Gen.alphaStr)
-    } yield MeTLCommand(ServerConfiguration.empty, author, timestamp, command, commandParams)
+        commandParams <- Gen.containerOfN[List, String](1,Gen.alphaStr)
+        audiences <- genAudiences
+    } yield MeTLCommand(ServerConfiguration.empty, author, timestamp, command, commandParams,audiences)
 
     val genSubmission = for {
         author <- Gen.alphaStr
@@ -157,7 +190,11 @@ trait MeTLDataGenerators {
         title <- Gen.alphaStr
         slideJid <- arbitrary[Int] 
         url <- Gen.alphaStr
-    } yield MeTLSubmission(ServerConfiguration.empty, author, timestamp, title, slideJid, url) 
+        privacy <- genPrivacy
+        boxOfBytes <- genBoxOfBytes
+        blacklist <- genBlacklist
+        audiences <- genAudiences
+    } yield MeTLSubmission(ServerConfiguration.empty, author, timestamp, title, slideJid, url,boxOfBytes,blacklist,"",privacy,"",audiences) 
 
     val genQuiz = for {
         author <- Gen.alphaStr
@@ -167,8 +204,9 @@ trait MeTLDataGenerators {
         id <- Gen.numStr
         isDeleted <- arbitrary[Boolean]
         url <- Gen.alphaStr
-        options <- Gen.containerOf1[List, QuizOption](genQuizOption)
-    } yield MeTLQuiz(ServerConfiguration.empty, author, timestamp, created, question, id, Full(url), Empty, isDeleted, options)
+        options <- Gen.containerOfN[List, QuizOption](1,genQuizOption)
+        audiences <- genAudiences
+    } yield MeTLQuiz(ServerConfiguration.empty, author, timestamp, created, question, id, Full(url), Empty, isDeleted, options, audiences)
 
     val genQuizOption = for {
         name <- Gen.alphaStr
@@ -181,7 +219,8 @@ trait MeTLDataGenerators {
         answer <- Gen.alphaStr
         answerer <- Gen.alphaStr
         id <- Gen.alphaStr
-    } yield MeTLQuizResponse(ServerConfiguration.empty, author, timestamp, answer, answerer, id)
+        audiences <- genAudiences
+    } yield MeTLQuizResponse(ServerConfiguration.empty, author, timestamp, answer, answerer, id, audiences)
 
     val genConversation = for {
         author <- Gen.alphaStr
@@ -192,7 +231,7 @@ trait MeTLDataGenerators {
         title <- Gen.alphaStr
         created <- Gen.numStr
         permissions <- genPermissions
-        slides <- Gen.containerOf1[List, Slide](genSlide)
+        slides <- Gen.containerOfN[List, Slide](1,genSlide)
     } yield Conversation(ServerConfiguration.empty, author, lastAccessed, slides, subject, tag, jid, title, created, permissions)
 
     val genSlide = for {
@@ -207,4 +246,3 @@ trait MeTLDataGenerators {
         usersAreCompulsorilySynced <- arbitrary[Boolean]
     } yield Permissions(ServerConfiguration.empty, studentsCanOptionFriends, studentsCanPublish, usersAreCompulsorilySynced)
 }
-*/

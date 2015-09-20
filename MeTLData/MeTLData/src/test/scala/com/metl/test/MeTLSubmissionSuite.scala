@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -44,7 +43,7 @@ class MeTLSubmissionExtractorSuite extends FunSuite with GeneratorDrivenProperty
 						</screenshotSubmission>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLSubmission]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLSubmission]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -78,4 +77,3 @@ class MeTLSubmissionExtractorSuite extends FunSuite with GeneratorDrivenProperty
         }
     }
 }
-*/

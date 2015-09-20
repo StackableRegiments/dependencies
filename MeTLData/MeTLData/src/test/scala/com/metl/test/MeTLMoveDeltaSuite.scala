@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -58,7 +57,7 @@ class MeTLMoveDeltaSuite extends FunSuite with GeneratorDrivenPropertyChecks wit
 						</moveDelta>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLMoveDelta]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLMoveDelta]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -105,4 +104,3 @@ class MeTLMoveDeltaSuite extends FunSuite with GeneratorDrivenPropertyChecks wit
 		}
 	}
 }
-*/

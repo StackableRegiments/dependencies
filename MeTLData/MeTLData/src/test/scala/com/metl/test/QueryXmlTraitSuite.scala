@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -66,4 +65,3 @@ class QueryXmlTraitSuite extends FunSuite with ShouldMatchers with QueryXml {
     }
   }
 }
-*/

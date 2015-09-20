@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -101,10 +100,9 @@ class MeTLConversationSuite extends FunSuite with GeneratorDrivenPropertyChecks 
                jid (queryXml[Int]("jid")),
                title (queryXml[String]("title")),
                created (queryXml[String]("created")),
-               slides (XmlUtils.getXmlByName(xml, "slide").map(s => xmlSerializer.toSlide(s)).toList),
-               permissions (XmlUtils.getXmlByName(xml, "permissions").map(p => xmlSerializer.toPermissions(p)).head)
+               slides (xmlSerializer.getXmlByName(xml, "slide").map(s => xmlSerializer.toSlide(s)).toList),
+               permissions (xmlSerializer.getXmlByName(xml, "permissions").map(p => xmlSerializer.toPermissions(p)).head)
             )
         }
     }
 }
-*/

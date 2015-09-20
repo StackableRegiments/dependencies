@@ -26,6 +26,7 @@ trait XmlUtils {
     val identity = getStringByName(i,"identity") 
     ParsedCanvasContent(target,privacy,slide,identity)
   }
+
   def parsedCanvasContentToXml(p:ParsedCanvasContent):Seq[Node] = {
     <target>{p.target}</target>
     <privacy>{p.privacy.toString.toLowerCase}</privacy>
@@ -59,7 +60,7 @@ trait XmlUtils {
     ParsedMeTLContent(author,timestamp,audiences.toList)
   }
   def parsedMeTLContentToXml(p:ParsedMeTLContent):Seq[Node] = {
-    <author>{p.author}</author>
+    <author>{p.author}</author>  
     <audiences>{p.audiences.map(a => {
         <audience domain={a.domain} name={a.name} type={a.audienceType} action={a.action}/>
       })}</audiences>
@@ -73,6 +74,7 @@ case class ParsedCanvasContent(target:String,privacy:Privacy,slide:String,identi
 class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
   type T = NodeSeq
   lazy val config = ServerConfiguration.configForName(configName)
+
   override def toMeTLData(input:NodeSeq):MeTLData = Stopwatch.time("GenericXmlSerializer.toMeTLStanza", () => {
     input match {
       case i:NodeSeq if hasChild(i,"ink") => toMeTLInk(i)
@@ -100,7 +102,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     })
     wrapWithMessage match {
       case true => {
-        Elem(null, "message", attrs, TopScope, Elem(null, rootName, null, TopScope, additionalNodes: _*))
+        Elem(null, "message", attrs, TopScope, Elem(null, rootName, Null, TopScope, additionalNodes: _*))
       }
       case _ => Elem(null, rootName, attrs, TopScope, additionalNodes:_*)
     }

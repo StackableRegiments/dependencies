@@ -14,26 +14,26 @@ unmanagedResourceDirectories in Test <+= (baseDirectory) { _ / "src/main/webapp"
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
+
 libraryDependencies ++= {
   val liftVersion = "2.6.2"
 
   Seq(
     "org.scala-lang" % "scala-library" % scalaVersion.toString,
-		"org.scalatest" %% "scalatest" % "2.2.5" % "test",
+    "org.scalatest" %% "scalatest" % "2.2.5" % "test",
     "org.scalaz.stream" %% "scalaz-stream" % "0.7.+",
 		"org.specs2" %% "specs2" % "3.3.1" % "test",
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
-    "io.github.stackableregiments" %% "common-utils" % "0.1.+"
-    exclude("javax.jms", "jms")
-    exclude("com.sun.jdmk", "jmxtools")
-    exclude("com.sun.jmx", "jmxri")
+    "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
   )
 }
 
+/*
 scalaSource in Compile := baseDirectory.value / "src"
 
 scalaSource in Test := baseDirectory.value / "test"
+*/
 
 // increase the time between polling for file changes when using continuous execution
 pollInterval := 1000
@@ -51,7 +51,7 @@ publishTo := Some("sonatype" at "https://oss.sonatype.org/service/local/staging/
 ivyLoggingLevel := UpdateLogging.Full
 
 // disable updating dynamic revisions (including -SNAPSHOT versions)
-offline := true
+offline := false
 
 // set the prompt (for this build) to include the project id.
 shellPrompt in ThisBuild := { state => Project.extract(state).currentRef.project + "> " }
@@ -72,10 +72,12 @@ timingFormat := {
 }
 
 // fork a new JVM for 'run' and 'test:run'
-fork := true
+//fork := true
 
 // fork a new JVM for 'test:run', but not 'run'
-fork in Test := true
+//fork in Test := true
+
+testOptions in Test += Tests.Argument("-eI")
 
 // add a JVM option to use when forking a JVM for 'run'
 javaOptions += "-Xmx2G"
@@ -112,7 +114,7 @@ traceLevel := 0
 //   This is essentially a project-local cache and is different
 //   from the lib_managed/ in sbt 0.7.x.  There is only one
 //   lib_managed/ in the build root (not per-project).
-retrieveManaged := true
+//retrieveManaged := true
 
 credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
 

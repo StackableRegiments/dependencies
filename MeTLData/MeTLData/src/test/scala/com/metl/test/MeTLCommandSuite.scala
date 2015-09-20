@@ -1,4 +1,3 @@
-/*
 package com.metl.test
 
 import org.scalatest._
@@ -34,7 +33,7 @@ class MeTLCommandSuite extends FunSuite with GeneratorDrivenPropertyChecks with 
 						</body>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLCommand]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLCommand]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -53,9 +52,8 @@ class MeTLCommandSuite extends FunSuite with GeneratorDrivenPropertyChecks with 
             genCommand should have (
                author (queryXml[String]("author")),
                command ((xml \ "command" \ "command").text),
-               commandParameters (XmlUtils.getListOfStringsByNameWithin(xml, "parameter", "parameters"))
+               commandParameters (xmlSerializer.getListOfStringsByNameWithin(xml, "parameter", "parameters"))
             )
         }
     }
 }
-*/

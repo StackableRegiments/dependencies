@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -60,7 +59,7 @@ class MeTLQuizSuite extends FunSuite with GeneratorDrivenPropertyChecks with Bef
 						</quiz>
 					  </message>
 		// mercury, venus, earth, mars, jupiter, saturn, uranus, neptune
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLQuiz]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLQuiz]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -99,7 +98,7 @@ class MeTLQuizSuite extends FunSuite with GeneratorDrivenPropertyChecks with Bef
 						</quiz>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLQuiz]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLQuiz]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -126,7 +125,7 @@ class MeTLQuizSuite extends FunSuite with GeneratorDrivenPropertyChecks with Bef
                id (queryXml[String]("id")),
                isDeleted (queryXml[Boolean]("isDeleted")),
                url (Full(queryXml[String]("url"))),
-               options (XmlUtils.getXmlByName(xml, "quizOption").map(qo => xmlSerializer.toQuizOption(qo)).toList)
+               options (xmlSerializer.getXmlByName(xml, "quizOption").map(qo => xmlSerializer.toQuizOption(qo)).toList)
             )
         }
     }
@@ -153,7 +152,7 @@ class MeTLQuizReponseSuite extends FunSuite with GeneratorDrivenPropertyChecks w
 						</quizResponse>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLQuizResponse]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLQuizResponse]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -179,4 +178,3 @@ class MeTLQuizReponseSuite extends FunSuite with GeneratorDrivenPropertyChecks w
         }
     }
 }
-*/

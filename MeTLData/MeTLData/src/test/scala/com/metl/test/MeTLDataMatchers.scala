@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -833,4 +832,3 @@ trait ConversationMatchers {
 	  }
 }
 
-*/

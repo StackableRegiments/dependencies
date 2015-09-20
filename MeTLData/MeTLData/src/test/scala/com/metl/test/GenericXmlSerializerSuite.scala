@@ -1,10 +1,6 @@
-/*
- package com.metl.test
-
-import org.scalatest._
-import org.scalatest.FunSuite
-import org.scalatest.BeforeAndAfter
-import org.scalatest.matchers.{ShouldMatchers, HavePropertyMatcher, HavePropertyMatchResult}
+package com.metl.test
+import org.scalatest.{Matchers,FunSuite,BeforeAndAfter,_}
+import org.scalatest.matchers.{HavePropertyMatcher, HavePropertyMatchResult}
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.OptionValues._
 
@@ -14,8 +10,9 @@ import scala.xml._
 import com.metl.data._
 import Privacy._
 
-class GenericXmlSerializerSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with QueryXml with MeTLStanzaMatchers with MeTLCanvasContentMatchers {
+class GenericXmlSerializerSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with Matchers with QueryXml with MeTLStanzaMatchers with MeTLCanvasContentMatchers {
 	var xmlSerializer: GenericXmlSerializer = _
+  object XmlUtils extends XmlUtils
 
 	before {
 	  xmlSerializer = new GenericXmlSerializer("empty")
@@ -256,7 +253,7 @@ class GenericXmlSerializerSuite extends FunSuite with GeneratorDrivenPropertyChe
 							</metlMetaData>
 						</message>
 
-		val result = xmlSerializer.toMeTLStanza(content)
+		val result = xmlSerializer.toMeTLUnhandledStanza(content)
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -338,12 +335,20 @@ class GenericXmlSerializerSuite extends FunSuite with GeneratorDrivenPropertyChe
 
 	test("metl content to xml") {
 		
-		val content = ParsedMeTLContent("eecrole", -1L)	
+		val content = ParsedMeTLContent("eecrole", -1L,Nil)	
 
 		val result = XmlUtils.parsedMeTLContentToXml(content)
 
-		result should equal(<author>eecrole</author>)
+    result should equal(<author>eecrole</author><audiences></audiences>)
 	}
+
+  test("metl content to xml with audiences") {
+		val content = ParsedMeTLContent("eecrole", -1L,List(Audience(ServerConfiguration.empty,"a","b","c","d"),Audience(ServerConfiguration.empty,"e","f","g","h")))	
+
+		val result = XmlUtils.parsedMeTLContentToXml(content)
+
+    result should equal(<author>eecrole</author><audiences><audience domain="a" name="b" type="c" action="d"/><audience domain="e" name="f" type="g" action="h"/></audiences>)
+  }
 
 	test("extract different depth canvas content") {
 	  val content = <conversation>
@@ -383,15 +388,15 @@ class GenericXmlSerializerSuite extends FunSuite with GeneratorDrivenPropertyChe
 
 		val result = XmlUtils.parseMeTLContent(content)
 		info("timestamp is ignored")
-		assert(result === ParsedMeTLContent("eecrole", -1L))
+		assert(result === ParsedMeTLContent("eecrole", -1L,Nil))
 	}
 
 	test("deconstruct metl content to xml") {
-		val parsed = ParsedMeTLContent("eecrole", 235245290623L)
+		val parsed = ParsedMeTLContent("eecrole", 235245290623L,Nil)
 		val result = XmlUtils.parsedMeTLContentToXml(parsed)
 
 		info("timestamp is ignored")
-		result should equal(<author>eecrole</author>)
+    result should equal(<author>eecrole</author><audiences></audiences>)
 	}
 
 	test("old metl data successfully gets timestamp") {
@@ -421,4 +426,3 @@ class GenericXmlSerializerSuite extends FunSuite with GeneratorDrivenPropertyChe
 	   assert(xmlSerializer.config === ServerConfiguration.empty) 
 	}
 }
-*/

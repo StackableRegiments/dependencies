@@ -1,4 +1,3 @@
-/*
  package com.metl.test
 
 import org.scalatest._
@@ -62,7 +61,7 @@ class MeTLInkSuite extends FunSuite with GeneratorDrivenPropertyChecks with Befo
 						</ink>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLInk]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLInk]
 
 		result should have(
 			server (ServerConfiguration.empty),
@@ -92,7 +91,7 @@ class MeTLInkSuite extends FunSuite with GeneratorDrivenPropertyChecks with Befo
 						</dirtyInk>
 					  </message>
 
-		val result = xmlSerializer.toMeTLStanza(content).asInstanceOf[MeTLDirtyInk]
+		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLDirtyInk]
 
 		result should have (
 			server (ServerConfiguration.empty),
@@ -121,4 +120,3 @@ class MeTLInkSuite extends FunSuite with GeneratorDrivenPropertyChecks with Befo
         }
     }
 }
-*/
