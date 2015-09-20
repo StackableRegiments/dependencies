@@ -41,7 +41,7 @@ trait XmlUtils {
 				getLongByName(getXmlByName(i,"metlMetaData"),"timestamp") match {
 					case l:Long if l == failed => tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(failed)
 					case l:Long => l
-					case _ => failed
+					//case _ => failed
 				}
 			})
 		}
@@ -102,9 +102,9 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     })
     wrapWithMessage match {
       case true => {
-        Elem(null, "message", attrs, TopScope, Elem(null, rootName, Null, TopScope, additionalNodes: _*))
+        new Elem(null, "message", attrs, TopScope, false, new Elem(null, rootName, Null, TopScope, false, additionalNodes: _*))
       }
-      case _ => Elem(null, rootName, attrs, TopScope, additionalNodes:_*)
+      case _ => new Elem(null, rootName, attrs, TopScope, false, additionalNodes:_*)
     }
   })
   protected def metlContentToXml(rootName:String,input:MeTLStanza,additionalNodes:Seq[Node]) = Stopwatch.time("GenericXmlSerializer.metlContentToXml", () => {

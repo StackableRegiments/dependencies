@@ -480,12 +480,12 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
     val thisMdLeft = xOrigin match {
       case Double.NaN => possiblyOverrideLeftBounds
       case d:Double => d
-      case _ => possiblyOverrideLeftBounds
+      //case _ => possiblyOverrideLeftBounds
     }
     val thisMdTop = yOrigin match {
       case Double.NaN => possiblyOverrideTopBounds
       case d:Double => d
-      case _ => possiblyOverrideTopBounds
+      //case _ => possiblyOverrideTopBounds
     }
     val internalX = cc.left - thisMdLeft
     val internalY = cc.top - thisMdTop
