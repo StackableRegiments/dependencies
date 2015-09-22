@@ -76,7 +76,10 @@ class H2Interface(configName:String,onConversationDetailsUpdated:Conversation=>U
 		} 
 		transformedStanza match {
 			case Some(s) => if (s.save){
-				Some(serializer.toMeTLStanza(s))
+        Some(serializer.toMeTLData(s)).flatMap(data => data match {
+            case ms:MeTLStanza => Some(ms)
+            case _ => None
+          })
 			} else {
 				println("store in jid %s failed: %s".format(jid,stanza))
 				None
@@ -106,7 +109,7 @@ class H2Interface(configName:String,onConversationDetailsUpdated:Conversation=>U
 	//conversations table
 	protected lazy val mbDef = new MessageBusDefinition("global","conversationUpdating",receiveConversationDetailsUpdated _)
 	protected lazy val conversationMessageBus = config.getMessageBus(mbDef)
-	protected lazy val conversationCache = scala.collection.mutable.Map(H2Conversation.findAll.map(c => (c.jid.is,serializer.toConversation(c))):_*)
+	protected lazy val conversationCache = scala.collection.mutable.Map(H2Conversation.findAll.map(c => (c.jid.get,serializer.toConversation(c))):_*)
 	protected def updateConversation(c:Conversation):Boolean = {
 		try {
 			conversationCache.update(c.jid,c)
@@ -123,7 +126,7 @@ class H2Interface(configName:String,onConversationDetailsUpdated:Conversation=>U
 	protected def updateMaxJid = maxJid = try {
 		conversationCache.values.map(c => c.jid).max
 	} catch {
-		case _ => 0
+		case _:Throwable => 0
 	}
 	protected var maxJid = 0
 	protected def getNewJid = {
@@ -193,7 +196,7 @@ class H2Interface(configName:String,onConversationDetailsUpdated:Conversation=>U
 	//resources table
 	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource", () => {
 		H2Resource.find(By(H2Resource.url,identity)).map(r => {
-			val b = r.bytes.is
+			val b = r.bytes.get
 			println("retrieved %s bytes for %s".format(b.length,identity))
 			b
 		}).openOr({
