@@ -19,7 +19,7 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
   protected val overrideHost:Box[String] = Empty
   protected val overridePort:Box[Int] = Empty
   protected val overrideScheme:Box[String] = Empty
-  protected val monashCasUrl = baseUrl
+  protected val baseCasUrl = baseUrl
   protected val serviceValidatePath = "/serviceValidate"
   protected val loginPath = "/login/"
 
@@ -66,7 +66,7 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
       req.param("ticket") match {
       case Full(ticket) =>
       {
-        val verifyUrl = monashCasUrl + serviceValidatePath +"?ticket=%s&service=%s"
+        val verifyUrl = baseCasUrl + serviceValidatePath +"?ticket=%s&service=%s"
         val casValidityResponse = getHttpClient.getAsString(verifyUrl.format(ticket,URLEncoder.encode(ticketlessUrl(req), "utf-8")))
         val casValidityResponseXml = xml.XML.loadString(casValidityResponse)
         val state = for (
@@ -82,7 +82,7 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
       case _ => LiftAuthStateDataForbidden
     }
   })
-  val redirectUrl = monashCasUrl + loginPath + "?service=%s" 
+  val redirectUrl = baseCasUrl + loginPath + "?service=%s" 
   override def constructResponse(req:Req) = Stopwatch.time("CASAuthenticator.constructReq",() => {
       val url = redirectUrl.format(URLEncoder.encode(ticketlessUrl(req),"utf-8"))
       new RedirectResponse(url, req)
