@@ -2,7 +2,6 @@ package com.metl.formAuthenticator
 
 import com.metl.liftAuthenticator._
 import com.metl.utils._
-import com.metl.ldap._
 
 import scala.xml._
 import net.liftweb._
