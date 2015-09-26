@@ -1,5 +1,5 @@
-name := "metl-h2"
-version := "0.3.0"
+name := "openid-authentication"
+version := "0.2.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
@@ -25,13 +25,9 @@ libraryDependencies ++= {
 		"org.specs2" %% "specs2" % "3.3.1" % "test",
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
-//    "com.h2database" % "h2" % "1.2.138",
-    "com.h2database" % "h2" % "1.4.189",
-    "net.liftweb" %% "lift-mapper" % liftVersion,
-    "net.liftweb" %% "lift-webkit" % liftVersion,
+    "net.liftweb" % "lift-openid_2.9.1" % "2.4",
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "io.github.stackableregiments" %% "persisted-metl" % "0.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "io.github.stackableregiments" %% "metldata" % "0.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
+    "io.github.stackableregiments" %% "lift-authentication" % "0.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
   )
 }
 

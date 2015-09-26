@@ -11,11 +11,11 @@ import net.liftweb.common._
 import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, StandardDBVendor}
 import _root_.java.sql.{Connection, DriverManager}
 
-class H2Interface(configName:String,onConversationDetailsUpdated:Conversation=>Unit) extends PersistenceInterface{
+class H2Interface(configName:String,filename:Option[String],onConversationDetailsUpdated:Conversation=>Unit) extends PersistenceInterface{
 	lazy val serializer = new H2Serializer(configName)
 	lazy val config = ServerConfiguration.configForName(configName)
 
-  private val vendor = new StandardDBVendor("org.h2.Driver", "jdbc:h2:lift_proto.db;AUTO_SERVER=TRUE",Empty,Empty)
+  private val vendor = new StandardDBVendor("org.h2.Driver", filename.map(f => "jdbc:h2:%s;AUTO_SERVER=TRUE".format(f)).getOrElse("jdbc:h2:mem:%s".format(configName)),Empty,Empty)
   if (!DB.jndiJdbcConnAvailable_?) {
 //			this right here?  This needs to be addressed.  Looks like I'm going to have to bring some lift libraries into this one.
 //      LiftRules.unloadHooks.append(vendor.closeAllConnections_! _)

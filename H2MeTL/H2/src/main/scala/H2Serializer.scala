@@ -17,7 +17,7 @@ class H2Serializer(configName:String) extends Serializer {
 	lazy val config = ServerConfiguration.configForName(configName)
 
 	case class ParsedCanvasContent(target:String,identity:String,slide:String,privacy:Privacy,author:String,timestamp:Long)
-	case class ParsedMeTLContent(author:String,timestamp:Long)
+	case class ParsedMeTLContent(author:String,timestamp:Long,audiences:List[Audience])
 
 	def toPrivacy(i:String):Privacy = i.toLowerCase.trim match {
 		case "public" => Privacy.PUBLIC
@@ -26,12 +26,31 @@ class H2Serializer(configName:String) extends Serializer {
 	}
 	def fromPrivacy(i:Privacy):String = i.toString.toLowerCase.trim
 
-	protected def decStanza[A <:H2MeTLStanza[A]](rec:A):ParsedMeTLContent = ParsedMeTLContent(rec.author.get,rec.timestamp.get)
+  protected def parseAudiences(in:String):List[Audience] = {
+    tryo((scala.xml.XML.loadString(in) \ "audience").flatMap(a => {
+      for (
+        domain <- (a \ "@domain").headOption;
+        name <- (a \ "@name").headOption;
+        audienceType <- (a \ "@type").headOption;
+        action <- (a \ "@action").headOption
+      ) yield {
+        Audience(config,domain.text,name.text,audienceType.text,action.text)
+      }
+    }).toList).openOr(Nil)
+  }
+  protected def incAudiences(in:List[Audience]) = {
+    <audiences>{
+      in.map(a => {
+        <audience domain={a.domain} name={a.name} type={a.audienceType} action={a.action}/>
+      })
+    }</audiences>
+  }
+	protected def decStanza[A <:H2MeTLStanza[A]](rec:A):ParsedMeTLContent = ParsedMeTLContent(rec.author.get,rec.timestamp.get,parseAudiences(rec.audiences.get))
 	protected def decCanvasContent[A <: H2MeTLCanvasContent[A]](rec:A):ParsedCanvasContent = {
 		val mc = decStanza(rec)
 		ParsedCanvasContent(rec.target.get,rec.identity.get,rec.slide.get,toPrivacy(rec.privacy.get),mc.author,mc.timestamp)
 	}
-	protected def incMeTLContent[A <: H2MeTLContent[A]](rec:A,s:MeTLData,metlType:String):A = rec.metlType(metlType)
+	protected def incMeTLContent[A <: H2MeTLContent[A]](rec:A,s:MeTLData,metlType:String):A = rec.metlType(metlType).audiences(incAudiences(s.audiences).toString)
 	protected def incStanza[A <: H2MeTLStanza[A]](rec:A,s:MeTLStanza,metlType:String):A = incMeTLContent(rec,s,metlType).timestamp(s.timestamp).author(s.author)		
 	protected def incCanvasContent[A <: H2MeTLCanvasContent[A]](rec:A,cc:MeTLCanvasContent,metlType:String):A = incStanza(rec,cc,metlType).target(cc.target).privacy(fromPrivacy(cc.privacy)).slide(cc.slide).identity(cc.identity)
 

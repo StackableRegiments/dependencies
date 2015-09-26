@@ -17,6 +17,8 @@ object H2Constants{
 	val privacy = 20
 }
 
+
+
 trait H2MeTLIndexedString extends IndexedField[String]{
 	def convertKey(in:String):Box[String] = Box.legacyNullTest(in)
 	def convertKey(in:Int):Box[String] = Full(in.toString)
@@ -29,6 +31,7 @@ trait H2MeTLContent[C <:H2MeTLContent[C]] extends LongKeyedMapper[C] with IdPK{
 	self: C =>
 	object metlType extends MappedString[C](this,13)
 	object room extends MappedString[C](this,H2Constants.room) with H2MeTLIndexedString
+  object audiences extends MappedText[C](this)
 }
 
 trait H2MeTLStanza[C <: H2MeTLStanza[C]] extends H2MeTLContent[C]{
