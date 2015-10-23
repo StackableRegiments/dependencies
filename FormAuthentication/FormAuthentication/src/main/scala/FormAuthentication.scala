@@ -75,22 +75,20 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
   }
   override def constructResponse(req:Req) = constructResponseWithMessages(req,List.empty[String]) 
   def constructResponseWithMessages(req:Req,additionalMessages:List[String] = List.empty[String]) = Stopwatch.time("FormAuthenticator.constructReq",() => {
-      val loginPageNode =
-        (
-          formSelector #> {(formNode:NodeSeq) => {
-            (
-              "%s -*".format(formSelector) #> <input type="hidden" name="path" value={makeUrlFromReq(req)}></input> &
-              "%s -*".format(formSelector) #> additionalMessages.map(am => {
-                <div class="loginError">{am}</div>
-              }) &
-              "%s [method]".format(formSelector) #> "POST" &
-              "%s [action]".format(formSelector) #> "/formLogon" &
+      val loginPageNode = (
+        "%s [method]".format(formSelector) #> "POST" &
+        "%s [action]".format(formSelector) #> "/formLogon" &
+        "%s *".format(formSelector) #> {(formNode:NodeSeq) => {
+          <input type="hidden" name="path" value={makeUrlFromReq(req)}></input> ++ 
+          additionalMessages.foldLeft(NodeSeq.Empty)((acc,am) => {
+            acc ++ <div class="loginError">{am}</div>
+          }) ++ (
 // these next two lines aren't working, and I'm not sure why not
-              "%s [name]".format(usernameSelector) #> "username" &
-              "%s [name]".format(passwordSelector) #> "password"
-            ).apply(formNode) 
-          }} 
-        ).apply(loginPage)
+            "%s [name]".format(usernameSelector) #> "username" &
+            "%s [name]".format(passwordSelector) #> "password"
+          ).apply(formNode) 
+        }} 
+      ).apply(loginPage)
       LiftRules.convertResponse(
         (loginPageNode,200),
         S.getHeaders(LiftRules.defaultHeaders((loginPageNode,req))),
