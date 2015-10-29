@@ -187,6 +187,10 @@ object Presentation{
   def emtpy = Presentation(ServerConfiguration.empty,Conversation.empty)
 }
 
+case class GroupSet(override val server:ServerConfiguration,id:String,groupSize:Option[Int],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
+
+case class Group(override val server:ServerConfiguration,id:String,location:String,members:List[String],override val audiences:List[Audience]) extends MeTLData(server,audiences)
+
 case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions, blackList:List[String] = List.empty[String],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
   def delete = copy(subject="deleted",lastAccessed=new Date().getTime)//Conversation(server,author,new Date().getTime,slides,"deleted",tag,jid,title,created,permissions,blackList,audiences)
   def rename(newTitle:String) = copy(title=newTitle,lastAccessed = new Date().getTime)//Conversation(server,author,new Date().getTime,slides,subject,tag,jid,newTitle,created,permissions,blackList,audiences)
@@ -270,6 +274,8 @@ object MeTLStanza{
   def unapply(in:MeTLStanza) = Some((in.server,in.author,in.timestamp,in.audiences))
   def empty = MeTLStanza(ServerConfiguration.empty,"",0L)
 }
+
+case class Attendance(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,location:String,present:Boolean) extends MeTLStanza(server,author,timestamp)
 
 case class MeTLUnhandledCanvasContent[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String,override val audiences:List[Audience] = Nil, override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0,unhandled:T) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,audiences,scaleFactorX,scaleFactorY)
 object MeTLUnhandledCanvasContent {
