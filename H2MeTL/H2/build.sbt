@@ -1,5 +1,5 @@
 name := "metl-h2"
-version := "0.3.0"
+version := "1.0.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
@@ -31,7 +31,7 @@ libraryDependencies ++= {
     "net.liftweb" %% "lift-webkit" % liftVersion,
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
     "io.github.stackableregiments" %% "persisted-metl" % "0.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "io.github.stackableregiments" %% "metldata" % "0.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
+    "io.github.stackableregiments" %% "metldata" % "1.0.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
   )
 }
 
@@ -97,7 +97,13 @@ traceLevel := 10
 // only show stack traces up to the first sbt stack frame
 traceLevel := 0
 
-credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
+//credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
+
+credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
+
+pgpSecretRing := file("/dev/.ivy2/.sbt/gpg/secring.asc")
+
+pgpPublicRing := file("/dev/.ivy2/.sbt/gpg/pubring.asc")
 
 // Exclude transitive dependencies, e.g., include log4j without including logging via jdmk, jmx, or jms.
 libraryDependencies += "log4j" % "log4j" % "1.2.15" excludeAll(

@@ -48,6 +48,14 @@ trait H2MeTLCanvasContent[C <: H2MeTLCanvasContent[C]] extends H2MeTLStanza[C] {
 	object identity extends MappedString[C](this,H2Constants.identity)
 }
 
+class H2Attendance extends H2MeTLStanza[H2Attendance]{
+  def getSingleton = H2Attendance
+  object location extends MappedString(this,4096)
+  object present extends MappedBoolean(this)
+}
+object H2Attendance extends H2Attendance with LongKeyedMetaMapper[H2Attendance] {
+}
+
 class H2Ink extends H2MeTLCanvasContent[H2Ink] {
 	def getSingleton = H2Ink
 	object checksum extends MappedDouble(this)
@@ -69,7 +77,7 @@ class H2Text extends H2MeTLCanvasContent[H2Text] {
 	object y extends MappedDouble(this)
 	object tag extends MappedString(this,H2Constants.tag)
 	object style extends MappedString(this,64)
-	object family extends MappedString(this,128)
+	object family extends MappedString(this,256)
 	object weight extends MappedString(this,64)
 	object size extends MappedDouble(this)
 	object decoration extends MappedString(this,64)

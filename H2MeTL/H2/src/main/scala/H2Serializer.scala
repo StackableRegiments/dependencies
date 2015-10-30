@@ -70,6 +70,7 @@ class H2Serializer(configName:String) extends Serializer {
 					case "submission" => toSubmission(i.asInstanceOf[H2Submission])
 					case "command" => toMeTLCommand(i.asInstanceOf[H2Command])
 					case "quiz" => toMeTLQuiz(i.asInstanceOf[H2Quiz])
+          case "attendance" => toMeTLAttendance(i.asInstanceOf[H2Attendance])
 					case "quizResponse" => toMeTLQuizResponse(i.asInstanceOf[H2QuizResponse])
 					case _ => throw new SerializationNotImplementedException
 				}
@@ -80,6 +81,13 @@ class H2Serializer(configName:String) extends Serializer {
 			}
 		}
 	})
+  def toMeTLAttendance(i:H2Attendance):Attendance = {
+    val c = decStanza(i)
+    Attendance(config,c.author,c.timestamp,i.location.get,i.present.get,c.audiences)
+  }
+  override def fromMeTLAttendance(i:Attendance):H2Attendance = {
+    incStanza(H2Attendance.create,i,"attendance").location(i.location).present(i.present)
+  }
   def toMeTLInk(i:H2Ink):MeTLInk = {
 		val cc = decCanvasContent(i)
 		MeTLInk(config,cc.author,cc.timestamp,i.checksum.get,i.startingSum.get,toPointList(i.points.get),toColor(i.color.get),i.thickness.get,i.isHighlighter.get,cc.target,cc.privacy,cc.slide,cc.identity)
