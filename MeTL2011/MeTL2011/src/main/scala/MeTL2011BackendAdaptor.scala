@@ -11,12 +11,11 @@ object MeTL2011ServerConfiguration{
   ).foreach(sc => ServerConfiguration.addServerConfigurator(sc))
 }
 
-class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,onConversationDetailsUpdated:Conversation=>Unit) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
-  protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
+class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentials:Tuple2[String,String],conversationBusCredentials:Tuple2[String,String],httpCredentials:Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
+  protected val http = new SimpleAuthedHttpProvider(httpCredentials._1,httpCredentials._2)
   protected lazy val history = new MeTL2011History(name,http)
-  protected lazy val messageBusProvider = new PooledXmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
-  protected lazy val conversationsMessageBusProvider = new XmppProvider(name,hostname,"metlXConversations","fred",xmppDomainName)
-  //  protected lazy val messageBusProvider = new XmppProvider(name,hostname,"metlXUser","fred",xmppDomainName)
+  protected lazy val messageBusProvider = new PooledXmppProvider(name,hostname,messageBusCredentials._1,messageBusCredentials._2,xmppDomainName)
+  protected lazy val conversationsMessageBusProvider = new XmppProvider(name,hostname,conversationBusCredentials._1,conversationBusCredentials._2,xmppDomainName)
   protected val conversations = new MeTL2011CachedConversations(name,http,conversationsMessageBusProvider,onConversationDetailsUpdated)
   lazy val serializer = new MeTL2011XmlSerializer(name)
   override def isReady = {
@@ -27,11 +26,7 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,o
   override def getHistory(jid:String) = history.getMeTLHistory(jid)
   override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
   override def searchForConversation(query:String) = conversations.search(query)
-  override def detailsOfConversation(jid:String) ={
-    val details = conversations.detailsOf(jid.toInt)
-    println("MeTL2011BackendAdaptor supplying details for %s: %s".format(jid,details))
-    details
-  }
+  override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
   override def createConversation(title:String,author:String) = conversations.createConversation(title,author)
   override def deleteConversation(jid:String):Conversation = conversations.deleteConversation(jid)
   override def renameConversation(jid:String,newTitle:String):Conversation = conversations.renameConversation(jid,newTitle)
@@ -50,15 +45,21 @@ object MeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
     val name = (e \\ "name").text
     val host = (e \\ "host").text
     val xmppDomainName = (e \\ "xmppDomainName").text
+    val httpUsername = (e \\ "httpUsername").text
+    val httpPassword = (e \\ "httpPassword").text
+    val messageBusUsernamePrefix = (e \\ "messageBusUsernamePrefix").text
+    val messageBusPassword = (e \\ "messageBusPassword").text
+    val conversationListenerUsernamePrefix = (e \\ "conversationListenerUsernamePrefix").text
+    val conversationListenerPassword = (e \\ "conversationListenerPassword").text
     xmppDomainName match {
-      case s:String if s.length > 0 => Some(new MeTL2011BackendAdaptor(name,host,s,onConversationDetailsUpdated))
-      case _ => Some(new MeTL2011BackendAdaptor(name,host,host,onConversationDetailsUpdated))
+      case s:String if s.length > 0 => Some(new MeTL2011BackendAdaptor(name,host,s,onConversationDetailsUpdated,(messageBusUsernamePrefix,messageBusPassword),(conversationListenerUsernamePrefix,conversationListenerPassword),(httpUsername,httpPassword)))
+      case _ => Some(new MeTL2011BackendAdaptor(name,host,host,onConversationDetailsUpdated,(messageBusUsernamePrefix,messageBusPassword),(conversationListenerUsernamePrefix,conversationListenerPassword),(httpUsername,httpPassword)))
     }
   }
 }
 
-class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversationDetailsUpdated:Conversation=>Unit) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
-  protected val http = new SimpleAuthedHttpProvider("crying_horse","bacon_sandwich")
+class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentials:Tuple2[String,String],conversationBusCredentials:Tuple2[String,String],httpCredentials:Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
+  protected val http = new SimpleAuthedHttpProvider(httpCredentials._1,httpCredentials._2)
   protected val history = new MeTL2011History(name,http)
   protected val messageBusProvider = new LoopbackMessageBusProvider
   protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,onConversationDetailsUpdated)
@@ -67,10 +68,7 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversation
   override def getHistory(jid:String) = history.getMeTLHistory(jid)
   override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
   override def searchForConversation(query:String) = conversations.search(query)
-  override def detailsOfConversation(jid:String) = {
-    println("TransientMeTL2011BackendAdaptor supplying empty details for %s".format(jid))
-    conversations.detailsOf(jid.toInt)
-  }
+  override def detailsOfConversation(jid:String) = conversations.detailsOf(jid.toInt)
   override def createConversation(title:String,author:String) = Conversation.empty
   override def deleteConversation(jid:String):Conversation = Conversation.empty
   override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty
@@ -88,7 +86,12 @@ object TransientMeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit) = {
     val name = (e \\ "name").text
     val host = (e \\ "host").text
-    val meggleUrl = (e \\ "meggleUrl").text
-    Some(new TransientMeTL2011BackendAdaptor(name,host,onConversationDetailsUpdated))
+    val httpUsername = (e \\ "httpUsername").text
+    val httpPassword = (e \\ "httpPassword").text
+    val messageBusUsernamePrefix = (e \\ "messageBusUsernamePrefix").text
+    val messageBusPassword = (e \\ "messageBusPassword").text
+    val conversationListenerUsernamePrefix = (e \\ "conversationListenerUsernamePrefix").text
+    val conversationListenerPassword = (e \\ "conversationListenerPassword").text
+    Some(new TransientMeTL2011BackendAdaptor(name,host,onConversationDetailsUpdated,(messageBusUsernamePrefix,messageBusPassword),(conversationListenerUsernamePrefix,conversationListenerPassword),(httpUsername,httpPassword)))
   }
 }

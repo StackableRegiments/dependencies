@@ -1,6 +1,6 @@
 package com.metl.metl2011
 
-import com.metl.data._
+import com.metl.data.{Group=>MeTLGroup,_}
 import com.metl.utils._
 import com.metl.xmpp._
 
@@ -42,7 +42,7 @@ class XmppConnProvider(configName:String,hostname:String,username:String,passwor
 		//println("XMPPConnProvider:getConn")
 		conns.find(c => c.getCount < maxCount).getOrElse({
 			val now = new Date().getTime.toString
-			val newConn = new MeTL2011XmppMultiConn("metlxConnector_%s_%s".format(username,now),password,"metlxConnector_%s_%s".format(username,now),hostname,domainName,configName,this)
+			val newConn = new MeTL2011XmppMultiConn("%s_%s".format(username,now),password,"%s_%s".format(username,now),hostname,domainName,configName,this)
 			conns = newConn :: conns
 			//println("XMPPConnProvider:getConn.createConn(%s)".format(newConn))
 			newConn
@@ -116,7 +116,7 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
 		targets.foreach(mb => mb.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList)))
 	}
 	override lazy val ignoredTypes = List("metlMetaData")
-  override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","screenshotSubmission","submission","quiz","quizResponse","command","moveDelta","teacherstatus").map(item => {
+  override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","screenshotSubmission","submission","quiz","quizResponse","command","moveDelta","teacherstatus","attendance").map(item => {
     val ser = (i:MeTLData) => {
       val xml = serializer.fromMeTLData(i)
       val messages = xml
@@ -161,7 +161,7 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:S
     bus.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList))
   }
   override lazy val ignoredTypes = List("metlMetaData")
-  override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","screenshotSubmission","submission","quiz","quizResponse","command","moveDelta","teacherstatus").map(item => {
+  override lazy val subscribedTypes = List("ink","textbox","image","dirtyInk","dirtyText","dirtyImage","screenshotSubmission","submission","quiz","quizResponse","command","moveDelta","teacherstatus","attendance").map(item => {
     val ser = (i:MeTLData) => {
       val xml = serializer.fromMeTLData(i)
       val messages = xml
@@ -222,6 +222,10 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,username:String
 			case d:MeTLMoveDelta =>{
 				xmpp.map(x => x.sendMessage(jid,"moveDelta",d))
 				true}
+      case a:Attendance => {
+        xmpp.map(x => x.sendMessage(jid,"attendance",a))
+        true
+      }
 			case _ => {
 				false
 			}
@@ -272,6 +276,10 @@ class XmppMessageBus(configName:String,hostname:String,username:String,password:
     case d:MeTLMoveDelta =>{
       xmpp.sendMessage(jid,"moveDelta",d)
       true}
+    case a:Attendance => {
+      xmpp.sendMessage(jid,"attendance",a)
+      true
+    }
     case _ => {
       false
     }
