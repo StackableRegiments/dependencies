@@ -87,6 +87,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       case i:NodeSeq if hasChild(i,"quiz") => toMeTLQuiz(i)
       case i:NodeSeq if hasChild(i,"quizResponse") => toMeTLQuizResponse(i)
       case i:NodeSeq if hasChild(i,"screenshotSubmission") => toSubmission(i)
+      case i:NodeSeq if hasChild(i,"attendance") => toMeTLAttendance(i)
       case i:NodeSeq if hasChild(i,"body") => toMeTLCommand(i)
       case i:NodeSeq if hasSubChild(i,"target") && hasSubChild(i,"privacy") && hasSubChild(i,"slide") && hasSubChild(i,"identity") => toMeTLUnhandledCanvasContent(i)
       case i:NodeSeq if (((i \\ "author").length > 0) && ((i \\ "message").length > 0)) => toMeTLUnhandledStanza(i)
@@ -162,6 +163,18 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <isDeleted>{input.isDeleted}</isDeleted>,
 			<xOrigin>{input.xOrigin}</xOrigin>,
 			<yOrigin>{input.yOrigin}</yOrigin>
+    ))
+  })
+  override def toMeTLAttendance(input:NodeSeq):Attendance = Stopwatch.time("GenericXmlSerializer.toMeTLAttendance",() => {
+    val m = parseMeTLContent(input,config)
+    val location = getStringByName(input,"location")
+    val present = getBooleanByName(input,"present")
+    Attendance(config,m.author,m.timestamp,location,present,m.audiences)
+  })
+  override def fromMeTLAttendance(input:Attendance):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLAttenance",() => {
+    metlContentToXml("attendance",input,List(
+      <location>{input.location}</location>,
+      <present>{input.present}</present>
     ))
   })
   override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLInk", () => {
@@ -405,7 +418,8 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val defWidth = getIntByName(input,"defaultWidth")
     val exposed = getBooleanByName(input,"exposed")
     val slideType = getStringByName(input,"type")
-    Slide(config,author,id,index,defHeight,defWidth,exposed,slideType,m.audiences)
+    val groupSet = (input \ "groupSet").headOption.map(gs => toGroupSet(gs))
+    Slide(config,author,id,index,defHeight,defWidth,exposed,slideType,groupSet,m.audiences)
   })
   override def fromSlide(input:Slide):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSlide",() => {
     metlXmlToXml("slide",List(
@@ -416,8 +430,42 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <defaultWidth>{input.defaultWidth}</defaultWidth>,
       <exposed>{input.exposed}</exposed>,
       <type>{input.slideType}</type>
+    ) ::: List(input.groupSet.map(gs => fromGroupSet(gs))).flatten.flatMap(_.theSeq).toList)
+  })
+  override def toGroupSet(input:NodeSeq):GroupSet = Stopwatch.time("GenericXmlSerializer.toGroupSet",() => {
+    val m = parseMeTLContent(input,config)
+    val id = getStringByName(input,"id")
+    val location = getStringByName(input,"location")
+    val groupSize = (input \ "groupSize").headOption.map(_i => getIntByName(input,"groupSize"))
+    val groups = ((input \ "groups") \ "group").map(gn => toGroup(gn)).toList
+    GroupSet(config,id,location,groupSize,groups,m.audiences)
+  })
+  override def fromGroupSet(input:GroupSet):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroupSet",() => {
+    metlXmlToXml("groupSet",List(
+      <id>{input.id}</id>,
+      <location>{input.location}</location>,
+      <groupSize>{input.groupSize}</groupSize>,
+      <groups>{input.groups.map(g => fromGroup(g))}</groups>
     ))
   })
+
+  override def toGroup(input:NodeSeq):Group = Stopwatch.time("GenericXmlSerializer.toGroup",() => {
+    val m = parseMeTLContent(input,config)
+    val id = getStringByName(input,"id")
+    val location = getStringByName(input,"location")
+    val members = ((input \ "members") \ "member").map(_.text).toList
+    Group(config,id,location,members,m.audiences)
+  })
+  override def fromGroup(input:Group):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroup",() => {
+    metlXmlToXml("groupSet",List(
+      <id>{input.id}</id>,
+      <location>{input.location}</location>,
+      <members>{input.members.map(m => {
+        <member>{m}</member>
+      })}</members>
+    ))
+  })
+
   override def toPermissions(input:NodeSeq):Permissions = Stopwatch.time("GenericXmlSerializer.toPermissions", () => {
     val studentsCanOpenFriends = getBooleanByName(input,"studentCanOpenFriends")
     val studentsCanPublish = getBooleanByName(input,"studentCanPublish")

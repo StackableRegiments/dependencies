@@ -187,9 +187,15 @@ object Presentation{
   def emtpy = Presentation(ServerConfiguration.empty,Conversation.empty)
 }
 
-case class GroupSet(override val server:ServerConfiguration,id:String,groupSize:Option[Int],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
+case class GroupSet(override val server:ServerConfiguration,id:String,location:String,groupSize:Option[Int],groups:List[Group],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
+object GroupSet {
+  def empty = GroupSet(ServerConfiguration.empty,"","",None,Nil,Nil)
+}
 
-case class Group(override val server:ServerConfiguration,id:String,location:String,members:List[String],override val audiences:List[Audience]) extends MeTLData(server,audiences)
+case class Group(override val server:ServerConfiguration,id:String,location:String,members:List[String],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
+object Group {
+  def empty = Group(ServerConfiguration.empty,"","",Nil,Nil)
+}
 
 case class Conversation(override val server:ServerConfiguration,author:String,lastAccessed:Long,slides:List[Slide],subject:String,tag:String,jid:Int,title:String,created:String,permissions:Permissions, blackList:List[String] = List.empty[String],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
   def delete = copy(subject="deleted",lastAccessed=new Date().getTime)//Conversation(server,author,new Date().getTime,slides,"deleted",tag,jid,title,created,permissions,blackList,audiences)
@@ -218,7 +224,7 @@ object Conversation{
   def empty = Conversation(ServerConfiguration.empty,"",0L,List.empty[Slide],"","",0,"","",Permissions.default(ServerConfiguration.empty),Nil,Nil)
 }
 
-case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE",override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
+case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE",groupSet:Option[GroupSet] = None,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
   def replaceIndex(newIndex:Int) = copy(index=newIndex)//Slide(server,author,id,newIndex,defaultHeight,defaultWidth,exposed,slideType)
 }
 object Slide{
@@ -275,7 +281,10 @@ object MeTLStanza{
   def empty = MeTLStanza(ServerConfiguration.empty,"",0L)
 }
 
-case class Attendance(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,location:String,present:Boolean) extends MeTLStanza(server,author,timestamp)
+case class Attendance(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,location:String,present:Boolean,override val audiences:List[Audience]) extends MeTLStanza(server,author,timestamp,audiences)
+object Attendance{
+  def empty = Attendance(ServerConfiguration.empty,"",0L,"",false,Nil)
+}
 
 case class MeTLUnhandledCanvasContent[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String,override val audiences:List[Audience] = Nil, override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0,unhandled:T) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,audiences,scaleFactorX,scaleFactorY)
 object MeTLUnhandledCanvasContent {

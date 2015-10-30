@@ -12,6 +12,8 @@ abstract class Serializer {
   def toMeTLData(input:T):MeTLData = throw new SerializationNotImplementedException
   def toMeTLMoveDelta(input:T):MeTLMoveDelta = throw new SerializationNotImplementedException
   def fromMeTLMoveDelta(input:MeTLMoveDelta):T = throw new SerializationNotImplementedException
+  def toMeTLAttendance(input:T):Attendance = throw new SerializationNotImplementedException
+  def fromMeTLAttendance(input:Attendance):T = throw new SerializationNotImplementedException
   def toMeTLInk(input:T):MeTLInk = throw new SerializationNotImplementedException
   def fromMeTLInk(input:MeTLInk):T = throw new SerializationNotImplementedException
   def toMeTLImage(input:T):MeTLImage = throw new SerializationNotImplementedException
@@ -37,6 +39,11 @@ abstract class Serializer {
   def fromConversationList(input:List[Conversation]):T = throw new SerializationNotImplementedException
   def toSlide(input:T):Slide = throw new SerializationNotImplementedException
   def fromSlide(input:Slide):T = throw new SerializationNotImplementedException
+  def toGroupSet(input:T):GroupSet = throw new SerializationNotImplementedException
+  def fromGroupSet(input:GroupSet):T = throw new SerializationNotImplementedException
+  def toGroup(input:T):Group = throw new SerializationNotImplementedException
+  def fromGroup(input:Group):T = throw new SerializationNotImplementedException
+
   def toPermissions(input:T):Permissions = throw new SerializationNotImplementedException
   def fromPermissions(input:Permissions):T = throw new SerializationNotImplementedException
   def toPoint(input:AnyRef):Point = throw new SerializationNotImplementedException
@@ -63,6 +70,7 @@ abstract class Serializer {
     case qr:MeTLQuizResponse => fromMeTLQuizResponse(qr)
     case s:MeTLSubmission => fromSubmission(s)
     case m:MeTLMoveDelta => fromMeTLMoveDelta(m)
+    case a:Attendance => fromMeTLAttendance(a)
     case cc:MeTLUnhandledCanvasContent[T] => fromMeTLUnhandledCanvasContent(cc)
     case ms:MeTLUnhandledStanza[T] => fromMeTLUnhandledStanza(ms)
     case mx:MeTLUnhandledData[T] => fromMeTLUnhandledData(mx)
@@ -74,6 +82,8 @@ class PassthroughSerializer extends Serializer {
   type T = Object
   override def toMeTLData(input:Object):MeTLData = input.asInstanceOf[MeTLData]
   override def fromMeTLData(input:MeTLData):Object = input.asInstanceOf[Object]
+  override def toMeTLAttendance(input:T):Attendance = input.asInstanceOf[Attendance]
+  override def fromMeTLAttendance(input:Attendance):T = input.asInstanceOf[Object]
   override def toMeTLInk(input:Object):MeTLInk = input.asInstanceOf[MeTLInk]
   override def fromMeTLInk(input:MeTLInk):Object = input.asInstanceOf[Object]
   override def toMeTLImage(input:Object):MeTLImage = input.asInstanceOf[MeTLImage]
@@ -100,6 +110,10 @@ class PassthroughSerializer extends Serializer {
   override def fromConversation(input:Conversation):Object = input.asInstanceOf[Object]
   override def toSlide(input:Object):Slide = input.asInstanceOf[Slide]
   override def fromSlide(input:Slide):Object = input.asInstanceOf[Object]
+  override def toGroupSet(input:T):GroupSet = input.asInstanceOf[GroupSet]
+  override def fromGroupSet(input:GroupSet):T = input.asInstanceOf[Object]
+  override def toGroup(input:T):Group = input.asInstanceOf[Group]
+  override def fromGroup(input:Group):T = input.asInstanceOf[Object]
   override def toPermissions(input:Object):Permissions = input.asInstanceOf[Permissions]
   override def fromPermissions(input:Permissions):Object = input.asInstanceOf[Object]
 	override def toPoint(input:AnyRef):Point = input.asInstanceOf[Point]
