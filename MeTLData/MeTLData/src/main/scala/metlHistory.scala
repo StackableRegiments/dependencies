@@ -60,6 +60,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   protected var submissions:List[MeTLSubmission] = List.empty[MeTLSubmission]
   protected var commands:List[MeTLCommand] = List.empty[MeTLCommand]
   protected var latestCommands:Map[String,MeTLCommand] = Map.empty[String,MeTLCommand]
+  protected var attendances:List[Attendance] = List.empty[Attendance]
 
   def getLatestCommands:Map[String,MeTLCommand] = latestCommands
 
@@ -72,6 +73,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getQuizzes = quizzes
   def getQuizResponses = quizResponses
   def getSubmissions = submissions
+  def getAttendances = attendances
   def getCommands = commands
 
   def getRenderable = Stopwatch.time("History.getRenderable", () => getCanvasContents.map(scaleItemToSuitHistory(_)))
@@ -109,6 +111,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     case s:MeTLQuizResponse => addQuizResponse(s)
     case s:MeTLSubmission => addSubmission(s)
     case s:MeTLCommand => addCommand(s)
+    case s:Attendance => addAttendance(s)
     case s:MeTLStanza => {
       println("makeHistory: I don't know what to do with a MeTLStanza: %s".format(s))
       this
@@ -219,6 +222,14 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
     if (store)
       inks = inks ::: List(s)
+    this
+  })
+
+  def addAttendance(s:Attendance,store:Boolean = true) = Stopwatch.time("History.addAttendance",() => {
+    if (store){
+      outputHook(s)
+      attendances = attendances ::: List(s)
+    }
     this
   })
   def addImage(s:MeTLImage,store:Boolean = true) = Stopwatch.time("History.addImage", () => {

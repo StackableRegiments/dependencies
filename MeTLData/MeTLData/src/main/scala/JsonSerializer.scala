@@ -123,6 +123,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("quizzes",JArray(input.getQuizzes.map(i => fromMeTLQuiz(i)))),
       JField("quizResponses",JArray(input.getQuizResponses.map(i => fromMeTLQuizResponse(i)))),
       JField("submissions",JArray(input.getSubmissions.map(i => fromSubmission(i)))),
+      JField("attendances",JArray(input.getAttendances.map(i => fromMeTLAttendance(i)))),
       JField("commands",JArray(input.getCommands.map(i => fromMeTLCommand(i))))
     ))
   })
