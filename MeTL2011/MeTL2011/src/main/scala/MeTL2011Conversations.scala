@@ -6,7 +6,7 @@ import java.io.ByteArrayInputStream
 
 import net.liftweb.util._
 import org.apache.commons.io.IOUtils
-class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
+class MeTL2011CachedConversations(configName:String, http:HttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
   override val mbDef = new MessageBusDefinition("global","conversationUpdating",
 		(m:MeTLStanza)=>{
 			println("Message received from the conversationUpdater's message bus: %s".format(m))
@@ -111,7 +111,7 @@ class MeTL2011CachedConversations(configName:String, http:SimpleAuthedHttpProvid
   }
 }
 
-class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:SimpleAuthedHttpProvider,messageBusProvider:MessageBusProvider,onConversationDetailsUpdated:(Conversation) => Unit) extends ConversationRetriever(configName,onConversationDetailsUpdated) {
+class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:HttpProvider,messageBusProvider:MessageBusProvider,onConversationDetailsUpdated:(Conversation) => Unit) extends ConversationRetriever(configName,onConversationDetailsUpdated) {
   lazy val utils = new MeTL2011Utils(configName)
   lazy val serializer = new MeTL2011XmlSerializer(configName)
   lazy val rootAddress = "https://%s:1188".format(config.host)

@@ -14,6 +14,8 @@ class LocalH2BackendAdaptor(name:String,filename:Option[String],onConversationDe
 	override def shutdown = dbInterface.shutdown
 }
 object LocalH2ServerConfigurator extends ServerConfigurator{
-	override def matchFunction(e:Node) = (e \\ "type").text == "localH2"
-	override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit) = Some(new LocalH2BackendAdaptor("localH2",(e \ "filename").headOption.map(_.text),onConversationDetailsUpdated))
+	override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "localH2")
+  override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
+    Some(new LocalH2BackendAdaptor("localH2",(e \ "filename").headOption.map(_.text),onConversationDetailsUpdated))
+  }
 }

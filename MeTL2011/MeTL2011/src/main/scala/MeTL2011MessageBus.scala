@@ -234,7 +234,7 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,credentialsFunc
     super.release
   }
 }
-class XmppMessageBus(configName:String,hostname:String,credentailsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
+class XmppMessageBus(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
   val jid = d.location
   lazy val xmpp = new MeTL2011XmppConn(credentialsFunc,"metlxConnector_%s".format(new Date().getTime.toString),hostname,domain,configName,this)
   xmpp.joinRoom(jid,this.hashCode.toString)

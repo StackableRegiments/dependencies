@@ -40,39 +40,40 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,o
 }
 
 object MeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
-  override def matchFunction(e:Node) = (e \\ "type").text == "MeTL2011"
+  override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "MeTL2011")
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     for (
-      name <- (e \\ "name").headOption.map(_.text)
-      host <- (e \\ "host").headOption.map(_.text)
-      xmppDomainName = (e \\ "xmppDomainName").headOption.map(_.text).filter(_.length > 0)
-      httpUsername <- (e \\ "httpUsername").headOption.map(_.text)
-      httpPassword <- (e \\ "httpPassword").headOption.map(_.text)
-      messageBusUsernamePrefix <- (e \\ "messageBusUsernamePrefix").headOption.map(_.text)
-      messageBusPassword <- (e \\ "messageBusPassword").headOption.map(_.text)
-      conversationListenerUsernamePrefix <- (e \\ "conversationListenerUsernamePrefix").headOption.map(_.text)
+      name <- (e \\ "name").headOption.map(_.text);
+      host <- (e \\ "host").headOption.map(_.text);
+      xmppDomainName = (e \\ "xmppDomainName").headOption.map(_.text).filter(_.length > 0);
+      httpUsername <- (e \\ "httpUsername").headOption.map(_.text);
+      httpPassword <- (e \\ "httpPassword").headOption.map(_.text);
+      messageBusUsernamePrefix <- (e \\ "messageBusUsernamePrefix").headOption.map(_.text);
+      messageBusPassword <- (e \\ "messageBusPassword").headOption.map(_.text);
+      conversationListenerUsernamePrefix <- (e \\ "conversationListenerUsernamePrefix").headOption.map(_.text);
       conversationListenerPassword <- (e \\ "conversationListenerPassword").headOption.map(_.text)
-    ) yeild {
-      Some(new MeTL2011BackendAdaptor(name,host,xmppDomainName.getOrElse(host),onConversationDetailsUpdated,() => (messageBusUsernamePrefix,messageBusPassword),() => (conversationListenerUsernamePrefix,conversationListenerPassword),() => (httpUsername,httpPassword)))
+    ) yield {
+      new MeTL2011BackendAdaptor(name,host,xmppDomainName.getOrElse(host),onConversationDetailsUpdated,() => (messageBusUsernamePrefix,messageBusPassword),() => (conversationListenerUsernamePrefix,conversationListenerPassword),() => (httpUsername,httpPassword))
     }
   }
 }
 
 object MeTL2015BackendAdaptorConfigurator extends ServerConfigurator{
-  override def matchFunction(e:Node) = (e \\ "type").text == "MeTL2015"
+  override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "MeTL2015")
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     for (
-      name <- (e \\ "name").headOption.map(_.text)
-      host <- (e \\ "host").headOption.map(_.text)
+      name <- (e \\ "name").headOption.map(_.text);
+      host <- (e \\ "host").headOption.map(_.text);
       xmppDomainName = (e \\ "xmppDomainName").headOption.map(_.text).filter(_.length > 0)
     ) yield {
-      Some(new MeTL2011BackendAdaptor(name,host,xmppDomainName.getOrElse(host),onConversationDetailsUpdated,messageBusCredentialsFunc,conversationListenerCredentialsFunc,httpCredentialsFunc))
+      new MeTL2011BackendAdaptor(name,host,xmppDomainName.getOrElse(host),onConversationDetailsUpdated,messageBusCredentailsFunc,conversationListenerCredentialsFunc,httpCredentialsFunc)
+    }
   }
 }
 
 
-  class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentials:() => Tuple2[String,String],conversationBusCredentials:Tuple2[String,String],httpCredentials:Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
-  protected val http = new DynamicallyAuthedHttpProvider(httpCredentials._1,httpCredentials._2)
+class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversationDetailsUpdated:Conversation=>Unit,httpCredentialFunc:()=>Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
+  protected val http = new DynamicallyAuthedHttpProvider(httpCredentialFunc)
   protected val history = new MeTL2011History(name,http)
   protected val messageBusProvider = new LoopbackMessageBusProvider
   protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,onConversationDetailsUpdated)
@@ -95,34 +96,31 @@ object MeTL2015BackendAdaptorConfigurator extends ServerConfigurator{
 }
 
 object TransientMeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
-  override def matchFunction(e:Node) = (e \\ "type").text == "MeTL2011"
+  override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "TransientMeTL2011")
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     for (
-      name <- (e \\ "name").headOption.map(_.text)
-      host <- (e \\ "host").headOption.map(_.text)
-      xmppDomainName = (e \\ "xmppDomainName").headOption.map(_.text).filter(_.length > 0)
-      httpUsername <- (e \\ "httpUsername").headOption.map(_.text)
-      httpPassword <- (e \\ "httpPassword").headOption.map(_.text)
-      messageBusUsernamePrefix <- (e \\ "messageBusUsernamePrefix").headOption.map(_.text)
-      messageBusPassword <- (e \\ "messageBusPassword").headOption.map(_.text)
-      conversationListenerUsernamePrefix <- (e \\ "conversationListenerUsernamePrefix").headOption.map(_.text)
+      name <- (e \\ "name").headOption.map(_.text);
+      host <- (e \\ "host").headOption.map(_.text);
+      httpUsername <- (e \\ "httpUsername").headOption.map(_.text);
+      httpPassword <- (e \\ "httpPassword").headOption.map(_.text);
+      messageBusUsernamePrefix <- (e \\ "messageBusUsernamePrefix").headOption.map(_.text);
+      messageBusPassword <- (e \\ "messageBusPassword").headOption.map(_.text);
+      conversationListenerUsernamePrefix <- (e \\ "conversationListenerUsernamePrefix").headOption.map(_.text);
       conversationListenerPassword <- (e \\ "conversationListenerPassword").headOption.map(_.text)
-    ) yeild {
-      Some(new TransientMeTL2011BackendAdaptor(name,host,xmppDomainName.getOrElse(host),onConversationDetailsUpdated,() => (messageBusUsernamePrefix,messageBusPassword),() => (conversationListenerUsernamePrefix,conversationListenerPassword),() => (httpUsername,httpPassword)))
+    ) yield {
+      new TransientMeTL2011BackendAdaptor(name,host,onConversationDetailsUpdated,() => (httpUsername,httpPassword))
     }
   }
 }
 
 object TransientMeTL2015BackendAdaptorConfigurator extends ServerConfigurator{
-  override def matchFunction(e:Node) = (e \\ "type").text == "MeTL2015"
+  override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "TransientMeTL2015")
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     for (
-      name <- (e \\ "name").headOption.map(_.text)
+      name <- (e \\ "name").headOption.map(_.text);
       host <- (e \\ "host").headOption.map(_.text)
-      xmppDomainName = (e \\ "xmppDomainName").headOption.map(_.text).filter(_.length > 0)
     ) yield {
-      Some(new MeTL2011BackendAdaptor(name,host,xmppDomainName.getOrElse(host),onConversationDetailsUpdated,messageBusCredentialsFunc,conversationListenerCredentialsFunc,httpCredentialsFunc))
+      new TransientMeTL2011BackendAdaptor(name,host,onConversationDetailsUpdated,httpCredentialsFunc)
+    }
   }
 }
-
-
