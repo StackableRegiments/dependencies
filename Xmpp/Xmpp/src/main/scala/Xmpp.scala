@@ -289,8 +289,13 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
     override def verify(hostname:String, session:javax.net.ssl.SSLSession):Boolean = true
   }
 	private val config:XMPPTCPConnectionConfiguration = {
+    val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+    sslContext.init(null,Array(new org.jivesoftware.smack.util.TLSUtils.AcceptAllTrustManager()),null)
     val conf:XMPPTCPConnectionConfiguration = XMPPTCPConnectionConfiguration.builder()
+     .setCustomSSLContext(sslContext)
      .setServiceName(domain)
+     .setHost(host)
+     .setPort(port)
      .setUsernameAndPassword(username,password)
      .setCompressionEnabled(allowCompression)
      .setHostnameVerifier(NoHostnameVerification)
