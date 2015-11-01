@@ -1,5 +1,5 @@
 name := "xmpp"
-version := "0.2.0"
+version := "1.0.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
@@ -26,8 +26,11 @@ libraryDependencies ++= {
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "jivesoftware" % "smack" % "3.2.1",
-    "jivesoftware" % "smackx" % "3.2.1"
+    "org.igniterealtime.smack" % "smack-core" % "4.1.4",
+    "org.igniterealtime.smack" % "smack-tcp" % "4.1.4",
+    "org.igniterealtime.smack" % "smack-extensions" % "4.1.4"
+//    "jivesoftware" % "smack" % "3.2.1",
+//    "jivesoftware" % "smackx" % "3.2.1"
   )
 }
 
@@ -93,7 +96,13 @@ traceLevel := 10
 // only show stack traces up to the first sbt stack frame
 traceLevel := 0
 
-credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
+//credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
+
+credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
+
+pgpSecretRing := file("/dev/.ivy2/.sbt/gpg/secring.asc")
+
+pgpPublicRing := file("/dev/.ivy2/.sbt/gpg/pubring.asc")
 
 // Exclude transitive dependencies, e.g., include log4j without including logging via jdmk, jmx, or jms.
 libraryDependencies += "log4j" % "log4j" % "1.2.15" excludeAll(
