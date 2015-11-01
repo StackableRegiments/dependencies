@@ -1,5 +1,5 @@
 name := "metl2011"
-version := "2.0.0"
+version := "2.1.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
@@ -28,7 +28,7 @@ libraryDependencies ++= {
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
     "org.apache.commons" % "commons-compress" % "1.1",
     "io.github.stackableregiments" %% "metldata" % "2.0.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "io.github.stackableregiments" %% "xmpp" % "1.0.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
+    "io.github.stackableregiments" %% "xmpp" % "2.0.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
   )
 }
 
