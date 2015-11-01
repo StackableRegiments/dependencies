@@ -136,19 +136,20 @@ class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>U
 	}
 }
 
-abstract class XmppConnection[T](incomingUsername:String,password:String,incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Option[XMPPConnection],onConnectionLost:()=>Unit = () => {},onConnectionRegained:()=>Unit = () => {}) {
+abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],incomingUsername:String,password:String,incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Option[XMPPConnection],onConnectionLost:()=>Unit = () => {},onConnectionRegained:()=>Unit = () => {}) {
 
-    def this(incomingUsername: String, password: String, incomingResource: String, incomingHost: String) {
-        this(incomingUsername, password, incomingResource, incomingHost, incomingHost, xmppConnection = None)
+  def this(credentailsFunc:() => Tuple2[String,String], incomingResource: String, incomingHost: String) {
+        this(credentailsFunc, incomingResource, incomingHost, incomingHost, xmppConnection = None)
     }
-		def this(incomingUsername: String, password: String, incomingResource: String, incomingHost: String, incomingDomain:String) {
-				this(incomingUsername, password, incomingResource, incomingHost, incomingDomain, xmppConnection = None)
+  def this(credentialsFunc:() => Tuple2[String,String], incomingResource: String, incomingHost: String, incomingDomain:String) {
+				this(credentialsFunc, incomingResource, incomingHost, incomingDomain, xmppConnection = None)
 		}
 
 	val host = incomingHost
-	val username = incomingUsername
-	val resource = incomingResource
 	val domain = incomingDomain
+  val credentials = credentialsFunc()
+  val username = credentials._1
+  val password = credentials._2
 	Packet.setDefaultXmlns(XmppUtils.ns)
 
 	protected def onConnLost:Unit = onConnectionLost

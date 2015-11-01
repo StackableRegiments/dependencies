@@ -21,20 +21,20 @@ object ServerConfiguration{
     FrontendSerializationAdaptorConfigurator
   )
   def addServerConfigurator(sc:ServerConfigurator) = serverConfigurators = serverConfigurators ::: List(sc)
-  def loadServerConfigsFromFile(path:String,onConversationDetailsUpdated:Conversation=>Unit) = {
+  def loadServerConfigsFromFile(path:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     val xml = XML.load(path)
-      (xml \\ "server").foreach(sc => interpret(sc,onConversationDetailsUpdated))
+      (xml \\ "server").foreach(sc => interpret(sc,onConversationDetailsUpdated,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]))
       (xml \\ "defaultServerConfiguration").text match {
         case s:String if (s.length > 0) => defaultConfigFunc = () => configForName(s)
         case _ => {}
       }
   }
-  protected def interpret(n:Node,onConversationDetailsUpdated:Conversation=>Unit) = serverConfigurators.filter(sc => sc.matchFunction(n)).map(sc => sc.interpret(n,onConversationDetailsUpdated).map(s => addServerConfiguration(s)))
+  protected def interpret(n:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = serverConfigurators.filter(sc => sc.matchFunction(n)).map(sc => sc.interpret(n,onConversationDetailsUpdated,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]).map(s => addServerConfiguration(s)))
 }
 
 class ServerConfigurator{
   def matchFunction(e:Node) = false
-  def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit):Option[ServerConfiguration] = None
+  def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]):Option[ServerConfiguration] = None
 }
 
 abstract class ServerConfiguration(incomingName:String,incomingHost:String,onConversationDetailsUpdated:Conversation=>Unit) {
@@ -81,7 +81,7 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty",(c)=>{}){
 
 object EmptyBackendAdaptorConfigurator extends ServerConfigurator{
   override def matchFunction(e:Node) = (e \\ "type").text == "empty"
-  override def interpret(e:Node,o:Conversation=>Unit) = Some(EmptyBackendAdaptor)
+  override def interpret(e:Node,o:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = Some(EmptyBackendAdaptor)
 }
 
 object FrontendSerializationAdaptor extends ServerConfiguration("frontend","frontend",(c)=>{}){
@@ -105,5 +105,5 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 
 object FrontendSerializationAdaptorConfigurator extends ServerConfigurator{
   override def matchFunction(e:Node) = (e \\ "type").text == "frontend"
-  override def interpret(e:Node,o:Conversation=>Unit) = Some(FrontendSerializationAdaptor)
+  override def interpret(e:Node,o:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = Some(FrontendSerializationAdaptor)
 }

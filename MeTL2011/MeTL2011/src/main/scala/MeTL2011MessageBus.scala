@@ -10,39 +10,35 @@ import scala.xml._
 import java.util.Date
 import scala.collection.mutable.HashMap
 
-class XmppProvider(configName:String,hostname:String,username:String,password:String,domainName:String) extends OneBusPerRoomMessageBusProvider{
+class XmppProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) extends OneBusPerRoomMessageBusProvider{
   override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
-    new XmppMessageBus(configName,hostname,username + new java.util.Date().getTime.toString,password,domainName,d,this)
+    new XmppMessageBus(configName,hostname,credentialsFunc,domainName,d,this)
   })
 	def getHostname = hostname
-	def getUsername = username
-	def getPassword = password
 	def getDomainName = domainName
 }
 
-class PooledXmppProvider(configName:String,hostname:String,username:String,password:String,domainName:String) extends OneBusPerRoomMessageBusProvider{
-	protected val connMgr = new XmppConnProvider(configName,hostname,username,password,domainName)
+class PooledXmppProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) extends OneBusPerRoomMessageBusProvider{
+	protected val connMgr = new XmppConnProvider(configName,hostname,credentialsFunc,domainName)
   override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("PooledXmppProvider.createNewMessageBus", () => {
 		val conn = connMgr.getConn
-    val bus = new XmppSharedConnMessageBus(configName,hostname,username + new java.util.Date().getTime.toString,password,domainName,d,this)
+    val bus = new XmppSharedConnMessageBus(configName,hostname,credentialsFunc,domainName,d,this)
 		bus.addConn(conn)
 		conn.addMessageBus(d,bus)
 		bus
   })
 	def getHostname = hostname
-	def getUsername = username
-	def getPassword = password
 	def getDomainName = domainName
 }
 
-class XmppConnProvider(configName:String,hostname:String,username:String,password:String,domainName:String) {
+class XmppConnProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) {
 	protected var conns = List.empty[MeTL2011XmppMultiConn]	
 	protected val maxCount = 20	
 	def getConn:MeTL2011XmppMultiConn = {
 		//println("XMPPConnProvider:getConn")
 		conns.find(c => c.getCount < maxCount).getOrElse({
 			val now = new Date().getTime.toString
-			val newConn = new MeTL2011XmppMultiConn("%s_%s".format(username,now),password,"%s_%s".format(username,now),hostname,domainName,configName,this)
+			val newConn = new MeTL2011XmppMultiConn(credentialsFunc,"metlxConnector_"+now,hostname,domainName,configName,this)
 			conns = newConn :: conns
 			//println("XMPPConnProvider:getConn.createConn(%s)".format(newConn))
 			newConn
@@ -58,7 +54,7 @@ class XmppConnProvider(configName:String,hostname:String,username:String,passwor
 	}
 }
 
-class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configName:String,creator:XmppConnProvider) extends XmppConnection[MeTLData](u,p,r,h,d,None){
+class MeTL2011XmppMultiConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,configName:String,creator:XmppConnProvider) extends XmppConnection[MeTLData](cf,r,h,d,None){
 	protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
 	private lazy val config = ServerConfiguration.configForName(configName)
 	
@@ -133,7 +129,7 @@ class MeTL2011XmppMultiConn(u:String,p:String,r:String,h:String,d:String,configN
   })
 }
 
-class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLData](u,p,r,h,d,None,bus.notifyConnectionLost _,bus.notifyConnectionResumed _){
+class MeTL2011XmppConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLData](cf,r,h,d,None,bus.notifyConnectionLost _,bus.notifyConnectionResumed _){
   protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
   private lazy val config = ServerConfiguration.configForName(configName)
 
@@ -178,7 +174,7 @@ class MeTL2011XmppConn(u:String,p:String,r:String,h:String,d:String,configName:S
   })
 }
 
-class XmppSharedConnMessageBus(configName:String,hostname:String,username:String,password:String,domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
+class XmppSharedConnMessageBus(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
   val jid = d.location
 	protected var xmpp:Option[MeTL2011XmppMultiConn] = None
 	def addConn(conn:MeTL2011XmppMultiConn) = {
@@ -238,9 +234,9 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,username:String
     super.release
   }
 }
-class XmppMessageBus(configName:String,hostname:String,username:String,password:String,domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
+class XmppMessageBus(configName:String,hostname:String,credentailsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
   val jid = d.location
-  lazy val xmpp = new MeTL2011XmppConn(username,password,"metlxConnector_%s_%s".format(username, new Date().getTime.toString),hostname,domain,configName,this)
+  lazy val xmpp = new MeTL2011XmppConn(credentialsFunc,"metlxConnector_%s".format(new Date().getTime.toString),hostname,domain,configName,this)
   xmpp.joinRoom(jid,this.hashCode.toString)
   override def sendStanzaToRoom(stanza:MeTLStanza):Boolean = stanza match {
     case i:MeTLInk =>{

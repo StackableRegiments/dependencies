@@ -13,3 +13,9 @@ object EmptyHttpProvider extends HttpProvider {
 class SimpleAuthedHttpProvider(username:String,password:String) extends HttpProvider {
 	def getClient = Http.getAuthedClient(username,password)
 }
+class DynamicallyAuthedHttpProvider(credentialFunc:()=>Tuple2[String,String]) extends HttpProvider {
+  def getClient = {
+    val creds = credentialFunc()
+    Http.getAuthedClient(creds._1,creds._2)
+  }
+}

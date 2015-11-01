@@ -7,7 +7,7 @@ import net.liftweb.util._
 import org.apache.commons.io.IOUtils
 import scala.xml._
 
-class MeTL2011Resources(configName:String, http:SimpleAuthedHttpProvider) {
+class MeTL2011Resources(configName:String, http:HttpProvider) {
 	lazy val config = ServerConfiguration.configForName(configName)
 	lazy val utils = new MeTL2011Utils(configName)
 	lazy val rootAddress = "https://%s:1188".format(config.host)
