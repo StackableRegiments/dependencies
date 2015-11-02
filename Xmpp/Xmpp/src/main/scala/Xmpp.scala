@@ -285,36 +285,18 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 		})
 	})	
 	private var conn:Option[AbstractXMPPConnection] = None 
-  object NoHostnameVerification extends javax.net.ssl.HostnameVerifier {
-    override def verify(hostname:String, session:javax.net.ssl.SSLSession):Boolean = true
-  }
+
 	private val config:XMPPTCPConnectionConfiguration = {
     import org.jivesoftware.smack.util.TLSUtils._
-//    val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
-//    sslContext.init(null,Array(new org.jivesoftware.smack.util.TLSUtils.AcceptAllTrustManager()),null)
     val conf = XMPPTCPConnectionConfiguration.builder()
-//     .setCustomSSLContext(sslContext)
      .setServiceName(domain)
      .setHost(host)
      .setPort(port)
      .setUsernameAndPassword(username,password)
       .setDebuggerEnabled(debug)
       .setSendPresence(sendPresence)
-      .setHostnameVerifier(NoHostnameVerification)
      .setCompressionEnabled(allowCompression)
-		//.setRosterLoadedAtLogin(loadRosterAtLogin)
-		//c.setReconnectionAllowed(allowReconnects)
     disableHostnameVerificationForTlsCertificicates(acceptAllCertificates(conf)).build()
-/*
-		val c = new ConnectionConfiguration(host,port,domain)
-		c.setRosterLoadedAtLogin(loadRosterAtLogin)
-		c.setSendPresence(sendPresence)
-		c.setSelfSignedCertificateEnabled(acceptSelfSignedCerts)
-		c.setReconnectionAllowed(allowReconnects)
-		c.setCompressionEnabled(allowCompression)
-		c.setDebuggerEnabled(debug)
-		c
-    */
 	}
 	protected def initializeXmpp:Unit = Stopwatch.time("Xmpp.initializeXmpp", () => {
 		relevantElementNames.foreach(ren => XmppUtils.possiblyAddExtensionProvider(ren))
