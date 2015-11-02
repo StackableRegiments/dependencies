@@ -1,5 +1,5 @@
 name := "xmpp"
-version := "2.0.0"
+version := "3.0.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
@@ -26,13 +26,13 @@ libraryDependencies ++= {
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    /*
     "org.igniterealtime.smack" % "smack-core" % "4.1.4",
     "org.igniterealtime.smack" % "smack-tcp" % "4.1.4",
     "org.igniterealtime.smack" % "smack-extensions" % "4.1.4"
-    */
+    /*
     "jivesoftware" % "smack" % "3.2.1",
     "jivesoftware" % "smackx" % "3.2.1"
+    */
   )
 }
 

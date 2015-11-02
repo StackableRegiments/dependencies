@@ -12,6 +12,8 @@ import java.util.Random
 import net.liftweb.util.Helpers._
 import org.xmlpull.v1.XmlPullParser
 import org.jivesoftware.smack.provider._
+import org.jivesoftware.smack.tcp._
+import org.jivesoftware.smackx.iqregister._
 import scala.xml._
 
 class Payload(name:String,namespace:String,payload:String) extends PacketExtension {
@@ -30,12 +32,12 @@ case class XmppDataType[T](elementName:String,serialize:(T) => NodeSeq,deseriali
 		pay
 	}
 	def comprehendResponse(input:Packet):T = {
-		val xml = scala.xml.XML.loadString(input.toXML)
+		val xml = scala.xml.XML.loadString(input.toXML.toString)
 		val result = deserialize(xml)
 		result
 	}
-} 
-
+}
+/*
 class MeTLExtensionProvider extends PacketExtensionProvider {
 	override def parseExtension(parser:XmlPullParser):PacketExtension = {
 		val (elemName,xmlString) = parseTag(parser,"","")	
@@ -102,19 +104,96 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 		}
 	}
 }
+*/
+
+class MeTLExtensionProvider extends ExtensionElementProvider[ExtensionElement] {
+  import org.jivesoftware.smackx.pubsub.SimplePayload
+	protected def parseInternal(parser:XmlPullParser):ExtensionElement = {
+		val (elemName,xmlString) = parseTag(parser,"","")	
+		new SimplePayload(elemName,XmppUtils.ns,xmlString)
+	}
+	override def parse(parser:XmlPullParser,startingDepth:Int):ExtensionElement = {
+    //not yet sure what this is meant to do, so just chaining it for the moment
+    parseInternal(parser)
+	}
+
+	private def parseTag(parser:XmlPullParser,elementName:String,progress:String,depth:Int = 0):Tuple2[String,String] = {
+		val (n,p,d) = parser.getEventType match {
+			case XmlPullParser.END_DOCUMENT => {
+				(elementName,progress,depth - 1)
+			}
+			case XmlPullParser.START_DOCUMENT => {
+				(elementName,progress,depth + 1)
+			}
+			case XmlPullParser.START_TAG => {
+				val name = parser.getName
+				val newProgress = parser.getAttributeCount() match {
+					case attCount:Int if (attCount > 0) => {
+						val attributes = Range(0,attCount).foldLeft(List.empty[String])((acc,attIndex) => {
+							var attributeString = ""
+							parser.getAttributePrefix(attIndex) match {
+								case attPref:String if (attPref.length > 0) => attributeString += "%s:".format(attPref)
+								case _ => {}
+							}
+							parser.getAttributeName(attIndex) match {
+								case attName:String if (attName.length > 0) => {
+									parser.getAttributeValue(attIndex) match {
+										case attValue:String if (attValue.length > 0) => {
+											attributeString += "%s='%s'".format(attName,attValue)
+										}
+										case _ => {}
+									}
+								}
+								case _ => {}
+							}
+							attributeString :: acc	
+						})
+						progress+"<"+name+" "+attributes.mkString(" ")+">"
+					}
+					case _ => progress+"<"+name+">"
+				}
+				val en = elementName match {
+					case "" => name 
+					case _ => elementName
+				}
+				(en,newProgress,depth + 1)
+			}
+			case XmlPullParser.END_TAG => {
+				val newProgress = progress+"</"+parser.getName+">"
+				(elementName,newProgress,depth - 1)
+			}	
+			case XmlPullParser.TEXT => {
+				val newProgress = progress+parser.getText
+				(elementName,newProgress,depth)
+			}
+			case _ => {
+				(elementName,progress,depth)
+			}
+		}
+		if (d < 1) {
+			(n,p)
+		} else {
+			parser.next
+			parseTag(parser,n,p,d)
+		}
+	}
+}
 
 object XmppUtils {
-	private val providerManager = org.jivesoftware.smack.provider.ProviderManager.getInstance
+	//private val providerManager = org.jivesoftware.smack.provider.ProviderManager.getInstance
+	import org.jivesoftware.smack.provider.ProviderManager
 	private val packetExtensionProvider = new MeTLExtensionProvider
 	val ns = "monash:metl"
 	def possiblyAddExtensionProvider(elementName:String) = {
-		if (providerManager.getExtensionProvider(elementName,ns) != packetExtensionProvider){
-			providerManager.addExtensionProvider(elementName,ns,packetExtensionProvider)
+		if (ProviderManager.getExtensionProvider(elementName,ns) != packetExtensionProvider){
+			ProviderManager.addExtensionProvider(elementName,ns,packetExtensionProvider)
 		}
 	}
 }
 
 class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
+  override def authenticated(conn:XMPPConnection,authenticated:Boolean):Unit = {}
+  override def connected(conn:XMPPConnection):Unit = {}
 	override def connectionClosed():Unit = {
 		println("XMPPConnectionManager:connection closed")
 		onConnectionLost()
@@ -136,7 +215,7 @@ class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>U
 	}
 }
 
-abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Option[XMPPConnection],onConnectionLost:()=>Unit = () => {},onConnectionRegained:()=>Unit = () => {}) {
+abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Option[AbstractXMPPConnection],onConnectionLost:()=>Unit = () => {},onConnectionRegained:()=>Unit = () => {}) {
 
   def this(credentailsFunc:() => Tuple2[String,String], incomingResource: String, incomingHost: String) {
         this(credentailsFunc, incomingResource, incomingHost, incomingHost, xmppConnection = None)
@@ -147,11 +226,11 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 
 	val host = incomingHost
 	val domain = incomingDomain
-  val resource = incomingResource
   val credentials = credentialsFunc()
+  val resource = incomingResource
   val username = credentials._1
   val password = credentials._2
-	Packet.setDefaultXmlns(XmppUtils.ns)
+//	Packet.setDefaultXmlns(XmppUtils.ns)
 
 	protected def onConnLost:Unit = onConnectionLost()
 	protected def onConnRegained:Unit = onConnectionRegained()
@@ -205,8 +284,28 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 			room.join(resource)
 		})
 	})	
-	private var conn:Option[XMPPConnection] = None 
-	private val config:ConnectionConfiguration = {
+	private var conn:Option[AbstractXMPPConnection] = None 
+  object NoHostnameVerification extends javax.net.ssl.HostnameVerifier {
+    override def verify(hostname:String, session:javax.net.ssl.SSLSession):Boolean = true
+  }
+	private val config:XMPPTCPConnectionConfiguration = {
+    import org.jivesoftware.smack.util.TLSUtils._
+//    val sslContext = javax.net.ssl.SSLContext.getInstance("TLS")
+//    sslContext.init(null,Array(new org.jivesoftware.smack.util.TLSUtils.AcceptAllTrustManager()),null)
+    val conf = XMPPTCPConnectionConfiguration.builder()
+//     .setCustomSSLContext(sslContext)
+     .setServiceName(domain)
+     .setHost(host)
+     .setPort(port)
+     .setUsernameAndPassword(username,password)
+      .setDebuggerEnabled(debug)
+      .setSendPresence(sendPresence)
+      .setHostnameVerifier(NoHostnameVerification)
+     .setCompressionEnabled(allowCompression)
+		//.setRosterLoadedAtLogin(loadRosterAtLogin)
+		//c.setReconnectionAllowed(allowReconnects)
+    disableHostnameVerificationForTlsCertificicates(acceptAllCertificates(conf)).build()
+/*
 		val c = new ConnectionConfiguration(host,port,domain)
 		c.setRosterLoadedAtLogin(loadRosterAtLogin)
 		c.setSendPresence(sendPresence)
@@ -215,6 +314,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 		c.setCompressionEnabled(allowCompression)
 		c.setDebuggerEnabled(debug)
 		c
+    */
 	}
 	protected def initializeXmpp:Unit = Stopwatch.time("Xmpp.initializeXmpp", () => {
 		relevantElementNames.foreach(ren => XmppUtils.possiblyAddExtensionProvider(ren))
@@ -224,10 +324,10 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 	})
 	initializeXmpp
 
-	private def createXmppConnection: Option[XMPPConnection] = {
+	private def createXmppConnection: Option[AbstractXMPPConnection] = {
 			xmppConnection match {
 				case Some(xmpp) => Some(xmpp)
-				case _ => tryo(new XMPPConnection(config))
+				case _ => tryo(new XMPPTCPConnection(config))
 			}
 	}
 
@@ -264,7 +364,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 
 	protected def register:Unit = Stopwatch.time("Xmpp.register", () => {
 		conn.map(c => {
-			val accountManager = c.getAccountManager
+			val accountManager = AccountManager.getInstance(c)
 			accountManager.createAccount(username,password)
 		})
 	})
@@ -272,7 +372,8 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 	protected def mucFor(room:String):Option[MultiUserChat] = Stopwatch.time("Xmpp.mucFor", () => {
 		conn.map(c => {
 			val roomJid = "%s@conference.%s".format(room,domain)
-			new MultiUserChat(c,roomJid)
+      val mucMan = MultiUserChatManager.getInstanceFor(c)
+			mucMan.getMultiUserChat(roomJid)
 		})
 	})
 	def joinRoom(room:String,interestId:String = ""):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
@@ -287,7 +388,8 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 			//println("XMPP(%s):joinRoom.creatingRoom(%s)".format(this.hashCode,room))
 			val roomJid = "%s@conference.%s".format(room,domain)
 			conn.map(c => {
-				val muc = new MultiUserChat(c,roomJid)
+        val mucMan = MultiUserChatManager.getInstanceFor(c)
+        val muc = mucMan.getMultiUserChat(roomJid)
 				muc.join(resource)
 				rooms = rooms.updated(room,muc)
 				muc
@@ -312,19 +414,19 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 		room.leave
 		rooms = rooms.filterNot(r => r._2 == room)
 	}
- 	class MessageTypeFilter(predicates:List[String]) extends PacketFilter{
-    def accept(message:Packet)= Stopwatch.time("Xmpp.MessageTypeFilter.accept", () => {
+ 	class MessageTypeFilter(predicates:List[String]) extends StanzaFilter{
+    def accept(message:Stanza)= Stopwatch.time("Xmpp.MessageTypeFilter.accept", () => {
      	var smackMessage = message.asInstanceOf[Message]
 			// added the getBody filter to ensure that messages that are commands (which is apparently necessary because they won't show up as extensions) are allowed through
       //List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0
-      List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0 || smackMessage.getBody().length > 0
+      List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[ExtensionElement].getElementName)).length > 0 || smackMessage.getBody().length > 0
     })
   }
-  class RemoteSyncListener extends PacketListener{
-		def processPacket(packet:Packet)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
+  class RemoteSyncListener extends StanzaListener{
+		def processPacket(packet:Stanza)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
 			val room = packet.getFrom.split("@").head
 			if (List(packet.getExtensions.toArray:_*).map(e => {
-				val ext = e.asInstanceOf[PacketExtension]
+				val ext = e.asInstanceOf[ExtensionElement]
 				ext.getElementName match {
 					case ignored:String if (ignoredTypes.exists(it => it.toLowerCase.trim == ignored.toLowerCase.trim)) => false
 					case other:String if (relevantElementNames.contains(other)) => {
@@ -334,7 +436,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 						}).getOrElse(false)
 					}
 					case other => {
-						onUntypedMessageRecieved(room,ext.toXML)	
+						onUntypedMessageRecieved(room,ext.toXML.toString)	
 						true
 					}
 				}
