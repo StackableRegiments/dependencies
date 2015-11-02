@@ -457,7 +457,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     Group(config,id,location,members,m.audiences)
   })
   override def fromGroup(input:Group):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroup",() => {
-    metlXmlToXml("groupSet",List(
+    metlXmlToXml("group",List(
       <id>{input.id}</id>,
       <location>{input.location}</location>,
       <members>{input.members.map(m => {
