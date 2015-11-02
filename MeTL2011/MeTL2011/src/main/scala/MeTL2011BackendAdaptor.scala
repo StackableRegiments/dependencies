@@ -10,6 +10,12 @@ object MeTL2011ServerConfiguration{
     TransientMeTL2011BackendAdaptorConfigurator
   ).foreach(sc => ServerConfiguration.addServerConfigurator(sc))
 }
+object MeTL2015ServerConfiguration{
+  def initialize = List(
+    MeTL2015BackendAdaptorConfigurator,
+    TransientMeTL2015BackendAdaptorConfigurator
+  ).foreach(sc => ServerConfiguration.addServerConfigurator(sc))
+}
 
 class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentialFunc:()=>Tuple2[String,String],conversationBusCredentialFunc:()=>Tuple2[String,String],httpCredentialFunc:()=>Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
   protected val http:HttpProvider = new DynamicallyAuthedHttpProvider(httpCredentialFunc)
