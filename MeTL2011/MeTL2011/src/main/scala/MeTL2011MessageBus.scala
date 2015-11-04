@@ -182,7 +182,7 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,credentialsFunc
 		xmpp = Some(conn)
 		xmpp.map(x => x.joinRoom(jid,this.hashCode.toString))
 	}
-  override def sendStanzaToRoom(stanza:MeTLStanza):Boolean = Stopwatch.time("XmppSharedConnMessageBus.sendStanzaToRoom", () => {
+  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean = Stopwatch.time("XmppSharedConnMessageBus.sendStanzaToRoom", () => {
 		//println("XMPPSharedConnMessageBus(%s):sendStanzaToRoom(%s)".format(d,xmpp))
 		stanza match {
 			case i:MeTLInk =>{
@@ -238,7 +238,7 @@ class XmppMessageBus(configName:String,hostname:String,credentialsFunc:()=>Tuple
   val jid = d.location
   lazy val xmpp = new MeTL2011XmppConn(credentialsFunc,"metlxConnector_%s".format(new Date().getTime.toString),hostname,domain,configName,this)
   xmpp.joinRoom(jid,this.hashCode.toString)
-  override def sendStanzaToRoom(stanza:MeTLStanza):Boolean = stanza match {
+  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean = stanza match {
     case i:MeTLInk =>{
       xmpp.sendMessage(jid,"ink",i)
       true}

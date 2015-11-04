@@ -39,6 +39,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 			H2Command,
 			H2Submission,
 			H2Conversation,
+      H2Attendance,
 			H2Resource
 		):_*
 	)
@@ -56,11 +57,15 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 	val SUBMISSIONS = "submission"
 	val QUIZZES = "quiz"
 	val QUIZRESPONSES = "quizResponse"
+  val ATTENDANCES = "attendance"
 	val COMMANDS = "command"
 	
 	//stanzas table
-	def storeStanza(jid:String,stanza:MeTLStanza):Option[MeTLStanza] = Stopwatch.time("H2Interface.storeStanza", () => {
+	def storeStanza[A <: MeTLStanza](jid:String,stanza:A):Option[A] = Stopwatch.time("H2Interface.storeStanza", () => {
+    println("storing stanza: %s".format(stanza))
 		val transformedStanza:Option[_ <: H2MeTLStanza[_]] = stanza match {
+      case s:MeTLStanza if s.isInstanceOf[Attendance] => Some(serializer.fromMeTLAttendance(s.asInstanceOf[Attendance]).room(jid))
+      case s:Attendance => Some(serializer.fromMeTLAttendance(s).room(jid)) // for some reason, it just can't make this match
 			case s:MeTLInk => Some(serializer.fromMeTLInk(s).room(jid))	
 			case s:MeTLText => Some(serializer.fromMeTLText(s).room(jid))
 			case s:MeTLImage => Some(serializer.fromMeTLImage(s).room(jid))
@@ -72,21 +77,26 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 			case s:MeTLQuizResponse => Some(serializer.fromMeTLQuizResponse(s).room(jid))
 			case s:MeTLSubmission => Some(serializer.fromSubmission(s).room(jid))
 			case s:MeTLMoveDelta => Some(serializer.fromMeTLMoveDelta(s).room(jid))
-			case _ => None
+			case other => {
+        println("didn't know how to transform stanza: %s".format(other))
+        None
+      }
 		} 
+    println("transformed stanza: %s".format(transformedStanza))
 		transformedStanza match {
-			case Some(s) => if (s.save){
-        Some(serializer.toMeTLData(s)).flatMap(data => data match {
-            case ms:MeTLStanza => Some(ms)
-            case _ => None
-          })
-			} else {
-				println("store in jid %s failed: %s".format(jid,stanza))
-				None
-			}
+			case Some(s) => {
+        if (s.save){
+          Some(serializer.toMeTLData(s)).flatMap(data => data match {
+              case ms:A => Some(ms)
+              case _ => None
+            })
+        } else {
+          println("store in jid %s failed: %s".format(jid,stanza))
+          None
+        }
+      }
 			case _ => None
 		}
-
 	})
 
 	def getHistory(jid:String):History = Stopwatch.time("H2Interface.getHistory",() => {
@@ -101,8 +111,9 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 		val submissions = H2Submission.findAll(By(H2Submission.room,jid)).map(s => serializer.toSubmission(s))
 		val quizzes = H2Quiz.findAll(By(H2Quiz.room,jid)).map(s => serializer.toMeTLQuiz(s))
 		val quizResponses = H2QuizResponse.findAll(By(H2QuizResponse.room,jid)).map(s => serializer.toMeTLQuizResponse(s))
+    val attendances = H2Attendance.findAll(By(H2Attendance.location,jid)).map(s => serializer.toMeTLAttendance(s))
 		val commands = H2Command.findAll(By(H2Command.room,jid)).map(s => serializer.toMeTLCommand(s))
-		(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions).foreach(s => newHistory.addStanza(s))
+		(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions ::: attendances).foreach(s => newHistory.addStanza(s))
 		newHistory
 	})
 
@@ -193,7 +204,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 	def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = findAndModifyConversation(jid,c => c.addSlideAtIndex(index))
 	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = findAndModifyConversation(jid,c => c.replaceSlides(newSlides))
   def updateConversation(jid:String,conversation:Conversation):Conversation = {
-    if (jid == conversation.jid){
+    if (jid == conversation.jid.toString){
       updateConversation(conversation)
       conversation
     } else {

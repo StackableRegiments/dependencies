@@ -5,7 +5,7 @@ import com.metl.utils._
 
 abstract class PersistenceInterface {
 	//stanzas
-	def storeStanza(jid:String,stanza:MeTLStanza):Option[MeTLStanza] 
+	def storeStanza[A <: MeTLStanza](jid:String,stanza:A):Option[A] 
 	def getHistory(jid:String):History
 
 	//conversations
