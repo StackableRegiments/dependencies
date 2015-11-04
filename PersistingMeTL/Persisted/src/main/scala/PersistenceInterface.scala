@@ -19,6 +19,7 @@ abstract class PersistenceInterface {
 	def updateSubjectOfConversation(jid:String,newSubject:String):Conversation
 	def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation
 	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
+  def updateConversation(jid:String,conversation:Conversation):Conversation
 
 	//resources
 	def getResource(identity:String):Array[Byte]

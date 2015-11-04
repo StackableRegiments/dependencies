@@ -84,93 +84,6 @@ object Privacy extends Enumeration{
 }
 import Privacy._
 
-/*
-abstract class AudienceTarget {
-  def appliesTo(who:MeTLIdentity):Boolean
-}
-case class GroupAudience(group:MeTLGroup) extends AudienceTarget {
-  override def appliesTo(who:MeTLIdentity):Boolean = {
-    who match {
-      case mg:MeTLGroup => mg == group
-      case mu:MeTLUser => group.isMember(mu) || group.isOwner(mu)
-    }
-  }
-}
-case class UserAudience(user:MeTLUser) extends AudienceTarget {
-  override def appliesTo(who:MeTLIdentity):Boolean = who match {
-    case mg:MeTLGroup => mg.isOwner(user) || mg.isMember(user)
-    case mu:MeTLUser => mu == user
-  }
-}
-case object PublicAudience extends AudienceTarget {
-  override def appliesTo(who:MeTLIdentity):Boolean = true
-}
-case class CompoundAudience(whitelist:Seq[AudienceTarget],blacklist:Seq[AudienceTarget]) extends AudienceTarget {
-  override def appliesTo(who:MeTLIdentity):Boolean = whitelist.exists(_.appliesTo(who)) && !blacklist.exists(_.appliesTo(who))
-}
-
-abstract class MeTLIdentity(config:ServerConfiguration,val name:String){
-  override def equals(a:Any):Boolean = {
-    a match {
-      case m:MeTLIdentity => m.name == name
-      case _ => false
-    }
-  }
-}
-class MeTLUser(config:ServerConfiguration,override val name:String,val email:String,val groups:Seq[String]) extends MeTLIdentity(name){
-  override def equals(a:Any):Boolean = {
-    a match {
-      case m:MeTLUser => m.name == name && m.email == email
-      case _ => false
-    }
-  }
-}
-class MeTLGroup(config:ServerConfiguration,override val name:String,val email:String,val owners:Seq[MeTLIdentity],val members:Seq[MeTLIdentity]) extends MeTLIdentity(name) {
-  override def equals(a:Any):Boolean = {
-    a match {
-      case m:MeTLGroup => m.name == name && m.email == email
-      case _ => false
-    }
-  }
-  def isOwner(who:MeTLIdentity):Boolean = {
-    who match {
-      case u:MeTLUser => {
-        owners.exists{
-          case mu:MeTLUser => mu.name == u.name
-          case mg:MeTLGroup => mg.isMember(u)
-          case _ => false
-        }
-      }
-      case g:MeTLGroup => {
-        owners.exists{
-          case mu:MeTLUser => false
-          case mg:MeTLGroup => mg == g || mg.isMember(g)
-          case _ => false
-        }
-      }
-    }
-  }
-  def isMember(who:MeTLIdentity):Boolean = {
-    who match {
-      case u:MeTLUser => {
-        members.exists{
-          case mu:MeTLUser => mu.name == u.name
-          case mg:MeTLGroup => mg.isMember(u)
-          case _ => false
-        }
-      }
-      case g:MeTLGroup => {
-        members.exists{
-          case mu:MeTLUser => false
-          case mg:MeTLGroup => mg == g || mg.isMember(g)
-          case _ => false
-        }
-      }
-    }
-  }
-}
-*/
-
 case class Color(alpha:Int,red:Int,green:Int,blue:Int)
 object Color{
   def empty = Color(0,0,0,0)
@@ -187,9 +100,61 @@ object Presentation{
   def emtpy = Presentation(ServerConfiguration.empty,Conversation.empty)
 }
 
-case class GroupSet(override val server:ServerConfiguration,id:String,location:String,groupSize:Option[Int],groups:List[Group],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
+case class GroupSet(override val server:ServerConfiguration,id:String,location:String,groupingStrategy:GroupingStrategy,groups:List[Group],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
 object GroupSet {
-  def empty = GroupSet(ServerConfiguration.empty,"","",None,Nil,Nil)
+  def empty = GroupSet(ServerConfiguration.empty,"","",EveryoneInOneGroup,Nil,Nil)
+}
+
+abstract class GroupingStrategy{
+  def addNewPerson(g:GroupSet,person:String):GroupSet
+}
+
+case class ByMaximumSize(groupSize:Int) extends GroupingStrategy {
+  override def addNewPerson(g:GroupSet,person:String):GroupSet = {
+    g.copy(groups = 
+      g.groups.find(group => {
+        group.members.length < groupSize
+      }).map(fg => {
+        fg.copy(members = person :: fg.members) :: g.groups.filterNot(_ == fg)
+      }).getOrElse({
+        Group(g.server,nextFuncName,g.location,List(person)) :: g.groups
+      })
+    )
+  }
+}
+case class ByTotalGroups(numberOfGroups:Int) extends GroupingStrategy {
+  override def addNewPerson(g:GroupSet,person:String):GroupSet = {
+    g.copy(groups = {
+      g.groups match {
+        case l:List[Group] if l.length < numberOfGroups => Group(g.server,nextFuncName,g.location,List(person)) :: l
+        case l:List[Group] => l.sortWith((a,b) => a.members.length < b.members.length).headOption.map(fg => {
+          fg.copy(members = person :: fg.members) :: l.filterNot(_ == fg)
+        }).getOrElse({
+          l.head.copy(members = person :: l.head.members) :: l.drop(1)
+        })
+      }
+    })
+  }
+}
+case class ComplexGroupingStrategy(data:Map[String,String]) extends GroupingStrategy {
+  protected var groupingFunction:Tuple2[GroupSet,String]=>GroupSet = (t:Tuple2[GroupSet,String]) => t._1
+  override def addNewPerson(g:GroupSet,person:String):GroupSet = {
+    groupingFunction((g,person))
+  }
+  def replaceGroupingFunction(func:Tuple2[GroupSet,String]=>GroupSet):ComplexGroupingStrategy = {
+    groupingFunction = func
+    this
+  }
+}
+case object OnePersonPerGroup extends GroupingStrategy {
+  override def addNewPerson(g:GroupSet,person:String):GroupSet = {
+    g.copy(groups = Group(g.server,nextFuncName,g.location,List(person)) :: g.groups)
+  }
+}
+case object EveryoneInOneGroup extends GroupingStrategy {
+  override def addNewPerson(g:GroupSet,person:String):GroupSet = {
+    g.copy(groups = List(Group(g.server,g.groups.headOption.map(_.id).getOrElse(nextFuncName),g.location,(person :: g.groups.flatMap(_.members)).distinct)))
+  }
 }
 
 case class Group(override val server:ServerConfiguration,id:String,location:String,members:List[String],override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
@@ -224,7 +189,7 @@ object Conversation{
   def empty = Conversation(ServerConfiguration.empty,"",0L,List.empty[Slide],"","",0,"","",Permissions.default(ServerConfiguration.empty),Nil,Nil)
 }
 
-case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE",groupSet:Option[GroupSet] = None,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
+case class Slide(override val server:ServerConfiguration,author:String,id:Int,index:Int,defaultHeight:Int = 540, defaultWidth:Int = 720, exposed:Boolean = false, slideType:String = "SLIDE",groupSet:List[GroupSet] = Nil,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
   def replaceIndex(newIndex:Int) = copy(index=newIndex)//Slide(server,author,id,newIndex,defaultHeight,defaultWidth,exposed,slideType)
 }
 object Slide{

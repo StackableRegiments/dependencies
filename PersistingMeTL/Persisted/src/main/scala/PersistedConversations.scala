@@ -14,5 +14,6 @@ class PersistedConversations(configName:String,dbInterface:PersistenceInterface,
 	override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = dbInterface.updateSubjectOfConversation(jid,newSubject)
 	override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = dbInterface.addSlideAtIndexOfConversation(jid,index)
 	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = dbInterface.reorderSlidesOfConversation(jid,newSlides)
+  override def updateConversation(jid:String,conversation:Conversation):Conversation = dbInterface.updateConversation(jid,conversation)
 }
 

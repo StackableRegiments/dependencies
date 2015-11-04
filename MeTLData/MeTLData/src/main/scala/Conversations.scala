@@ -22,6 +22,7 @@ abstract class ConversationRetriever(configName:String,onConversationDetailsUpda
 	def updateSubjectOfConversation(jid:String,newSubject:String):Conversation
 	def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation
 	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
+  def updateConversation(jid:String,conversation:Conversation):Conversation
 }
 
 object EmptyConversations extends ConversationRetriever("empty",(c) => {}){
@@ -35,4 +36,5 @@ object EmptyConversations extends ConversationRetriever("empty",(c) => {}){
 	override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
 	override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
 	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
+  override def updateConversation(jid:String,conversation:Conversation):Conversation = Conversation.empty
 }

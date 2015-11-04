@@ -52,6 +52,7 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String,onCon
   def updateSubjectOfConversation(jid:String,newSubject:String):Conversation
   def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation
   def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
+  def updateConversation(jid:String,newConversation:Conversation):Conversation
   def getImage(jid:String,identity:String):MeTLImage
   def getResource(url:String):Array[Byte]
   def postResource(jid:String,userProposedId:String,data:Array[Byte]):String
@@ -74,6 +75,7 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty",(c)=>{}){
   override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
   override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
   override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
+  override def updateConversation(jid:String,newConversation:Conversation):Conversation = Conversation.empty
   override def getImage(jid:String,identity:String) = MeTLImage.empty
   override def getResource(url:String) = Array.empty[Byte]
   override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = ""
@@ -98,6 +100,7 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
   override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
   override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
   override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
+  override def updateConversation(jid:String,newConversation:Conversation):Conversation = Conversation.empty
   override def getImage(jid:String,identity:String) = MeTLImage.empty
   override def getResource(url:String) = Array.empty[Byte]
   override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = ""

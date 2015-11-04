@@ -232,6 +232,13 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Ht
     val local = Conversation(config,conv.author,now.getTime,newSlides,conv.subject,conv.tag,conv.jid,conv.title,conv.created,conv.permissions)
     pushConversationToServer(local)
   }
+  override def updateConversation(jid:String,conversation:Conversation):Conversation = {
+    if (jid == conversation.jid){
+      pushConversationToServer(conversation.copy(lastAccessed = new java.util.Date().getTime))
+    } else {
+      conversation
+    }
+  }
   protected def pushConversationToServer(conversation:Conversation):Conversation = {
     //println("pushConversationToServer (proposed): %s".format(conversation))
     val jid = conversation.jid

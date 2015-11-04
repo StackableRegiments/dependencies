@@ -418,8 +418,8 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val defWidth = getIntByName(input,"defaultWidth")
     val exposed = getBooleanByName(input,"exposed")
     val slideType = getStringByName(input,"type")
-    val groupSet = (input \ "groupSet").headOption.map(gs => toGroupSet(gs))
-    Slide(config,author,id,index,defHeight,defWidth,exposed,slideType,groupSet,m.audiences)
+    val groupSets = (input \ "groupSet").map(gs => toGroupSet(gs)).toList
+    Slide(config,author,id,index,defHeight,defWidth,exposed,slideType,groupSets,m.audiences)
   })
   override def fromSlide(input:Slide):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSlide",() => {
     metlXmlToXml("slide",List(
@@ -436,18 +436,39 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val m = parseMeTLContent(input,config)
     val id = getStringByName(input,"id")
     val location = getStringByName(input,"location")
-    val groupSize = (input \ "groupSize").headOption.map(_i => getIntByName(input,"groupSize"))
+    val groupingStrategy = toGroupingStrategy((input \ "groupingStrategy"))
     val groups = ((input \ "groups") \ "group").map(gn => toGroup(gn)).toList
-    GroupSet(config,id,location,groupSize,groups,m.audiences)
+    GroupSet(config,id,location,groupingStrategy,groups,m.audiences)
   })
   override def fromGroupSet(input:GroupSet):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroupSet",() => {
     metlXmlToXml("groupSet",List(
       <id>{input.id}</id>,
       <location>{input.location}</location>,
-      <groupSize>{input.groupSize}</groupSize>,
+      fromGroupingStrategy(input.groupingStrategy).head,
       <groups>{input.groups.map(g => fromGroup(g))}</groups>
     ))
   })
+
+  override def toGroupingStrategy(input:NodeSeq):GroupingStrategy = {
+    getStringByName(input,"name") match {
+      case "byMaximumSize" => ByMaximumSize(getIntByName(input,"groupSize"))
+      case "byTotalGroups" => ByTotalGroups(getIntByName(input,"groupCount"))
+      case "onePersonPerGroup" => OnePersonPerGroup
+      case "everyoneInOneGroup" => EveryoneInOneGroup
+      case "complexGroupingStrategy" => ComplexGroupingStrategy(Map("xml" -> input.toString))
+      case _ => EveryoneInOneGroup
+    }
+  }
+  override def fromGroupingStrategy(input:GroupingStrategy):NodeSeq = {
+    input match {
+      case ByMaximumSize(groupSize) => <groupingStrategy><name>byMaximumSize</name><groupSize>{groupSize.toString}</groupSize></groupingStrategy>
+      case ByTotalGroups(groupCount) => <groupingStrategy><name>byTotalGroups</name><groupCount>{groupCount.toString}</groupCount></groupingStrategy>
+      case OnePersonPerGroup => <groupingStrategy><name>onePersonPerGroup</name></groupingStrategy>
+      case EveryoneInOneGroup => <groupingStrategy><name>everyoneInOneGroup</name></groupingStrategy>
+      case ComplexGroupingStrategy(data) => <groupingStrategy><name>complexGroupingStrategy</name>{data.toString}<data></data></groupingStrategy>
+      case _ => <groupingStrategy><name>everyoneInOneGroup</name></groupingStrategy>
+    }
+  }
 
   override def toGroup(input:NodeSeq):Group = Stopwatch.time("GenericXmlSerializer.toGroup",() => {
     val m = parseMeTLContent(input,config)

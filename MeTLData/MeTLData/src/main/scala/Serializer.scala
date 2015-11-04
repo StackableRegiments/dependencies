@@ -43,7 +43,8 @@ abstract class Serializer {
   def fromGroupSet(input:GroupSet):T = throw new SerializationNotImplementedException
   def toGroup(input:T):Group = throw new SerializationNotImplementedException
   def fromGroup(input:Group):T = throw new SerializationNotImplementedException
-
+  def toGroupingStrategy(input:T):GroupingStrategy = throw new SerializationNotImplementedException
+  def fromGroupingStrategy(input:GroupingStrategy):T = throw new SerializationNotImplementedException
   def toPermissions(input:T):Permissions = throw new SerializationNotImplementedException
   def fromPermissions(input:Permissions):T = throw new SerializationNotImplementedException
   def toPoint(input:AnyRef):Point = throw new SerializationNotImplementedException
@@ -114,6 +115,8 @@ class PassthroughSerializer extends Serializer {
   override def fromGroupSet(input:GroupSet):T = input.asInstanceOf[Object]
   override def toGroup(input:T):Group = input.asInstanceOf[Group]
   override def fromGroup(input:Group):T = input.asInstanceOf[Object]
+  override def toGroupingStrategy(input:T):GroupingStrategy = input.asInstanceOf[GroupingStrategy]
+  override def fromGroupingStrategy(input:GroupingStrategy):T = input.asInstanceOf[Object]
   override def toPermissions(input:Object):Permissions = input.asInstanceOf[Permissions]
   override def fromPermissions(input:Permissions):Object = input.asInstanceOf[Object]
 	override def toPoint(input:AnyRef):Point = input.asInstanceOf[Point]
@@ -127,48 +130,3 @@ class PassthroughSerializer extends Serializer {
   override def toMeTLUnhandledCanvasContent(input:AnyRef):MeTLUnhandledCanvasContent[T] = input.asInstanceOf[MeTLUnhandledCanvasContent[T]]
   override def fromMeTLUnhandledCanvasContent(input:MeTLUnhandledCanvasContent[T]):T = input.asInstanceOf[Object]
 }
-/*
-class OverrideSerializer[Type](original:Serializer{type T = Type}) extends Serializer {
-  type T = Type
-  override def toMeTLUnhandledStanza(input:Object):MeTLUnhandledStanza[Type] = original.toUnhandledMeTLStanza(input)
-  override def fromMeTLUnhandledStanza(input:MeTLUnhandledStanza[Type]):Type = original.fromUnhandledMeTLStanza(input)
-  override def toMeTLInk(input:Object):MeTLInk = original.toMeTLInk(input)
-  override def fromMeTLInk(input:MeTLInk):Type = original.fromMeTLInk(input)
-  override def toMeTLImage(input:Object):MeTLImage = original.toMeTLImage(input) 
-  override def fromMeTLImage(input:MeTLImage):Type = original.fromMeTLImage(input)
-  override def toMeTLText(input:Object):MeTLText = original.toMeTLText(input)
-  override def fromMeTLText(input:MeTLText):Type = original.fromMeTLText(input)
-	override def toMeTLMoveDelta(input:Object):MeTLMoveDelta = original.toMeTLMoveDelta(input)
-	override def fromMeTLMoveDelta(input:MeTLMoveDelta):Object = original.fromMeTLMoveDelta(input)
-  override def toMeTLDirtyInk(input:Object):MeTLDirtyInk = original.toMeTLDirtyInk(input)
-  override def fromMeTLDirtyInk(input:MeTLDirtyInk):Object = original.fromMeTLDirtyInk(input)
-  override def toMeTLDirtyImage(input:Object):MeTLDirtyImage = original.toMeTLDirtyImage(input)
-  override def fromMeTLDirtyImage(input:MeTLDirtyImage):Object = original.fromMeTLDirtyImage(input)
-  override def toMeTLDirtyText(input:Object):MeTLDirtyText = original.toMeTLDirtyText(input)
-  override def fromMeTLDirtyText(input:MeTLDirtyText):Object = original.fromMeTLDirtyText(input)
-  override def toMeTLCommand(input:Object):MeTLCommand = original.toMeTLCommand(input)
-  override def fromMeTLCommand(input:MeTLCommand):Object = original.fromMeTLCommand(input)
-  override def toSubmission(input:Object):MeTLSubmission = original.toSubmission(input)
-  override def fromSubmission(input:MeTLSubmission):Object = original.fromSubmission(input)
-  override def toMeTLQuiz(input:Object):MeTLQuiz = original.toMeTLQuiz(input)
-  override def fromMeTLQuiz(input:MeTLQuiz):Object = original.fromMeTLQuiz(input)
-  override def toMeTLQuizResponse(input:Object):MeTLQuizResponse = original.toMeTLQuizResponse(input)
-  override def fromMeTLQuizResponse(input:MeTLQuizResponse):Object = original.fromMeTLQuizResponse(input)
-  override def toConversation(input:Object):Conversation = original.toConversation(input)
-  override def fromConversation(input:Conversation):Object = original.fromConversation(input)
-  override def toSlide(input:Object):Slide = original.toSlide(input)
-  override def fromSlide(input:Slide):Object = original.fromSlide(input)
-  override def toPermissions(input:Object):Permissions = original.toPermissions(input)
-  override def fromPermissions(input:Permissions):Object = original.fromPermissions(input)
-	override def toPoint(input:AnyRef):Point = original.toPoint(input)
-  override def fromPoint(input:Point):AnyRef = original.fromPoint(input)
-  override def toPointList(input:AnyRef):List[Point] = original.toPointList(input)
-  override def fromPointList(input:List[Point]):AnyRef = original.fromPointList(input)
-  override def toColor(input:AnyRef):Color = original.toColor(input)
-  override def fromColor(input:Color):AnyRef = original.fromColor(input)
-  override def toMeTLData(input:AnyRef):MeTLData = original.toMeTLUnhandledData(input)
-  override def fromMeTLData(input:MeTLData):Type = original.fromMeTLUnhandledData(input)
-  override def toMeTLCanvasContent(input:AnyRef):MeTLUnhandledCanvasContent[Type] = original.toMeTLUnhandledCanvasContent(input)
-  override def fromMeTLCanvasContent(input:MeTLUnhandledCanvasContent[Type]):Type = original.fromMeTLUnhandledCanvasContent(input)
-}
-*/

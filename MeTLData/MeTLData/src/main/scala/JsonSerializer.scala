@@ -526,7 +526,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val defaultWidth = getIntByName(input,"defaultWidth")
         val exposed = getBooleanByName(input,"exposed")
         val slideType = getStringByName(input,"slideType")
-        val groupSet = getListOfObjectsByName(input,"groupSet").headOption.map(gs => toGroupSet(gs))
+        val groupSet = getListOfObjectsByName(input,"groupSet").map(gs => toGroupSet(gs))
         Slide(config,author,id,index,defaultHeight,defaultWidth,exposed,slideType,groupSet)
       }
       case _ => Slide.empty
@@ -549,9 +549,9 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val audiences = parseJObjForAudiences(input)
         val id = getStringByName(input,"id")
         val location = getStringByName(input,"location")
-        val groupSize = (input \ "groupSize").extractOpt[Int]
+        val groupingStrategy = toGroupingStrategy((input \ "groupingStrategy").extract[JObject])
         val groups = getListOfObjectsByName(input,"groups").map(gn => toGroup(gn))
-        GroupSet(config,id,location,groupSize,groups,audiences)
+        GroupSet(config,id,location,groupingStrategy,groups,audiences)
      }
      case _ => GroupSet.empty
    }
@@ -560,8 +560,36 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     toJsObj("groupSet",List(
       JField("id",JString(input.id)),
       JField("location",JString(input.location)),
+      JField("groupingStrategy",fromGroupingStrategy(input.groupingStrategy)),
       JField("groups",JArray(input.groups.map(g => fromGroup(g)).toList))
-    ) ::: parseAudiences(input) ::: input.groupSize.map(gs => JField("groupSize",JInt(gs))).toList)
+    ) ::: parseAudiences(input))
+  })
+
+  override def toGroupingStrategy(i:JValue):GroupingStrategy = Stopwatch.time("JsonSerializer.toGroupingStrategy",() => {
+    i match {
+      case input:JObject => {
+        getStringByName(input,"name") match {
+          case "byMaximumSize" => ByMaximumSize(getIntByName(input,"groupSize"))
+          case "byTotalGroups" => ByTotalGroups(getIntByName(input,"groupCount"))
+          case "onePersonPerGroup" => OnePersonPerGroup
+          case "everyoneInOneGroup" => EveryoneInOneGroup
+          case "complexGroupingStrategy" => ComplexGroupingStrategy(Map("json" -> (input \ "data").extract[JObject].toString)) // let's make this actually read the JFields of the JObject at input \ data and put them recursiely into a Map.
+          case _ => EveryoneInOneGroup
+        }
+      }
+      case _ => EveryoneInOneGroup
+    }
+  })
+  override def fromGroupingStrategy(input:GroupingStrategy):JValue = Stopwatch.time("JsonSerializer.fromGroupingStrategy",() => {
+    val contents = input match {
+      case ByMaximumSize(groupSize) => List(JField("name",JString("byMaximumSize")),JField("groupSize",JInt(groupSize)))
+      case ByTotalGroups(groupCount) => List(JField("name",JString("byTotalGroups")),JField("groupCount",JInt(groupCount)))
+      case OnePersonPerGroup => List(JField("name",JString("onePersonPerGroup")))
+      case EveryoneInOneGroup => List(JField("name",JString("everyoneInOneGroup")))
+      case ComplexGroupingStrategy(data) => List(JField("name",JString("complexGroupingStrategy")),JField("data",JString(data.toString))) // let's serialize this more strongly into a recursive JObject
+      case _ => List(JField("name",JString("unknown")))
+    }
+    toJsObj("groupingStrategy",contents)
   })
 
   override def toGroup(i:JValue):Group = Stopwatch.time("JsonSerializer.toGroup",() => {

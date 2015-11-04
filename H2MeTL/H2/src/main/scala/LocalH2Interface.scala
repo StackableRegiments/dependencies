@@ -192,6 +192,14 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 	def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = findAndModifyConversation(jid,c => c.replaceSubject(newSubject))
 	def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = findAndModifyConversation(jid,c => c.addSlideAtIndex(index))
 	def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = findAndModifyConversation(jid,c => c.replaceSlides(newSlides))
+  def updateConversation(jid:String,conversation:Conversation):Conversation = {
+    if (jid == conversation.jid){
+      updateConversation(conversation)
+      conversation
+    } else {
+      conversation
+    }
+  }
 
 	//resources table
 	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource", () => {
