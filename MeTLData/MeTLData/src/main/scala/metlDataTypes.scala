@@ -225,7 +225,9 @@ object MeTLUnhandledData {
   def empty[T] = MeTLUnhandledData[T](ServerConfiguration.empty,null.asInstanceOf[T])
   def empty[T](unhandled:T) = MeTLUnhandledData[T](ServerConfiguration.empty,unhandled)
 }
-case class MeTLUnhandledStanza[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,unhandled:T,override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences)
+case class MeTLUnhandledStanza[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,unhandled:T,override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime) = Stopwatch.time("MeTLUnhandledStanza.adjustTimestamp", () => copy(timestamp = newTime))
+}
 class MeTLStanza(override val server:ServerConfiguration,val author:String,val timestamp:Long,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
   def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLStanza = Stopwatch.time("MeTLStanza.adjustTimestamp", () => {
     //copy(time=newTime)//
@@ -246,7 +248,9 @@ object MeTLStanza{
   def empty = MeTLStanza(ServerConfiguration.empty,"",0L)
 }
 
-case class Attendance(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,location:String,present:Boolean,override val audiences:List[Audience]) extends MeTLStanza(server,author,timestamp,audiences)
+case class Attendance(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,location:String,present:Boolean,override val audiences:List[Audience]) extends MeTLStanza(server,author,timestamp,audiences){
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime) = Stopwatch.time("Attendance.adjustTimestamp", () => copy(timestamp = newTime))
+}
 object Attendance{
   def empty = Attendance(ServerConfiguration.empty,"",0L,"",false,Nil)
 }
