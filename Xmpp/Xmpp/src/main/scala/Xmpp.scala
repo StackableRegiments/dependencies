@@ -317,7 +317,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
         val c = new XMPPTCPConnection(config)
         val rm = ReconnectionManager.getInstanceFor(c)
         rm.setReconnectionPolicy(ReconnectionManager.ReconnectionPolicy.FIXED_DELAY)
-        rm.setFixedDelay(1000)
+        rm.setFixedDelay(1) //this is measured in seconds
         rm.enableAutomaticReconnection
         c
       })
