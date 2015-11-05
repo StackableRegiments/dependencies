@@ -1,5 +1,5 @@
 name := "xmpp"
-version := "3.2.0"
+version := "3.3.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
