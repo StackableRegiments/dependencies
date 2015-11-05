@@ -345,6 +345,9 @@ object SlideRenderer {
   })
   def render(h:History,intWidth:Int,intHeight:Int,target:String = "presentationSpace"):Array[Byte] = Stopwatch.time("SlideRenderer.render", () => {
     val renderDesc = new RenderDescription(intWidth,intHeight)
+    render(h,renderDesc,target)
+  })
+  def render(h:History,renderDesc:RenderDescription,target:String):Array[Byte] = Stopwatch.time("SlideRenderer.render", () => {
     renderMultiple(h,List(renderDesc),target).get(renderDesc).getOrElse(Array.empty[Byte])
   })
 }
