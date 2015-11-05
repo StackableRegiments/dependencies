@@ -62,7 +62,6 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 	
 	//stanzas table
 	def storeStanza[A <: MeTLStanza](jid:String,stanza:A):Option[A] = Stopwatch.time("H2Interface.storeStanza", () => {
-    println("storing stanza: %s".format(stanza))
 		val transformedStanza:Option[_ <: H2MeTLStanza[_]] = stanza match {
       case s:MeTLStanza if s.isInstanceOf[Attendance] => Some(serializer.fromMeTLAttendance(s.asInstanceOf[Attendance]).room(jid))
       case s:Attendance => Some(serializer.fromMeTLAttendance(s).room(jid)) // for some reason, it just can't make this match
@@ -82,7 +81,6 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
         None
       }
 		} 
-    println("transformed stanza: %s".format(transformedStanza))
 		transformedStanza match {
 			case Some(s) => {
         if (s.save){
@@ -152,7 +150,6 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 		m match {
 			case c:MeTLCommand if c.command == "/UPDATE_CONVERSATION_DETAILS" && c.commandParameters.length == 1 => {
 				try{
-					println("metlCommand comprehended on the global thread: %s".format(c))
 					val jidToUpdate = c.commandParameters(0).toInt
 					val conversation = detailsOfConversation(jidToUpdate)
 					conversationCache.update(conversation.jid,conversation)
@@ -178,7 +175,6 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 	protected def findAndModifyConversation(jidString:String,adjustment:Conversation => Conversation):Conversation  = Stopwatch.time("H2Interface.findAndModifyConversation", () => {
 		try {
 			val jid = jidString.toInt
-			println("altering conversation in H2")
 			detailsOfConversation(jid) match {
 				case c:Conversation if (c.jid == jid) => {
 					val updatedConv = adjustment(c)

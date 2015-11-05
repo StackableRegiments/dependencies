@@ -56,10 +56,8 @@ class H2Serializer(configName:String) extends Serializer {
 
   override def toMeTLData(inputObject:T):MeTLData = internalToMeTLStanza(inputObject)
   def internalToMeTLStanza[A <: H2MeTLStanza[A]](inputObject:T):MeTLStanza = Stopwatch.time("H2Serializer.toMeTLStanza",() => {
-    println("serializing T: %s".format(inputObject))
 		inputObject match {
 			case i:A => {
-				println("serializing to metlStanza (%s): %s".format(i.metlType.get,i))
 				i.metlType.get match {
 					case "ink" => toMeTLInk(i.asInstanceOf[H2Ink])
 					case "text" => toMeTLText(i.asInstanceOf[H2Text])
