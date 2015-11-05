@@ -233,7 +233,7 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Ht
     pushConversationToServer(local)
   }
   override def updateConversation(jid:String,conversation:Conversation):Conversation = {
-    if (jid == conversation.jid){
+    if (jid == conversation.jid.toString){
       pushConversationToServer(conversation.copy(lastAccessed = new java.util.Date().getTime))
     } else {
       conversation
