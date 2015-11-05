@@ -191,9 +191,13 @@ object XmppUtils {
 	}
 }
 
-class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
-  override def authenticated(conn:XMPPConnection,authenticated:Boolean):Unit = {}
-  override def connected(conn:XMPPConnection):Unit = {}
+class XmppConnectionManager(getConn:()=>Option[AbstractXMPPConnection],onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
+  override def authenticated(conn:XMPPConnection,resumed:Boolean):Unit = {
+		println("XMPPConnectionManager:connection authenticated (previous stream: %s)".format(resumed))
+  }
+  override def connected(conn:XMPPConnection):Unit = {
+		println("XMPPConnectionManager:connection connected")
+  }
 	override def connectionClosed():Unit = {
 		println("XMPPConnectionManager:connection closed")
 		onConnectionLost()
@@ -203,10 +207,10 @@ class XmppConnectionManager(onConnectionLost:()=>Unit,onConnectionRegained:()=>U
 		onConnectionLost()
 	}
 	override def reconnectingIn(seconds:Int):Unit = {
-		//println("XMPPConnectionManager:reconnecting in... "+seconds)
+		println("XMPPConnectionManager:reconnecting in... "+seconds)
 	}
 	override def reconnectionFailed(e:Exception):Unit = {
-		println("XMPPConnectionManager:connection failed: "+e.getMessage)
+		println("XMPPConnectionManager:reconnection failed: "+e.getMessage)
 		onConnectionLost()
 	}
 	override def reconnectionSuccessful():Unit = {
@@ -223,7 +227,6 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
   def this(credentialsFunc:() => Tuple2[String,String], incomingResource: String, incomingHost: String, incomingDomain:String) {
 				this(credentialsFunc, incomingResource, incomingHost, incomingDomain, xmppConnection = None)
 		}
-
 	val host = incomingHost
 	val domain = incomingDomain
   val credentials = credentialsFunc()
@@ -273,7 +276,8 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 	private var roomInterests:SynchronizedWriteMap[String,List[String]] = new SynchronizedWriteMap[String,List[String]]()
 //	private var roomInterests:Map[String,List[String]] = Map.empty[String,List[String]]
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
-	private val additionalConnectionListener = new XmppConnectionManager(onConnLost _, () => {
+	private var conn:Option[AbstractXMPPConnection] = None 
+  private val additionalConnectionListener = new XmppConnectionManager(() => conn,onConnLost _, () => {
 		conn.map(c => println("room reconnected: %s -> (Connected:%s,Authenticated:%s)".format(resource,c.isConnected,c.isAuthenticated)))
 		onConnRegained
 		rooms.foreach(roomDefinition => {
@@ -284,7 +288,6 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 			room.join(resource)
 		})
 	})	
-	private var conn:Option[AbstractXMPPConnection] = None 
 
 	private val config:XMPPTCPConnectionConfiguration = {
     import org.jivesoftware.smack.util.TLSUtils._
@@ -292,6 +295,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
      .setServiceName(domain)
      .setHost(host)
      .setPort(port)
+     .setResource(resource)
      .setUsernameAndPassword(username,password)
       .setDebuggerEnabled(debug)
       .setSendPresence(sendPresence)
@@ -307,10 +311,17 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 	initializeXmpp
 
 	private def createXmppConnection: Option[AbstractXMPPConnection] = {
-			xmppConnection match {
-				case Some(xmpp) => Some(xmpp)
-				case _ => tryo(new XMPPTCPConnection(config))
-			}
+    xmppConnection match {
+      case Some(xmpp) => Some(xmpp)
+      case _ => tryo({
+        val c = new XMPPTCPConnection(config)
+        val rm = ReconnectionManager.getInstanceFor(c)
+        rm.setReconnectionPolicy(ReconnectionManager.ReconnectionPolicy.FIXED_DELAY)
+        rm.setFixedDelay(1000)
+        rm.enableAutomaticReconnection
+        c
+      })
+    }
 	}
 
 	def connectToXmpp:Unit = Stopwatch.time("Xmpp.connectToXmpp", () => {
@@ -321,7 +332,8 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 			c.addConnectionListener(additionalConnectionListener)
 		})
 		try {
-			conn.map(c => c.login(username,password,resource))
+			//conn.map(c => c.login(username,password,resource))
+			conn.map(c => c.login())//username,password,resource))
 		}
 		catch {
 			case e:XMPPException if (shouldAttemptRegistrationOnAuthFailed && e.getMessage.contains("not-authorized")) => {
@@ -331,7 +343,8 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 					c.connect
 					c.addConnectionListener(additionalConnectionListener)
 					register
-					c.login(username,password,resource)
+          c.login()
+					//c.login(username,password,resource)
 				})
 			}
 		}
