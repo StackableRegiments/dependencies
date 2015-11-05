@@ -111,24 +111,27 @@ abstract class GroupingStrategy{
 
 case class ByMaximumSize(groupSize:Int) extends GroupingStrategy {
   override def addNewPerson(g:GroupSet,person:String):GroupSet = {
-    g.copy(groups = 
+    val oldGroups = g.groups
+    val newGroups = {
       g.groups.find(group => {
         group.members.length < groupSize
       }).map(fg => {
-        fg.copy(members = person :: fg.members) :: g.groups.filterNot(_ == fg)
+        fg.copy(members = person :: fg.members) :: oldGroups.filter(_.id != fg.id)
       }).getOrElse({
-        Group(g.server,nextFuncName,g.location,List(person)) :: g.groups
+        Group(g.server,nextFuncName,g.location,List(person)) :: oldGroups
       })
-    )
+    }
+    g.copy(groups = newGroups)
   }
 }
 case class ByTotalGroups(numberOfGroups:Int) extends GroupingStrategy {
   override def addNewPerson(g:GroupSet,person:String):GroupSet = {
+    val oldGroups = g.groups
     g.copy(groups = {
-      g.groups match {
+      oldGroups match {
         case l:List[Group] if l.length < numberOfGroups => Group(g.server,nextFuncName,g.location,List(person)) :: l
         case l:List[Group] => l.sortWith((a,b) => a.members.length < b.members.length).headOption.map(fg => {
-          fg.copy(members = person :: fg.members) :: l.filterNot(_ == fg)
+          fg.copy(members = person :: fg.members) :: l.filter(_.id != fg.id)
         }).getOrElse({
           l.head.copy(members = person :: l.head.members) :: l.drop(1)
         })
