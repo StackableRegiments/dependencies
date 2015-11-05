@@ -1,5 +1,5 @@
 name := "slide-renderer"
-version := "1.1.0"
+version := "1.2.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"

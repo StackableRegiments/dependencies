@@ -15,6 +15,8 @@ import net.liftweb.util.Helpers._
 
 case class Dimensions(left:Double,top:Double,right:Double,bottom:Double,width:Double,height:Double)
 
+class RenderDescription(val width:Int,val height:Int)
+
 object SlideRenderer {
 
   private val JAVA_DEFAULT_DPI = 72.0
@@ -252,24 +254,22 @@ object SlideRenderer {
       case _ => false
     }
   }).toList
-  def renderMultiple(h:History,requestedSizes:List[Tuple3[String,Int,Int]],target:String= "presentationSpace"):Map[String,Tuple3[Int,Int,Array[Byte]]] = Stopwatch.time("SlideRenderer.renderMultiple", () => {
+  def renderMultiple(h:History,requestedSizes:List[RenderDescription],target:String= "presentationSpace"):Map[RenderDescription,Array[Byte]] = Stopwatch.time("SlideRenderer.renderMultiple", () => {
     h.shouldRender match {
       case true => {
         val (texts,highlighters,inks,images) = h.getRenderableGrouped
         val dimensions = measureItems(h,texts,highlighters,inks,images,target)
         Map(requestedSizes.map(rs => {
-          val name = rs._1
-          val width = rs._2
-          val height = rs._3
-          (name,(width,height,renderImage(h,dimensions,width,height,target)))
+          val width = rs.width
+          val height = rs.height
+          (rs,renderImage(h,dimensions,width,height,target))
         }):_*)
       }
       case false => {
         Map(requestedSizes.map(rs => {
-          val name = rs._1
-          val width = rs._2
-          val height = rs._3
-          (name,(width,height,imageToByteArray(makeBlankImage(width,height))))
+          val width = rs.width
+          val height = rs.height
+          (rs,imageToByteArray(makeBlankImage(width,height)))
         }):_*)
       }
     }
@@ -344,73 +344,7 @@ object SlideRenderer {
     imageToByteArray(unscaledImage)
   })
   def render(h:History,intWidth:Int,intHeight:Int,target:String = "presentationSpace"):Array[Byte] = Stopwatch.time("SlideRenderer.render", () => {
-    renderMultiple(h,List(("single",intWidth,intHeight)),target)("single")._3
-    /*
-     val width = intWidth.toDouble
-     val height = intHeight.toDouble
-     val (texts,highlighters,inks,images) = h.getRenderableGrouped
-     h.shouldRender match {
-     case true => {
-     val nativeScaleTextBoxes = filterAccordingToTarget[MeTLText](target,texts).map(t => measureText(t))
-     val td = nativeScaleTextBoxes.foldLeft(Dimensions(h.getLeft,h.getTop,h.getRight,h.getBottom,0.0,0.0))((acc,item) => {
-     val newLeft = Math.min(acc.left,item.left)
-     val newTop = Math.min(acc.top,item.top)
-     val newRight = Math.max(acc.right,item.right)
-     val newBottom = Math.max(acc.bottom,item.bottom)
-     Dimensions(newLeft,newTop,newRight,newBottom,0.0,0.0)
-     })
-     val dimensions = Dimensions(td.left,td.top,td.right,td.bottom,td.right - td.left,td.bottom - td.top)
-     val contentWidth = dimensions.width
-     val contentHeight = dimensions.height
-     val contentXOffset = dimensions.left * -1
-     val contentYOffset = dimensions.top * -1
-     val historyRatio = tryo(contentHeight/contentWidth).openOr(ratioConst)
-
-     val (renderWidth,renderHeight,scaleFactor) = (historyRatio >= ratioConst) match {
-     case true => {
-     val initialWidth = Math.max(1.0,width)
-     var initialHeight = initialWidth*historyRatio
-     val (renderWidth,renderHeight) =
-     (initialHeight > height) match {
-     case true => (initialWidth*(height/initialHeight),height)
-     case false => (initialWidth,initialHeight)
-     }
-     (renderWidth,renderHeight,renderWidth/contentWidth)
-     }
-     case false => {
-     val initialHeight = Math.max(1.0,height)
-     var initialWidth = initialHeight/historyRatio
-     val (renderWidth,renderHeight) =
-     (initialWidth > width) match {
-     case true => (width,initialHeight*(width/initialWidth))
-     case false => (initialWidth,initialHeight)
-     }
-     (renderWidth,renderHeight,renderHeight/contentHeight)
-     }
-     }
-     val unscaledImage = new BufferedImage(width.toInt,height.toInt,BufferedImage.TYPE_3BYTE_BGR)
-     val g = unscaledImage.createGraphics.asInstanceOf[Graphics2D]
-     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-     g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-     g.setPaint(AWTColor.white)
-     g.fill(new Rectangle(0,0,renderWidth.toInt,renderHeight.toInt))//dimensions.width.toInt,dimensions.height.toInt))
-     val scaleApplier = scaleFactor
-     val scaledHistory = (scaleFactor != h.xScale || scaleFactor != h.yScale || h.xOffset != 0 || h.yOffset != 0) match {
-     case true => {
-     println("scaling history to: %s (+%s,%s)".format(scaleFactor,h.xOffset,h.yOffset))
-     h.adjustToVisual(contentXOffset,contentYOffset,scaleApplier,scaleApplier)
-     }
-     case false => h
-     }
-     val (scaledTexts,scaledHighlighters,scaledInks,scaledImages) = scaledHistory.getRenderableGrouped
-     filterAccordingToTarget[MeTLImage](target,scaledImages).foreach(img => renderImage(img,g))
-     filterAccordingToTarget[MeTLInk](target,scaledHighlighters).foreach(renderInk(_,g))
-     filterAccordingToTarget[MeTLText](target,scaledTexts).foreach(t => renderText(measureTextLines(t,g),g))
-     filterAccordingToTarget[MeTLInk](target,scaledInks).foreach(renderInk(_,g))
-     imageToByteArray(unscaledImage)
-     }
-     case false => imageToByteArray(makeBlankImage(width.toInt,height.toInt))
-     }
-     */
+    val renderDesc = new RenderDescription(intWidth,intHeight)
+    renderMultiple(h,List(renderDesc),target).get(renderDesc).getOrElse(Array.empty[Byte])
   })
 }
