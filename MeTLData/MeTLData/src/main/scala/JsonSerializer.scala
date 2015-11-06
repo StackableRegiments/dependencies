@@ -124,7 +124,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("quizResponses",JArray(input.getQuizResponses.map(i => fromMeTLQuizResponse(i)))),
       JField("submissions",JArray(input.getSubmissions.map(i => fromSubmission(i)))),
       JField("attendances",JArray(input.getAttendances.map(i => fromMeTLAttendance(i)))),
-      JField("commands",JArray(input.getCommands.map(i => fromMeTLCommand(i))))
+      JField("commands",JArray(input.getCommands.map(i => fromMeTLCommand(i)))),
+      JField("files",JArray(input.getFiles.map(i => fromMeTLFile(i))))
     ))
   })
   protected def getFields(i:JValue,parentName:String):List[JField] = {
@@ -151,6 +152,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     getFields(i,"submissions").foreach(jf => history.addStanza(toSubmission(jf.value)))
     getFields(i,"attendances").foreach(jf => history.addStanza(toMeTLAttendance(jf.value)))
     getFields(i,"commands").foreach(jf => history.addStanza(toMeTLCommand(jf.value)))
+    getFields(i,"files").foreach(jf => history.addStanza(toMeTLFile(jf.value)))
     history
   })
   protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has", () => {
@@ -180,6 +182,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case jo:JObject if (isOfType(jo,"moveDelta")) => toMeTLMoveDelta(jo)
       case jo:JObject if (isOfType(jo,"command")) => toMeTLCommand(jo)
       case jo:JObject if (isOfType(jo,"attendance")) => toMeTLAttendance(jo)
+      case jo:JObject if (isOfType(jo,"file")) => toMeTLFile(jo)
       case other:JObject if hasFields(other,List("target","privacy","slide","identity")) => toMeTLUnhandledCanvasContent(other)
       case other:JObject if hasFields(other,List("author","timestamp")) => toMeTLUnhandledStanza(other)
       case other:JObject => toMeTLUnhandledData(other)
@@ -210,8 +213,31 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case other => MeTLUnhandledCanvasContent.empty[JValue](other)
     }
   }
+  override def fromMeTLFile(input:MeTLFile):JValue = Stopwatch.time("JsonSerializer.fromMeTLFile",() => {
+    toJsObj("file",List(
+      JField("name",JString(input.name)),
+      JField("id",JString(input.id))
+      ) ::: 
+      parseMeTLContent(input) ::: 
+      input.url.map(u => JField("url",JString(u))).toList /* :::
+      input.bytes.map(b => JField("bytes",JString(base64Encode(b)))).toList */
+    )
+  })
 
-
+  override def toMeTLFile(i:JValue):MeTLFile = Stopwatch.time("JsonSerializer.toMeTLFile",() => {
+    i match {
+      case input:JObject => {
+        val mc = parseJObjForMeTLContent(input,config)
+        val name = getStringByName(input,"name")
+        val id = getStringByName(input,"id")
+//        val bytes = (input \ "bytes").extractOpt[String].map(bs => base64Decode(bs))
+        val url = (input \ "url").extractOpt[String]
+        val bytes = url.map(u => config.getResource(u))
+        MeTLFile(config,mc.author,mc.timestamp,name,id,url,bytes)
+      }
+      case _ => MeTLFile.empty
+    }
+  })
   override def fromMeTLMoveDelta(input:MeTLMoveDelta):JValue = Stopwatch.time("JsonSerializer.fromMeTLMoveDelta",()=>{
     toJsObj("moveDelta",List(
       JField("inkIds",JArray(input.inkIds.map(JString).toList)),

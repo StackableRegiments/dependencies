@@ -34,6 +34,8 @@ abstract class Serializer {
   def fromMeTLQuiz(input:MeTLQuiz):T = throw new SerializationNotImplementedException
   def toMeTLQuizResponse(input:T):MeTLQuizResponse = throw new SerializationNotImplementedException
   def fromMeTLQuizResponse(input:MeTLQuizResponse):T = throw new SerializationNotImplementedException
+  def toMeTLFile(input:T):MeTLFile = throw new SerializationNotImplementedException
+  def fromMeTLFile(input:MeTLFile):T = throw new SerializationNotImplementedException
   def toConversation(input:T):Conversation = throw new SerializationNotImplementedException
   def fromConversation(input:Conversation):T = throw new SerializationNotImplementedException
   def fromConversationList(input:List[Conversation]):T = throw new SerializationNotImplementedException
@@ -72,6 +74,7 @@ abstract class Serializer {
     case s:MeTLSubmission => fromSubmission(s)
     case m:MeTLMoveDelta => fromMeTLMoveDelta(m)
     case a:Attendance => fromMeTLAttendance(a)
+    case f:MeTLFile => fromMeTLFile(f)
     case cc:MeTLUnhandledCanvasContent[T] => fromMeTLUnhandledCanvasContent(cc)
     case ms:MeTLUnhandledStanza[T] => fromMeTLUnhandledStanza(ms)
     case mx:MeTLUnhandledData[T] => fromMeTLUnhandledData(mx)
@@ -107,6 +110,8 @@ class PassthroughSerializer extends Serializer {
   override def fromMeTLQuiz(input:MeTLQuiz):Object = input.asInstanceOf[Object]
   override def toMeTLQuizResponse(input:Object):MeTLQuizResponse = input.asInstanceOf[MeTLQuizResponse]
   override def fromMeTLQuizResponse(input:MeTLQuizResponse):Object = input.asInstanceOf[Object]
+  override def toMeTLFile(input:T):MeTLFile = input.asInstanceOf[MeTLFile]
+  override def fromMeTLFile(input:MeTLFile):T = input.asInstanceOf[Object]
   override def toConversation(input:Object):Conversation = input.asInstanceOf[Conversation]
   override def fromConversation(input:Conversation):Object = input.asInstanceOf[Object]
   override def toSlide(input:Object):Slide = input.asInstanceOf[Slide]

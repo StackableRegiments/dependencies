@@ -692,3 +692,12 @@ case class MeTLQuizResponse(override val server:ServerConfiguration,override val
 object MeTLQuizResponse{
   def empty = MeTLQuizResponse(ServerConfiguration.empty,"",0L,"","","",Nil)
 }
+
+case class MeTLFile(override val server:ServerConfiguration, override val author:String, override val timestamp:Long, name:String, id:String, url:Option[String],bytes:Option[Array[Byte]],override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLFile = Stopwatch.time("MeTLFile.adjustTimestamp", () => {
+    copy(timestamp = newTime)
+  })
+}
+object MeTLFile{
+  def empty = MeTLFile(ServerConfiguration.empty,"",0L,"","",None,None,Nil)
+}

@@ -355,6 +355,21 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <options>{input.options.map(o => fromQuizOption(o))}</options>
     ) ::: input.url.map(u => List(<url>{u}</url>)).openOr(List.empty[Node]))
   })
+  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("GenericXmlSerializer.toMeTLFile",() => {
+    val m = parseMeTLContent(input,config)
+    val name = getStringByName(input,"name")
+    val id = getStringByName(input,"id")
+    val url = (input \ "url").headOption.map(_.text)
+    val bytes = url.map(u => config.getResource(u))
+    MeTLFile(config,m.author,m.timestamp,name,id,url,bytes)
+  })
+  override def fromMeTLFile(input:MeTLFile):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLFile",() => {
+    metlContentToXml("file",input,List(
+      <name>{input.name}</name>,
+      <id>{input.id}</id>
+      ) ::: 
+      input.url.map(u => List(<url>{u}</url>)).getOrElse(List.empty[Node]))
+  })
   def toQuizOption(input:NodeSeq):QuizOption = Stopwatch.time("GenericXmlSerializer.toMeTLQuizOption", () => {
     val name = getStringByName(input,"name")
     val text = getStringByName(input,"text")

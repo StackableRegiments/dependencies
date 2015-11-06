@@ -60,6 +60,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   protected var submissions:List[MeTLSubmission] = List.empty[MeTLSubmission]
   protected var commands:List[MeTLCommand] = List.empty[MeTLCommand]
   protected var latestCommands:Map[String,MeTLCommand] = Map.empty[String,MeTLCommand]
+  protected var files:List[MeTLFile] = List.empty[MeTLFile]
   protected var attendances:List[Attendance] = List.empty[Attendance]
 
   def getLatestCommands:Map[String,MeTLCommand] = latestCommands
@@ -74,6 +75,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getQuizResponses = quizResponses
   def getSubmissions = submissions
   def getAttendances = attendances
+  def getFiles = files
   def getCommands = commands
 
   def getRenderable = Stopwatch.time("History.getRenderable", () => getCanvasContents.map(scaleItemToSuitHistory(_)))
@@ -96,6 +98,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getImageBySource(source:String) = Stopwatch.time("History.getImageBySource", () => getImages.find(i => i.source.map(s => s == source).openOr(false)))
   def getImageByIdentity(identity:String) = Stopwatch.time("History.getImageByIdentity", () => getImages.find(i => i.identity == identity))
   def getQuizByIdentity(identity:String) = Stopwatch.time("History.getQuizImageByIdentity", () => getQuizzes.filter(i => i.id == identity).sortBy(q => q.timestamp).reverse.headOption)
+  def getFileByIdentity(identity:String) = Stopwatch.time("History.getFileByIdentity",() => getFiles.filter(_.id == identity).sortBy(_.timestamp).reverse.headOption)
   def getSubmissionByAuthorAndIdentity(author:String,identity:String) = Stopwatch.time("History.getSubmissionByAuthorAndIdentity", () => getSubmissions.find(s => s.author == author && s.identity == identity))
 
   def processNewStanza(s:MeTLStanza) = s match {
@@ -112,6 +115,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     case s:MeTLSubmission => addSubmission(s)
     case s:MeTLCommand => addCommand(s)
     case s:Attendance => addAttendance(s)
+    case s:MeTLFile => addFile(s)
     case s:MeTLStanza => {
       println("makeHistory: I don't know what to do with a MeTLStanza: %s".format(s))
       this
@@ -229,6 +233,13 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     if (store){
       outputHook(s)
       attendances = attendances ::: List(s)
+    }
+    this
+  })
+  def addFile(s:MeTLFile,store:Boolean = true) = Stopwatch.time("History.addFile",() => {
+    if (store){
+      outputHook(s)
+      files = files ::: List(s)
     }
     this
   })
@@ -481,6 +492,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     getAll.foreach(i => i match {
       case q:MeTLQuiz => newHistory.addStanza(q)
       case c:MeTLCommand => newHistory.addStanza(c)
+      case f:MeTLFile => newHistory.addStanza(f)
       case s:MeTLStanza => {
         if (isTeacher || s.author.toLowerCase == user)
           newHistory.addStanza(s)
