@@ -127,6 +127,32 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("commands",JArray(input.getCommands.map(i => fromMeTLCommand(i))))
     ))
   })
+  protected def getFields(i:JValue,parentName:String):List[JField] = {
+    i match {
+      case input:JObject => (input \ parentName) match {
+        case parent:JObject => parent.obj
+        case _ => List.empty[JField]
+      }
+      case _ => List.empty[JField]
+    }
+  }
+  override def toHistory(i:JValue):History = Stopwatch.time("JsonSerializer.toHistory",() => {
+    val jid = i match {
+      case input:JObject => getStringByName(input,"jid")
+      case _ => ""
+    }
+    val history = new History(jid)
+    getFields(i,"inks").foreach(jf => history.addStanza(toMeTLInk(jf.value)))
+    getFields(i,"highlighters").foreach(jf => history.addStanza(toMeTLInk(jf.value)))
+    getFields(i,"images").foreach(jf => history.addStanza(toMeTLImage(jf.value)))
+    getFields(i,"texts").foreach(jf => history.addStanza(toMeTLText(jf.value)))
+    getFields(i,"quizzes").foreach(jf => history.addStanza(toMeTLQuiz(jf.value)))
+    getFields(i,"quizResponses").foreach(jf => history.addStanza(toMeTLQuizResponse(jf.value)))
+    getFields(i,"submissions").foreach(jf => history.addStanza(toSubmission(jf.value)))
+    getFields(i,"attendances").foreach(jf => history.addStanza(toMeTLAttendance(jf.value)))
+    getFields(i,"commands").foreach(jf => history.addStanza(toMeTLCommand(jf.value)))
+    history
+  })
   protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has", () => {
     input.values.contains(fieldName)
   })

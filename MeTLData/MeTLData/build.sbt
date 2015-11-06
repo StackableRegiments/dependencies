@@ -1,5 +1,5 @@
 name := "metldata"
-version := "3.1.0"
+version := "3.1.1"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"

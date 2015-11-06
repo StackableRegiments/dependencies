@@ -116,9 +116,19 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     metlContentToXml(rootName,input,parsedCanvasContentToXml(ParsedCanvasContent(input.target,input.privacy,input.slide,input.identity)) ++ additionalNodes)
   })
   override def fromHistory(input:History):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromHistory", () => {
-    <history>{input.getAll.map(i => fromMeTLData(i))}</history>
+    <history jid={input.jid}>{input.getAll.map(i => fromMeTLData(i))}</history>
   })
 
+  override def toHistory(input:NodeSeq):History = Stopwatch.time("GenericXmlSerializer.toHistory",() => {
+    val history = new History((input \ "@jid").headOption.map(_.text).getOrElse(""))
+    input match {
+      case e:Elem => e.child.foreach(c => toMeTLData(c) match {
+        case ms:MeTLStanza => history.addStanza(ms)
+        case _ => {}
+      })
+    }
+    history
+  })
   override def toMeTLUnhandledData(i:NodeSeq) = MeTLUnhandledData(config,i)
   override def toMeTLUnhandledStanza(i:NodeSeq) = {
     val m = parseMeTLContent(i,config)
