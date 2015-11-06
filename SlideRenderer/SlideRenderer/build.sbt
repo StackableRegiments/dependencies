@@ -1,5 +1,5 @@
 name := "slide-renderer"
-version := "1.2.0"
+version := "1.3.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
@@ -26,7 +26,7 @@ libraryDependencies ++= {
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "io.github.stackableregiments" %% "metldata" % "3.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
+    "io.github.stackableregiments" %% "metldata" % "3.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
   )
 }
 

@@ -128,4 +128,29 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
 			}
 		}
   })
+  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("MeTL2011XmlSerializer.toMeTLFile", () => {
+		//println("quiz attempted: %s".format(input))
+    val m = parseMeTLContent(input)
+		try {
+      val name = getStringByName(input,"name")
+      val id = getStringByName(input,"id")
+			val url = getStringByName(input,"url") match {
+				case s:String if (s.length > 0 && s != "unknown url" && s != "none") => metlUtils.reabsolutizeUri(s,"Resource")
+				case _ => Empty
+			}
+			val bytes = url.map(u => {
+				if (cacheImages)
+					getCachedImage(u)
+				else
+					config.getResource(u)
+			})
+			MeTLFile(config,m.author,m.timestamp,name,id,url,bytes,m.audiences)
+		} catch {
+			case e:Throwable => {
+				println("failed to construct MeTLQuiz: %s -> %s".format(e,e.getMessage))
+        MeTLFile.empty
+			}
+		}
+  })
+
 }

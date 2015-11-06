@@ -1,5 +1,5 @@
 name := "metl-h2"
-version := "3.1.0"
+version := "3.2.0"
 organization := "io.github.stackableregiments"
 
 scalaVersion := "2.11.5"
@@ -30,8 +30,8 @@ libraryDependencies ++= {
     "net.liftweb" %% "lift-mapper" % liftVersion,
     "net.liftweb" %% "lift-webkit" % liftVersion,
     "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "io.github.stackableregiments" %% "persisted-metl" % "3.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
-    "io.github.stackableregiments" %% "metldata" % "3.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
+    "io.github.stackableregiments" %% "persisted-metl" % "3.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri"),
+    "io.github.stackableregiments" %% "metldata" % "3.2.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
   )
 }
 

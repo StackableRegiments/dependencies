@@ -70,6 +70,7 @@ class H2Serializer(configName:String) extends Serializer {
 					case "command" => toMeTLCommand(i.asInstanceOf[H2Command])
 					case "quiz" => toMeTLQuiz(i.asInstanceOf[H2Quiz])
           case "attendance" => toMeTLAttendance(i.asInstanceOf[H2Attendance])
+          case "file" => toMeTLFile(i.asInstanceOf[H2File])
 					case "quizResponse" => toMeTLQuizResponse(i.asInstanceOf[H2QuizResponse])
 					case _ => throw new SerializationNotImplementedException
 				}
@@ -138,10 +139,21 @@ class H2Serializer(configName:String) extends Serializer {
   override def fromMeTLDirtyText(i:MeTLDirtyText):H2DirtyText = incCanvasContent(H2DirtyText.create,i,"dirtyText")
   def toMeTLCommand(i:H2Command):MeTLCommand = {
 		val c = decStanza(i)
-		
 		MeTLCommand(config,c.author,c.timestamp,i.command.get,stringToStrings(i.commandParameters.get).toList)
 	}
   override def fromMeTLCommand(i:MeTLCommand):H2Command = incStanza(H2Command.create,i,"command").command(i.command).commandParameters(stringsToString(i.commandParameters))
+  def toMeTLFile(i:H2File):MeTLFile = {
+    val c = decStanza(i)
+    val url = i.url.get match {
+      case null | "" => None
+      case other => Some(other)
+    }
+    val bytes = url.map(u => config.getResource(u))
+    MeTLFile(config,c.author,c.timestamp,i.name.get,i.identity.get,url,bytes)
+  }
+  override def fromMeTLFile(i:MeTLFile):H2File = {
+    incStanza(H2File.create,i,"file").name(i.name).identity(i.id).url(i.url.getOrElse(""))
+  }
 
   def toSubmission(i:H2Submission):MeTLSubmission = {
 		val c = decCanvasContent(i)

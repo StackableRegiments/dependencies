@@ -176,6 +176,15 @@ class H2Conversation extends H2MeTLContent[H2Conversation]{
 }
 object H2Conversation extends H2Conversation with LongKeyedMetaMapper[H2Conversation]{
 }
+class H2File extends H2MeTLStanza[H2File]{
+  def getSingleton = H2File
+  object name extends MappedText(this)
+  object identity extends MappedString(this,H2Constants.identity)
+  object url extends MappedString(this,H2Constants.url)
+}
+object H2File extends H2File with LongKeyedMetaMapper[H2File]{
+}
+
 class H2Resource extends H2MeTLContent[H2Resource]{
 	def getSingleton = H2Resource
 	object url extends MappedString(this,H2Constants.url)

@@ -40,6 +40,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 			H2Submission,
 			H2Conversation,
       H2Attendance,
+      H2File,
 			H2Resource
 		):_*
 	)
@@ -109,9 +110,10 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 		val submissions = H2Submission.findAll(By(H2Submission.room,jid)).map(s => serializer.toSubmission(s))
 		val quizzes = H2Quiz.findAll(By(H2Quiz.room,jid)).map(s => serializer.toMeTLQuiz(s))
 		val quizResponses = H2QuizResponse.findAll(By(H2QuizResponse.room,jid)).map(s => serializer.toMeTLQuizResponse(s))
+    val files = H2File.findAll(By(H2File.room,jid)).map(s => serializer.toMeTLFile(s))
     val attendances = H2Attendance.findAll(By(H2Attendance.location,jid)).map(s => serializer.toMeTLAttendance(s))
 		val commands = H2Command.findAll(By(H2Command.room,jid)).map(s => serializer.toMeTLCommand(s))
-		(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions ::: attendances).foreach(s => newHistory.addStanza(s))
+		(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions ::: files ::: attendances).foreach(s => newHistory.addStanza(s))
 		newHistory
 	})
 
