@@ -392,6 +392,13 @@ object MeTLImage{
 }
 
 case class MeTLText(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,text:String,height:Double,width:Double,caret:Int,x:Double,y:Double,tag:String,style:String,family:String,weight:String,size:Double,decoration:String,override val identity:String,override val target:String,override val privacy:Privacy,override val slide:String,color:Color,override val audiences:List[Audience] = Nil,override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,audiences,scaleFactorX,scaleFactorY) {
+  lazy val isRichText = {
+    try {
+      scala.xml.XML.loadString(text).namespace.trim.toLowerCase == "http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    } catch {
+      case e:Exception => false
+    }
+  }
   override def matches(other:MeTLCanvasContent) = other match {
     case o:MeTLText => super.matches(o)
     case _ => false
@@ -404,11 +411,55 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
   override def right:Double = x+width
   override def top:Double = y
   override def bottom:Double = y+height
+  import scala.xml._
+  protected def replaceAttr(attributes:scala.xml.MetaData,attrName:String,attrTransform:String=>String):scala.xml.MetaData = {
+    attributes match {
+      case p:PrefixedAttribute => new PrefixedAttribute(pre=p.pre,key=p.key,value= { p.key match {
+        case an:String if an == attrName => attrTransform(p.value.text)
+        case other => p.value.text
+      }}, next=replaceAttr(p.next,attrName,attrTransform))
+      case u:UnprefixedAttribute => new UnprefixedAttribute(key=u.key,value= { u.key match {
+        case an:String if an == attrName => attrTransform(u.value.text)
+        case other => u.value.text
+      }}, next=replaceAttr(u.next,attrName,attrTransform))
+      case _ => Null
+    }
+  }
+  protected def scaleRichText(t:String,factor:Double):String = {
+    try {
+      scala.xml.XML.loadString(t) match {
+        case section:Elem if section.label == "Section" => {
+          section.copy(attributes = replaceAttr(section.attributes,"FontSize",(a) => (a.toDouble * factor).toString),child = {
+            (section \ "Paragraph").map{
+              case page:Elem if page.label == "Paragraph" => {
+                page.copy(attributes = replaceAttr(page.attributes,"FontSize",(a) => (a.toDouble * factor).toString),child = {
+                  (page \ "Run").map{
+                    case run:Elem if run.label == "Run" => {
+                      run.copy(attributes = replaceAttr(run.attributes,"FontSize",(a) => (a.toDouble * factor).toString))
+                    }
+                    case other => other
+                  }
+                })
+              }
+              case other => other
+            }
+          }).toString
+        }
+        case _other => t
+      }
+    } catch {
+      case e:Exception => t
+    }
+  }
   override def scale(factor:Double):MeTLText = scale(factor,factor)
   override def scale(xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.scale", () => {
     val averageFactor = (xScale + yScale) / 2
-    //MeTLText(server,author,timestamp,text,height*yScale,width*xScale,caret,x*xScale,y*yScale,tag,style,family,weight,size*averageFactor,decoration,identity,target,privacy,slide,color,scaleFactorX * xScale,scaleFactorY * yScale)
-    copy(height = height * yScale, width = width * xScale, x = x * xScale, y = y * yScale, size = size * averageFactor, scaleFactorX = scaleFactorX * xScale, scaleFactorY = scaleFactorY * yScale)
+    if (isRichText){
+      copy(text = scaleRichText(text,averageFactor), height = height * yScale, width = width * xScale, x = x * xScale, y = y * yScale, size = size * averageFactor, scaleFactorX = scaleFactorX * xScale, scaleFactorY = scaleFactorY * yScale)
+    } else {
+      //MeTLText(server,author,timestamp,text,height*yScale,width*xScale,caret,x*xScale,y*yScale,tag,style,family,weight,size*averageFactor,decoration,identity,target,privacy,slide,color,scaleFactorX * xScale,scaleFactorY * yScale)
+      copy(height = height * yScale, width = width * xScale, x = x * xScale, y = y * yScale, size = size * averageFactor, scaleFactorX = scaleFactorX * xScale, scaleFactorY = scaleFactorY * yScale)
+    }
   })
   override def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLText = Stopwatch.time("MeTLText.alterPrivacy", () => {
     possiblyNewPrivacy match {
@@ -420,8 +471,11 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
   })
   override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.adjustVisual", () => {
     val averageFactor = (xScale + yScale) / 2
-//    MeTLText(server,author,timestamp,text,height * yScale,width * xScale,caret,x + xTranslate,y + yTranslate,tag,style,family,weight,size * averageFactor,decoration,identity,target,privacy,slide,color,scaleFactorX,scaleFactorY)
-    copy(height = height * yScale, width = width * xScale, x = x + xTranslate, y = y + yTranslate, size = size * averageFactor)
+    if (isRichText){
+      copy(text = scaleRichText(text,averageFactor), height = height * yScale, width = width * xScale, x = x + xTranslate, y = y + yTranslate, size = size * averageFactor)
+    } else {
+      copy(height = height * yScale, width = width * xScale, x = x + xTranslate, y = y + yTranslate, size = size * averageFactor)
+    }
   })
   override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLText = Stopwatch.time("MeTLText.adjustTimestamp", () => {
       copy(timestamp = newTime)
@@ -616,20 +670,18 @@ object MeTLCommand{
 
 case class MeTLQuiz(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,created:Long,question:String,id:String,url:Box[String],imageBytes:Box[Array[Byte]],isDeleted:Boolean,options:List[QuizOption],override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp){
   override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLQuiz = Stopwatch.time("MeTLQuiz.adjustTimestamp", () => {
-    copy(timestamp = newTime)//MeTLQuiz(server,author,newTime,created,question,id,url,imageBytes,isDeleted,options)
+    copy(timestamp = newTime)
   })
-  def replaceQuestion(newQ:String) = copy(question = newQ)//MeTLQuiz(server,author,timestamp,created,newQ,id,url,imageBytes,isDeleted,options)
-  def addOption(newO:QuizOption) = copy(options = options ::: List(newO.adjustName(QuizOption.nextName(options))))//MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options ::: List(newO.adjustName(QuizOption.nextName(options))))
-  def replaceImage(newImageUrl:Box[String]) = copy(url = newImageUrl,imageBytes = Empty)//MeTLQuiz(server,author,timestamp,created,question,id,newImageUrl,Empty,isDeleted,options)
+  def replaceQuestion(newQ:String) = copy(question = newQ)
+  def addOption(newO:QuizOption) = copy(options = options ::: List(newO.adjustName(QuizOption.nextName(options))))
+  def replaceImage(newImageUrl:Box[String]) = copy(url = newImageUrl,imageBytes = Empty)
   def replaceOption(optionName:String,newText:String) = {
-    //Quiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options.filterNot(o => o == or) ::: List(or.adjustText(newText)))).getOrElse(copy())//MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options))
     options.find(o => o.name == optionName).map(or => copy(options = options.filterNot(_ == or) ::: List(or.adjustName(QuizOption.nextName(options))))).getOrElse(copy())
   }
   def removeOption(optionName:String) = {
-    //options.find(_.name == optionName).map(or => MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options.filterNot(o => o == or).foldLeft(List.empty[QuizOption])((os,o)=> o.adjustName(QuizOption.nextName(os)) :: os))).getOrElse(MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,isDeleted,options))
     options.find(_.name == optionName).map(or => copy(options = options.filterNot(o => o == or).foldLeft(List.empty[QuizOption])((os,o)=> o.adjustName(QuizOption.nextName(os)) :: os))).getOrElse(copy())
   }
-  def delete = copy(isDeleted = true)//MeTLQuiz(server,author,timestamp,created,question,id,url,imageBytes,true,options)
+  def delete = copy(isDeleted = true)
 }
 object MeTLQuiz{
   def empty = MeTLQuiz(ServerConfiguration.empty,"",0L,0L,"","",Empty,Empty,true,List.empty[QuizOption],Nil)
@@ -637,7 +689,7 @@ object MeTLQuiz{
 
 case class MeTLSubmission(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,title:String,slideJid:Int,url:String,imageBytes:Box[Array[Byte]] = Empty,blacklist:List[SubmissionBlacklistedPerson] = List.empty[SubmissionBlacklistedPerson], override val target:String = "submission",override val privacy:Privacy = Privacy.PUBLIC,override val identity:String = new Date().getTime.toString,override val audiences:List[Audience] = Nil) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slideJid.toString,identity){
   override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLSubmission = Stopwatch.time("MeTLSubmission.adjustTimestamp", () => {
-    copy(timestamp = newTime)//MeTLSubmission(server,author,newTime,title,slideJid,url,imageBytes,blacklist,target,privacy,identity)
+    copy(timestamp = newTime)
   })
 }
 object MeTLSubmission{
@@ -649,8 +701,8 @@ object SubmissionBlacklistedPerson{
 }
 
 case class QuizOption(name:String,text:String,correct:Boolean = false,color:Color = Color.default){
-  def adjustName(newName:String) = copy(name = newName,color = QuizOption.colorForName(newName))//QuizOption(newName,text,correct,QuizOption.colorForName(newName))
-  def adjustText(newText:String) = copy(text = newText)//QuizOption(name,newText,correct,color)
+  def adjustName(newName:String) = copy(name = newName,color = QuizOption.colorForName(newName))
+  def adjustText(newText:String) = copy(text = newText)
 }
 object QuizOption{
   def empty = QuizOption("","",false,Color.default)
@@ -686,7 +738,6 @@ object QuizOption{
 case class MeTLQuizResponse(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,answer:String,answerer:String,id:String,override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
   override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLQuizResponse = Stopwatch.time("MeTLQuizResponse.adjustTimestamp", () => {
       copy(timestamp = newTime)
-    //MeTLQuizResponse(server,author,newTime,answer,answerer,id)
   })
 }
 object MeTLQuizResponse{

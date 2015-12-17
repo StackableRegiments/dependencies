@@ -38,6 +38,7 @@ class ServerConfigurator{
 }
 
 abstract class ServerConfiguration(incomingName:String,incomingHost:String,onConversationDetailsUpdated:Conversation=>Unit) {
+  val commonLocation = "commonBucket"
   val name = incomingName
   val host = incomingHost
   def getMessageBus(d:MessageBusDefinition):MessageBus
@@ -54,8 +55,15 @@ abstract class ServerConfiguration(incomingName:String,incomingHost:String,onCon
   def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation
   def updateConversation(jid:String,newConversation:Conversation):Conversation
   def getImage(jid:String,identity:String):MeTLImage
-  def getResource(url:String):Array[Byte]
+  def getResource(jid:String,identifier:String):Array[Byte]
   def postResource(jid:String,userProposedId:String,data:Array[Byte]):String
+  def insertResource(jid:String,data:Array[Byte]):String
+  def upsertResource(jid:String,identifier:String,data:Array[Byte]):String 
+  def getImage(identity:String):MeTLImage = getImage(commonLocation,identity)
+  def getResource(identifier:String):Array[Byte] = getResource(commonLocation,identifier)
+  def insertResource(data:Array[Byte]):String = insertResource(commonLocation,data)
+  def upsertResource(identifier:String,data:Array[Byte]):String = upsertResource(commonLocation,identifier,data)
+
   //shutdown is a function to be called when the serverConfiguration is to be disposed
   def shutdown:Unit = {}
   def isReady:Boolean = true
@@ -77,8 +85,14 @@ object EmptyBackendAdaptor extends ServerConfiguration("empty","empty",(c)=>{}){
   override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
   override def updateConversation(jid:String,newConversation:Conversation):Conversation = Conversation.empty
   override def getImage(jid:String,identity:String) = MeTLImage.empty
-  override def getResource(url:String) = Array.empty[Byte]
+  override def getResource(jid:String,identifier:String):Array[Byte] = Array.empty[Byte]
   override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = ""
+  override def insertResource(jid:String,data:Array[Byte]):String = ""
+  override def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = ""
+  override def getImage(identity:String) = MeTLImage.empty
+  override def getResource(identifier:String):Array[Byte] = Array.empty[Byte]
+  override def insertResource(data:Array[Byte]):String = ""
+  override def upsertResource(identifier:String,data:Array[Byte]):String = ""
 }
 
 object EmptyBackendAdaptorConfigurator extends ServerConfigurator{
@@ -102,8 +116,14 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
   override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
   override def updateConversation(jid:String,newConversation:Conversation):Conversation = Conversation.empty
   override def getImage(jid:String,identity:String) = MeTLImage.empty
-  override def getResource(url:String) = Array.empty[Byte]
   override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = ""
+  override def getResource(jid:String,identifier:String):Array[Byte] = Array.empty[Byte]
+  override def insertResource(jid:String,data:Array[Byte]):String = ""
+  override def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = ""
+  override def getImage(identity:String) = MeTLImage.empty
+  override def getResource(identifier:String):Array[Byte] = Array.empty[Byte]
+  override def insertResource(data:Array[Byte]):String = ""
+  override def upsertResource(identifier:String,data:Array[Byte]):String = ""
 }
 
 object FrontendSerializationAdaptorConfigurator extends ServerConfigurator{
