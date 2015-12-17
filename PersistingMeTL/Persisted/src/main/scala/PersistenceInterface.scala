@@ -24,5 +24,8 @@ abstract class PersistenceInterface {
 	//resources
 	def getResource(identity:String):Array[Byte]
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String
+  def getResource(jid:String,identity:String):Array[Byte]
+  def insertResource(jid:String,data:Array[Byte]):String
+  def upsertResource(jid:String,identity:String,data:Array[Byte]):String
 }
 

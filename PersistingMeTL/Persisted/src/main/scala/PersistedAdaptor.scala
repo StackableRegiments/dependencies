@@ -23,6 +23,12 @@ abstract class PersistedAdaptor(name:String,host:String,onConversationUpdated:Co
 	override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = conversations.reorderSlidesOfConversation(jid,newSlides)
   override def updateConversation(jid:String,conversation:Conversation):Conversation = conversations.updateConversation(jid,conversation)
 	override def getImage(jid:String,identity:String) = history.getMeTLHistory(jid).getImageByIdentity(identity).getOrElse(MeTLImage.empty)
-	override def getResource(url:String) = resourceProvider.getResource(url)
+	override def getResource(jid:String,url:String) = resourceProvider.getResource(url)
 	override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = resourceProvider.postResource(jid,userProposedId,data)
+  override def insertResource(jid:String,data:Array[Byte]):String = resourceProvider.insertResource(data,jid) 
+  override def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = resourceProvider.upsertResource(identifier,data,jid)
+  override def getImage(identity:String):MeTLImage = MeTLImage.empty
+  override def getResource(identifier:String):Array[Byte] = resourceProvider.getResource(identifier)
+  override def insertResource(data:Array[Byte]):String = resourceProvider.insertResource(data)
+  override def upsertResource(identifier:String,data:Array[Byte]):String = resourceProvider.upsertResource(identifier,data)
 }
