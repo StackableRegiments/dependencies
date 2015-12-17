@@ -41,7 +41,8 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 			H2Conversation,
       H2Attendance,
       H2File,
-			H2Resource
+			H2Resource,
+      H2ContextualizedResource
 		):_*
 	)
 
@@ -238,4 +239,31 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 			}
 		}
 	})
+  def getResource(jid:String,identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource",() => {
+		H2ContextualizedResource.find(
+      By(H2ContextualizedResource.context,jid),
+      By(H2ContextualizedResource.identity,identity)
+    ).map(r => {
+			val b = r.bytes.get
+			println("retrieved %s bytes for %s".format(b.length,identity))
+			b
+		}).openOr({
+			println("failed to find bytes for %s".format(identity))
+			Array.empty[Byte]
+		})
+
+  })
+  def insertResource(jid:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.insertResource",() => {
+    H2ContextualizedResource.create.context(jid).bytes(data).saveMe.identity.get
+  })
+  def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.upsertResource",() => {
+		H2ContextualizedResource.find(
+      By(H2ContextualizedResource.context,jid),
+      By(H2ContextualizedResource.identity,identifier)
+    ).map(r => {
+      r.bytes(data).saveMe.identity.get
+    }).openOr({
+      insertResource(jid,data)
+    })
+  })
 }

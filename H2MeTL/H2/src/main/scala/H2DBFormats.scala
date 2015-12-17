@@ -180,15 +180,25 @@ class H2File extends H2MeTLStanza[H2File]{
   def getSingleton = H2File
   object name extends MappedText(this)
   object identity extends MappedString(this,H2Constants.identity)
-  object url extends MappedString(this,H2Constants.url)
+  object url extends MappedString(this,H2Constants.url) with H2MeTLIndexedString
 }
 object H2File extends H2File with LongKeyedMetaMapper[H2File]{
 }
 
 class H2Resource extends H2MeTLContent[H2Resource]{
 	def getSingleton = H2Resource
-	object url extends MappedString(this,H2Constants.url)
+	object url extends MappedString(this,H2Constants.identity) with H2MeTLIndexedString
 	object bytes extends MappedBinary(this)
 }
 object H2Resource extends H2Resource with LongKeyedMetaMapper[H2Resource]{
+}
+
+class H2ContextualizedResource extends KeyedMapper[String,H2ContextualizedResource] {
+	def getSingleton = H2ContextualizedResource
+  def primaryKeyField = identity
+  object context extends MappedString(this,H2Constants.room) with H2MeTLIndexedString
+	object identity extends MappedStringIndex(this,H2Constants.url)
+	object bytes extends MappedBinary(this)
+}
+object H2ContextualizedResource extends H2ContextualizedResource with KeyedMetaMapper[String,H2ContextualizedResource]{
 }
