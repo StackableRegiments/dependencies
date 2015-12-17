@@ -44,6 +44,26 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,o
   override def getImage(jid:String,identity:String) = history.getMeTLHistory(jid).getImageByIdentity(identity).getOrElse(MeTLImage.empty)
   override def getResource(url:String) = http.getClient.getAsBytes(url)
   override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = resourceProvider.postResource(jid,userProposedId,data)
+
+  //these are the new overwrite endpoints, which aren't quite the same as they should be.
+  protected val rootAddress = resourceProvider.rootAddress
+  override def getResource(jid:String,identifier:String):Array[Byte] = http.getClient.getAsBytes("%s/%s/%s".format(rootAddress,generatePath(jid),generateFilename(identifier)))
+  override def insertResource(jid:String,data:Array[Byte]):String = postResource(jid,net.liftweb.util.Helpers.nextFuncName,false,data)
+  override def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = postResource(jid,identifier,true,data)
+
+  protected def generatePath(jid:String):String = {
+    net.liftweb.util.Helpers.urlEncode("Resource/%s/%s".format(resourceProvider.utils.stem(jid.toString),jid.toString))
+  }
+  protected def generateFilename(identifier:String):String = {
+    net.liftweb.util.Helpers.urlEncode(identifier)
+  }
+  protected def postResource(jid:String,userGeneratedId:String,overwrite:Boolean,data:Array[Byte]):String = {
+		val uri = "%s/upload_nested.yaws?path=%s&overwrite=%s&filename=%s".format(rootAddress,generatePath(jid),overwrite,generateFilename(userGeneratedId))	
+		val response = http.getClient.postBytes(uri,data)
+		val responseString = org.apache.commons.io.IOUtils.toString(response)
+		println("postedResource response: %s".format(responseString))
+		((XML.loadString(responseString) \\ "resource").head \ "@url").text
+	}
 }
 
 object MeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
@@ -71,9 +91,33 @@ object MeTL2015BackendAdaptorConfigurator extends ServerConfigurator{
     for (
       name <- (e \\ "name").headOption.map(_.text);
       host <- (e \\ "host").headOption.map(_.text);
-      xmppDomainName = (e \\ "xmppDomainName").headOption.map(_.text).filter(_.length > 0)
+      xmppDomainName = (e \\ "xmppDomainName").headOption.map(_.text).filter(_.length > 0);
+      xmppPassword = (e \\ "xmppPassword").headOption.map(_.text).filter(_.length > 0);
+      httpUsername = (e \\ "httpUsername").headOption.map(_.text).filter(_.length > 0);
+      httpPassword = (e \\ "httpPassword").headOption.map(_.text).filter(_.length > 0)
     ) yield {
-      new MeTL2011BackendAdaptor(name,host,xmppDomainName.getOrElse(host),onConversationDetailsUpdated,messageBusCredentailsFunc,conversationListenerCredentialsFunc,httpCredentialsFunc)
+      new MeTL2011BackendAdaptor(
+        name,
+        host,
+        xmppDomainName.getOrElse(host),
+        onConversationDetailsUpdated,
+        (for (
+          xp <- xmppPassword
+        ) yield {
+          () => ("metlxUser",xp)
+        }).getOrElse(messageBusCredentailsFunc),
+        (for (
+          xp <- xmppPassword
+        ) yield {
+          () => ("metlxConversationUser",xp)
+        }).getOrElse(conversationListenerCredentialsFunc),
+        (for (
+          hu <- httpUsername;
+          hp <- httpPassword
+        ) yield {
+          () => (hu,hp)
+        }).getOrElse(httpCredentialsFunc)
+      )
     }
   }
 }
@@ -85,6 +129,7 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversation
   protected val messageBusProvider = new LoopbackMessageBusProvider
   protected val conversations = new MeTL2011CachedConversations(name,http,messageBusProvider,onConversationDetailsUpdated)
   val serializer = new MeTL2011XmlSerializer(name)
+  protected val resourceProvider = new MeTL2011Resources(name,http)
   override def getMessageBus(d:MessageBusDefinition) = messageBusProvider.getMessageBus(d)
   override def getHistory(jid:String) = history.getMeTLHistory(jid)
   override def getConversationForSlide(slideJid:String) = conversations.conversationFor(slideJid.toInt).toString
@@ -101,6 +146,27 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversation
   override def getImage(jid:String,identity:String) = history.getMeTLHistory(jid).getImageByIdentity(identity).getOrElse(MeTLImage.empty)
   override def getResource(url:String) = http.getClient.getAsBytes(url)
   override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = "not yet implemented"
+
+  //these are the new overwrite endpoints, which aren't quite the same as they should be.
+  protected val rootAddress = resourceProvider.rootAddress
+  override def getResource(jid:String,identifier:String):Array[Byte] = http.getClient.getAsBytes("%s/%s/%s".format(rootAddress,generatePath(jid),generateFilename(identifier)))
+  override def insertResource(jid:String,data:Array[Byte]):String = postResource(jid,net.liftweb.util.Helpers.nextFuncName,false,data)
+  override def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = postResource(jid,identifier,true,data)
+
+  protected def generatePath(jid:String):String = {
+    net.liftweb.util.Helpers.urlEncode("Resource/%s/%s".format(resourceProvider.utils.stem(jid.toString),jid.toString))
+  }
+  protected def generateFilename(identifier:String):String = {
+    net.liftweb.util.Helpers.urlEncode(identifier)
+  }
+  protected def postResource(jid:String,userGeneratedId:String,overwrite:Boolean,data:Array[Byte]):String = {
+		val uri = "%s/upload_nested.yaws?path=%s&overwrite=%s&filename=%s".format(rootAddress,generatePath(jid),overwrite,generateFilename(userGeneratedId))	
+		val response = http.getClient.postBytes(uri,data)
+		val responseString = org.apache.commons.io.IOUtils.toString(response)
+		println("postedResource response: %s".format(responseString))
+		((XML.loadString(responseString) \\ "resource").head \ "@url").text
+	}
+
 }
 
 object TransientMeTL2011BackendAdaptorConfigurator extends ServerConfigurator{
