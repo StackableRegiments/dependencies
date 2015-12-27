@@ -89,6 +89,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       case i:NodeSeq if hasChild(i,"screenshotSubmission") => toSubmission(i)
       case i:NodeSeq if hasChild(i,"attendance") => toMeTLAttendance(i)
       case i:NodeSeq if hasChild(i,"body") => toMeTLCommand(i)
+      case i:NodeSeq if hasChild(i,"file") => toMeTLFile(i)
       case i:NodeSeq if hasSubChild(i,"target") && hasSubChild(i,"privacy") && hasSubChild(i,"slide") && hasSubChild(i,"identity") => toMeTLUnhandledCanvasContent(i)
       case i:NodeSeq if (((i \\ "author").length > 0) && ((i \\ "message").length > 0)) => toMeTLUnhandledStanza(i)
       case other:NodeSeq => toMeTLUnhandledData(other)

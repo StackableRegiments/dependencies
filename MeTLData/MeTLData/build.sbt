@@ -1,9 +1,10 @@
 name := "metldata"
-version := "3.3.0"
+version := "3.3.1"
 organization := "io.github.stackableregiments"
 
-scalaVersion := "2.11.5"
+val scalaVersionString = "2.11.5"
 
+scalaVersion := scalaVersionString
 
 resolvers ++= Seq(
   "snapshots"     at "http://oss.sonatype.org/content/repositories/snapshots",
@@ -14,20 +15,20 @@ unmanagedResourceDirectories in Test <+= (baseDirectory) { _ / "src/main/webapp"
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
+libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.13"
 
 libraryDependencies ++= {
   val liftVersion = "2.6.2"
-
   Seq(
-    "org.scala-lang" % "scala-library" % scalaVersion.toString,
+    "org.scala-lang" % "scala-library" % scalaVersionString,
     "org.scalatest" %% "scalatest" % "2.2.5" % "test",
     "org.scalaz.stream" %% "scalaz-stream" % "0.7.+",
 		"org.specs2" %% "specs2" % "3.3.1" % "test",
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
-    "io.github.stackableregiments" %% "common-utils" % "0.1.+" exclude("javax.jms", "jms") exclude("com.sun.jdmk", "jmxtools") exclude("com.sun.jmx", "jmxri")
+    "io.github.stackableregiments" %% "common-utils" % "0.2.+"
   )
-}
+}.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
 
 // increase the time between polling for file changes when using continuous execution
 pollInterval := 1000
@@ -98,10 +99,3 @@ credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
 pgpSecretRing := file("/dev/.ivy2/.sbt/gpg/secring.asc")
 
 pgpPublicRing := file("/dev/.ivy2/.sbt/gpg/pubring.asc")
-
-// Exclude transitive dependencies, e.g., include log4j without including logging via jdmk, jmx, or jms.
-libraryDependencies += "log4j" % "log4j" % "1.2.15" excludeAll(
-  ExclusionRule(organization = "com.sun.jdmk"),
-  ExclusionRule(organization = "com.sun.jmx"),
-  ExclusionRule(organization = "javax.jms")
-)
