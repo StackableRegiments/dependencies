@@ -81,6 +81,9 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 			case s:MeTLQuizResponse => Some(serializer.fromMeTLQuizResponse(s).room(jid))
 			case s:MeTLSubmission => Some(serializer.fromSubmission(s).room(jid))
 			case s:MeTLMoveDelta => Some(serializer.fromMeTLMoveDelta(s).room(jid))
+      case s:MeTLFile => Some(serializer.fromMeTLFile(s).room(jid))
+      case s:MeTLUnhandledStanza => Some(serializer.fromMeTLUnhandledStanza(s).room(jid))
+      case s:MeTLUnhandledCanvasContent => Some(serializer.fromMeTLUnhandledCanvasContent(s).room(jid))
 			case other => {
         println("didn't know how to transform stanza: %s".format(other))
         None
