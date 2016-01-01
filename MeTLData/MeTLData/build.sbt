@@ -1,5 +1,5 @@
 name := "metldata"
-version := "3.3.1"
+version := "3.4.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"

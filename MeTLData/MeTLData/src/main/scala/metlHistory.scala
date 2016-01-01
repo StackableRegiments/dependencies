@@ -62,6 +62,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   protected var latestCommands:Map[String,MeTLCommand] = Map.empty[String,MeTLCommand]
   protected var files:List[MeTLFile] = List.empty[MeTLFile]
   protected var attendances:List[Attendance] = List.empty[Attendance]
+  protected var unhandledCanvasContents:List[MeTLUnhandledCanvasContent] = List.empty[MeTLUnhandledCanvasContent]
+  protected var unhandledStanzas:List[MeTLUnhandledStanza] = List.empty[MeTLUnhandledStanza]
 
   def getLatestCommands:Map[String,MeTLCommand] = latestCommands
 
@@ -77,6 +79,9 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getAttendances = attendances
   def getFiles = files
   def getCommands = commands
+  def getUnhandledCanvasContents = unhandledCanvasContents
+  def getUnhandledStanzas = unhandledStanzas
+  //def getUnhandledData = unhandledData
 
   def getRenderable = Stopwatch.time("History.getRenderable", () => getCanvasContents.map(scaleItemToSuitHistory(_)))
   def getRenderableGrouped:Tuple4[List[MeTLText],List[MeTLInk],List[MeTLInk],List[MeTLImage]] = Stopwatch.time("History.getRenderableGrouped", () => {
@@ -101,7 +106,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getFileByIdentity(identity:String) = Stopwatch.time("History.getFileByIdentity",() => getFiles.filter(_.id == identity).sortBy(_.timestamp).reverse.headOption)
   def getSubmissionByAuthorAndIdentity(author:String,identity:String) = Stopwatch.time("History.getSubmissionByAuthorAndIdentity", () => getSubmissions.find(s => s.author == author && s.identity == identity))
 
-  def processNewStanza(s:MeTLStanza) = s match {
+  protected def processNewStanza(s:MeTLStanza) = s match {
     case s:MeTLDirtyInk => removeInk(s)
     case s:MeTLDirtyText => removeText(s)
     case s:MeTLDirtyImage => removeImage(s)
@@ -116,11 +121,13 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     case s:MeTLCommand => addCommand(s)
     case s:Attendance => addAttendance(s)
     case s:MeTLFile => addFile(s)
-    case s:MeTLStanza => {
+    case s:MeTLUnhandledCanvasContent => addMeTLUnhandledCanvasContent(s)
+    case s:MeTLUnhandledStanza => addMeTLUnhandledStanza(s)
+    //case s:MeTLUnhandledData => addMeTLUnhandledData(s) // we don't add these - these are below the interest of a history.  History only cares about stanzas and up.
+    case _ => {
       println("makeHistory: I don't know what to do with a MeTLStanza: %s".format(s))
       this
     }
-    case _ => this
   }
 
   def addStanza(s:MeTLStanza) = Stopwatch.time("History.addStanza", () => {
@@ -128,6 +135,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     latestTimestamp = List(s.timestamp,latestTimestamp).max
     processNewStanza(s)
   })
+
 
   protected def moveIndividualContent(s:MeTLMoveDelta,c:MeTLCanvasContent,left:Double = 0, top:Double = 0):Unit = Stopwatch.time("History.moveIndividualContent", () => {
     def matches(coll:Seq[String],i:MeTLCanvasContent):Boolean = coll.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
@@ -181,6 +189,30 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     !(dirtyTest || metlMoveDeltas.filter(md => md.isDirtierFor(cc)).exists(md => md.isDeleted))
   }
 
+  def addMeTLUnhandledCanvasContent(s:MeTLUnhandledCanvasContent,store:Boolean = true) = Stopwatch.time("History.addUnhandledCanvasContent", () => {
+    //growBounds(s.left,s.right,s.top,s.bottom) can't grow bounds - not all canvas contents know their L,R,T,B.  If they did, we could make it part of their constructor, but as a result, MeTLUnhandledCanvasContent doesn't know its bounds.
+    if (store){
+      outputHook(s)
+      unhandledCanvasContents = unhandledCanvasContents ::: List(s)
+    }
+    this
+  })
+  def addMeTLUnhandledStanza(s:MeTLUnhandledStanza,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledStanza",() => {
+    if (store){
+      outputHook(s)
+      unhandledStanzas = unhandledStanzas ::: List(s)
+    }
+    this
+  })
+  /*
+  def addMeTLUnhandledData(s:MeTLUnhandledData,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledData", () => {
+    if (store){
+      outputHook(s)
+      metlUnhandledData = metlUnhandledData ::: List(s)
+    }
+    this
+  })
+  */
   def addMeTLMoveDelta(s:MeTLMoveDelta,store:Boolean = true) = Stopwatch.time("History.addMeTLMoveDelta", () => {
     if (!metlMoveDeltas.exists(mmd => mmd.matches(s))){
       moveContent(s)

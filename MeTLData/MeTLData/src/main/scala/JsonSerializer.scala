@@ -125,7 +125,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("submissions",JArray(input.getSubmissions.map(i => fromSubmission(i)))),
       JField("attendances",JArray(input.getAttendances.map(i => fromMeTLAttendance(i)))),
       JField("commands",JArray(input.getCommands.map(i => fromMeTLCommand(i)))),
-      JField("files",JArray(input.getFiles.map(i => fromMeTLFile(i))))
+      JField("files",JArray(input.getFiles.map(i => fromMeTLFile(i)))),
+      JField("unhandledCanvasContents",JArray(input.getUnhandledCanvasContents.map(i => fromMeTLUnhandledCanvasContent(i)))),
+      JField("unhandledStanzas",JArray(input.getUnhandledStanzas.map(i => fromMeTLUnhandledStanza(i))))
+//      JField("unhandledData",JArray(input.getUnhandledData.map(i => fromMeTLUnhandledData(i))))
     ))
   })
   protected def getFields(i:JValue,parentName:String):List[JField] = {
@@ -153,6 +156,9 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     getFields(i,"attendances").foreach(jf => history.addStanza(toMeTLAttendance(jf.value)))
     getFields(i,"commands").foreach(jf => history.addStanza(toMeTLCommand(jf.value)))
     getFields(i,"files").foreach(jf => history.addStanza(toMeTLFile(jf.value)))
+    getFields(i,"unhandledCanvasContents").foreach(jf => history.addStanza(toMeTLUnhandledCanvasContent(jf.value)))
+    getFields(i,"unhandledStanzas").foreach(jf => history.addStanza(toMeTLUnhandledStanza(jf.value)))
+//    getFields(i,"unhandledData").foreach(jf => history.addStanza(toMeTLUnhandledData(jf.value)))
     history
   })
   protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has", () => {
@@ -189,17 +195,27 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case nonObjectData => toMeTLUnhandledData(nonObjectData)
     }
   })
-  override def fromMeTLUnhandledData(i:MeTLUnhandledData[JValue]):JValue = i.unhandled
-  override def fromMeTLUnhandledStanza(i:MeTLUnhandledStanza[JValue]):JValue = i.unhandled
-  override def fromMeTLUnhandledCanvasContent(i:MeTLUnhandledCanvasContent[JValue]):JValue = i.unhandled
-  override def toMeTLUnhandledData(i:JValue) = MeTLUnhandledData(config,i)
+  protected val jsonType = "json"
+  override def fromMeTLUnhandledData(i:MeTLUnhandledData):JValue = i.valueType.toLowerCase.trim match {
+    case s:String if s == jsonType => net.liftweb.json.parse(i.unhandled)
+    case _ => JNull
+  }
+  override def fromMeTLUnhandledStanza(i:MeTLUnhandledStanza):JValue = i.valueType.toLowerCase.trim match {
+    case s:String if s == jsonType => net.liftweb.json.parse(i.unhandled)
+    case _ => JNull
+  }
+  override def fromMeTLUnhandledCanvasContent(i:MeTLUnhandledCanvasContent):JValue = i.valueType.toLowerCase.trim match {
+    case s:String if s == jsonType => net.liftweb.json.parse(i.unhandled)
+    case _ => JNull
+  }
+  override def toMeTLUnhandledData(i:JValue) = MeTLUnhandledData(config,i.toString,jsonType)
   override def toMeTLUnhandledStanza(i:JValue) = {
     i match {
       case input:JObject => {
         val m = parseJObjForMeTLContent(input,config)
-        MeTLUnhandledStanza(config,m.author,m.timestamp,i,m.audiences)
+        MeTLUnhandledStanza(config,m.author,m.timestamp,i.toString,jsonType,m.audiences)
       }
-      case other => MeTLUnhandledStanza.empty[JValue](other)
+      case other => MeTLUnhandledStanza.empty(other.toString,jsonType)
     }
   }
 
@@ -208,9 +224,9 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case input:JObject => {
         val cc = parseJObjForCanvasContent(input)
         val m = parseJObjForMeTLContent(input,config)
-        MeTLUnhandledCanvasContent(config,m.author,m.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,m.audiences,1.0,1.0,i)
+        MeTLUnhandledCanvasContent(config,m.author,m.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,m.audiences,1.0,1.0,i.toString,jsonType)
       }
-      case other => MeTLUnhandledCanvasContent.empty[JValue](other)
+      case other => MeTLUnhandledCanvasContent.empty(other.toString,jsonType)
     }
   }
   override def fromMeTLFile(input:MeTLFile):JValue = Stopwatch.time("JsonSerializer.fromMeTLFile",() => {

@@ -223,12 +223,12 @@ object MeTLData {
   def empty = MeTLData(ServerConfiguration.empty,Nil)
 }
 
-case class MeTLUnhandledData[T](override val server:ServerConfiguration,unhandled:T,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
+case class MeTLUnhandledData(override val server:ServerConfiguration,unhandled:String,valueType:String,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences)
 object MeTLUnhandledData {
-  def empty[T] = MeTLUnhandledData[T](ServerConfiguration.empty,null.asInstanceOf[T])
-  def empty[T](unhandled:T) = MeTLUnhandledData[T](ServerConfiguration.empty,unhandled)
+  def empty = MeTLUnhandledData(ServerConfiguration.empty,"","null")
+  def empty(unhandled:String,valueType:String) = MeTLUnhandledData(ServerConfiguration.empty,unhandled,valueType)
 }
-case class MeTLUnhandledStanza[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,unhandled:T,override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
+case class MeTLUnhandledStanza(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,unhandled:String,valueType:String,override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
   override def adjustTimestamp(newTime:Long = new java.util.Date().getTime) = Stopwatch.time("MeTLUnhandledStanza.adjustTimestamp", () => copy(timestamp = newTime))
 }
 class MeTLStanza(override val server:ServerConfiguration,val author:String,val timestamp:Long,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
@@ -242,8 +242,8 @@ class MeTLStanza(override val server:ServerConfiguration,val author:String,val t
   }
 }
 object MeTLUnhandledStanza {
-  def empty[T] = MeTLUnhandledStanza[T](ServerConfiguration.empty,"",0L,null.asInstanceOf[T])
-  def empty[T](unhandled:T) = MeTLUnhandledStanza[T](ServerConfiguration.empty,"",0L,unhandled)
+  def empty = MeTLUnhandledStanza(ServerConfiguration.empty,"",0L,"","null")
+  def empty(unhandled:String,valueType:String) = MeTLUnhandledStanza(ServerConfiguration.empty,"",0L,unhandled,valueType)
 }
 object MeTLStanza{
   def apply(server:ServerConfiguration,author:String,timestamp:Long,audiences:List[Audience] = Nil) = new MeTLStanza(server,author,timestamp,audiences)
@@ -258,10 +258,10 @@ object Attendance{
   def empty = Attendance(ServerConfiguration.empty,"",0L,"",false,Nil)
 }
 
-case class MeTLUnhandledCanvasContent[T](override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String,override val audiences:List[Audience] = Nil, override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0,unhandled:T) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,audiences,scaleFactorX,scaleFactorY)
+case class MeTLUnhandledCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,override val target:String,override val privacy:Privacy,override val slide:String,override val identity:String,override val audiences:List[Audience] = Nil, override val scaleFactorX:Double = 1.0,override val scaleFactorY:Double = 1.0,unhandled:String,valueType:String) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slide,identity,audiences,scaleFactorX,scaleFactorY)
 object MeTLUnhandledCanvasContent {
-  def empty[T] = MeTLUnhandledCanvasContent[T](ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,1.0,1.0,null.asInstanceOf[T])
-  def empty[T](unhandled:T) = MeTLUnhandledCanvasContent[T](ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,1.0,1.0,unhandled)
+  def empty = MeTLUnhandledCanvasContent(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,1.0,1.0,"","null")
+  def empty(unhandled:String,valueType:String) = MeTLUnhandledCanvasContent(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,1.0,1.0,unhandled,valueType)
 }
 class MeTLCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,val target:String,val privacy:Privacy,val slide:String,val identity:String,override val audiences:List[Audience] = Nil,val scaleFactorX:Double = 1.0,val scaleFactorY:Double = 1.0) extends MeTLStanza(server,author,timestamp,audiences) {
   protected def genNewIdentity(role:String) = "%s:%s:%s_from:%s".format(new java.util.Date().getTime.toString,author,role,identity).reverse.take(256).reverse

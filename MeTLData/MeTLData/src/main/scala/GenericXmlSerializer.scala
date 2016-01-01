@@ -89,7 +89,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       case i:NodeSeq if hasChild(i,"screenshotSubmission") => toSubmission(i)
       case i:NodeSeq if hasChild(i,"attendance") => toMeTLAttendance(i)
       case i:NodeSeq if hasChild(i,"body") => toMeTLCommand(i)
-      case i:NodeSeq if hasChild(i,"file") => toMeTLFile(i)
+      case i:NodeSeq if hasChild(i,"fileResource") => toMeTLFile(i)
       case i:NodeSeq if hasSubChild(i,"target") && hasSubChild(i,"privacy") && hasSubChild(i,"slide") && hasSubChild(i,"identity") => toMeTLUnhandledCanvasContent(i)
       case i:NodeSeq if (((i \\ "author").length > 0) && ((i \\ "message").length > 0)) => toMeTLUnhandledStanza(i)
       case other:NodeSeq => toMeTLUnhandledData(other)
@@ -130,20 +130,30 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     }
     history
   })
-  override def toMeTLUnhandledData(i:NodeSeq) = MeTLUnhandledData(config,i)
+  protected val xmlType = "xml"
+  override def toMeTLUnhandledData(i:NodeSeq) = MeTLUnhandledData(config,i.toString,xmlType)
   override def toMeTLUnhandledStanza(i:NodeSeq) = {
     val m = parseMeTLContent(i,config)
-    MeTLUnhandledStanza(config,m.author,m.timestamp,i,m.audiences)
+    MeTLUnhandledStanza(config,m.author,m.timestamp,i.toString,xmlType,m.audiences)
   }
 
   override def toMeTLUnhandledCanvasContent(i:NodeSeq) = {
     val cc = parseCanvasContent(i)
     val m = parseMeTLContent(i,config)
-    MeTLUnhandledCanvasContent(config,m.author,m.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,m.audiences,1.0,1.0,i)
+    MeTLUnhandledCanvasContent(config,m.author,m.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,m.audiences,1.0,1.0,i.toString,xmlType)
   }
-  override def fromMeTLUnhandledData(i:MeTLUnhandledData[NodeSeq]) = i.unhandled
-  override def fromMeTLUnhandledStanza(i:MeTLUnhandledStanza[NodeSeq]) = i.unhandled
-  override def fromMeTLUnhandledCanvasContent(i:MeTLUnhandledCanvasContent[NodeSeq]) = i.unhandled
+  override def fromMeTLUnhandledData(i:MeTLUnhandledData) = i.valueType.toLowerCase.trim match {
+    case s:String if s == xmlType => XML.loadString(i.unhandled)
+    case _ => NodeSeq.Empty
+  }
+  override def fromMeTLUnhandledStanza(i:MeTLUnhandledStanza) = i.valueType.toLowerCase.trim match {
+    case s:String if s == xmlType => XML.loadString(i.unhandled)
+    case _ => NodeSeq.Empty
+  }
+  override def fromMeTLUnhandledCanvasContent(i:MeTLUnhandledCanvasContent) = i.valueType.toLowerCase.trim match {
+    case s:String if s == xmlType => XML.loadString(i.unhandled)
+    case _ => NodeSeq.Empty
+  }
 
   override def toMeTLMoveDelta(input:NodeSeq):MeTLMoveDelta = Stopwatch.time("GenericXmlSerializer.toMeTLMoveDelta", () => {
     val m = parseMeTLContent(input,config)
@@ -359,15 +369,15 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
   override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("GenericXmlSerializer.toMeTLFile",() => {
     val m = parseMeTLContent(input,config)
     val name = getStringByName(input,"name")
-    val id = getStringByName(input,"id")
+    val id = getStringByName(input,"identity")
     val url = (input \ "url").headOption.map(_.text)
     val bytes = url.map(u => config.getResource(u))
     MeTLFile(config,m.author,m.timestamp,name,id,url,bytes)
   })
   override def fromMeTLFile(input:MeTLFile):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLFile",() => {
-    metlContentToXml("file",input,List(
+    metlContentToXml("fileResource",input,List(
       <name>{input.name}</name>,
-      <id>{input.id}</id>
+      <identity>{input.id}</identity>
       ) ::: 
       input.url.map(u => List(<url>{u}</url>)).getOrElse(List.empty[Node]))
   })
