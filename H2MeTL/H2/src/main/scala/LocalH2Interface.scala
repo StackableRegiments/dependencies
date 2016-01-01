@@ -42,7 +42,10 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
       H2Attendance,
       H2File,
 			H2Resource,
-      H2ContextualizedResource
+      H2ContextualizedResource,
+      H2UnhandledCanvasContent,
+      H2UnhandledStanza,
+      H2UnhandledContent
 		):_*
 	)
 
@@ -114,7 +117,12 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
     val files = H2File.findAll(By(H2File.room,jid)).map(s => serializer.toMeTLFile(s))
     val attendances = H2Attendance.findAll(By(H2Attendance.location,jid)).map(s => serializer.toMeTLAttendance(s))
 		val commands = H2Command.findAll(By(H2Command.room,jid)).map(s => serializer.toMeTLCommand(s))
-		(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions ::: files ::: attendances).foreach(s => newHistory.addStanza(s))
+    val unhandledCanvasContent = H2UnhandledCanvasContent.findAll(By(H2UnhandledCanvasContent.room,jid)).map(s => serializer.toMeTLUnhandledCanvasContent(s))
+    val unhandledStanzas = H2UnhandledStanza.findAll(By(H2UnhandledStanza.room,jid)).map(s => serializer.toMeTLUnhandledStanza(s))
+
+    //val unhandledContent = H2UnhandledContent.findAll(By(H2UnhandledContent.room,jid)).map(s => serializer.toMeTLUnhandledData(s))
+
+		(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions ::: files ::: attendances ::: unhandledCanvasContent ::: unhandledStanzas /*:: unhandledContent */).foreach(s => newHistory.addStanza(s))
 		newHistory
 	})
 
