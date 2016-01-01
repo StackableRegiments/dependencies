@@ -15,6 +15,8 @@ object H2Constants{
 	val url = 512
 	val tag = 256
 	val privacy = 20
+  val metlType = 64
+  val unhandledType = 64
 }
 
 
@@ -29,7 +31,7 @@ trait H2MeTLIndexedString extends IndexedField[String]{
 
 trait H2MeTLContent[C <:H2MeTLContent[C]] extends LongKeyedMapper[C] with IdPK{
 	self: C =>
-	object metlType extends MappedString[C](this,13)
+	object metlType extends MappedString[C](this,H2Constants.metlType)
 	object room extends MappedString[C](this,H2Constants.room) with H2MeTLIndexedString
   object audiences extends MappedText[C](this)
 }
@@ -48,12 +50,33 @@ trait H2MeTLCanvasContent[C <: H2MeTLCanvasContent[C]] extends H2MeTLStanza[C] {
 	object identity extends MappedString[C](this,H2Constants.identity)
 }
 
+trait H2MeTLUnhandled[C <: H2MeTLUnhandled[C]] extends H2MeTLContent[C]{
+  self: C =>
+  object valueType extends MappedString[C](this,H2Constants.unhandledType)
+  object unhandled extends MappedText[C](this)
+}
+
 class H2Attendance extends H2MeTLStanza[H2Attendance]{
   def getSingleton = H2Attendance
   object location extends MappedString(this,4096)
   object present extends MappedBoolean(this)
 }
 object H2Attendance extends H2Attendance with LongKeyedMetaMapper[H2Attendance] {
+}
+class H2UnhandledCanvasContent extends H2MeTLCanvasContent[H2UnhandledCanvasContent] with H2MeTLUnhandled[H2UnhandledCanvasContent] {
+	def getSingleton = H2UnhandledCanvasContent
+}
+object H2UnhandledCanvasContent extends H2UnhandledCanvasContent with LongKeyedMetaMapper[H2UnhandledCanvasContent] {
+}
+class H2UnhandledStanza extends H2MeTLStanza[H2UnhandledStanza] with H2MeTLUnhandled[H2UnhandledStanza] {
+	def getSingleton = H2UnhandledStanza
+}
+object H2UnhandledStanza extends H2UnhandledStanza with LongKeyedMetaMapper[H2UnhandledStanza] {
+}
+class H2UnhandledContent extends H2MeTLContent[H2UnhandledContent] with H2MeTLUnhandled[H2UnhandledContent] {
+	def getSingleton = H2UnhandledContent
+}
+object H2UnhandledContent extends H2UnhandledContent with LongKeyedMetaMapper[H2UnhandledContent] {
 }
 
 class H2Ink extends H2MeTLCanvasContent[H2Ink] {

@@ -102,11 +102,3 @@ credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
 pgpSecretRing := file("/dev/.ivy2/.sbt/gpg/secring.asc")
 
 pgpPublicRing := file("/dev/.ivy2/.sbt/gpg/pubring.asc")
-
-
-// Exclude transitive dependencies, e.g., include log4j without including logging via jdmk, jmx, or jms.
-libraryDependencies += "log4j" % "log4j" % "1.2.15" excludeAll(
-  ExclusionRule(organization = "com.sun.jdmk"),
-  ExclusionRule(organization = "com.sun.jmx"),
-  ExclusionRule(organization = "javax.jms")
-)

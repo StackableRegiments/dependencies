@@ -16,7 +16,7 @@ class H2Serializer(configName:String) extends Serializer {
 	lazy val xmlSerializer = new GenericXmlSerializer(configName)
 	lazy val config = ServerConfiguration.configForName(configName)
 
-	case class ParsedCanvasContent(target:String,identity:String,slide:String,privacy:Privacy,author:String,timestamp:Long)
+	case class ParsedCanvasContent(target:String,identity:String,slide:String,privacy:Privacy,author:String,timestamp:Long,audiences:List[Audience])
 	case class ParsedMeTLContent(author:String,timestamp:Long,audiences:List[Audience])
 
 	def toPrivacy(i:String):Privacy = i.toLowerCase.trim match {
@@ -48,12 +48,14 @@ class H2Serializer(configName:String) extends Serializer {
 	protected def decStanza[A <:H2MeTLStanza[A]](rec:A):ParsedMeTLContent = ParsedMeTLContent(rec.author.get,rec.timestamp.get,parseAudiences(rec.audiences.get))
 	protected def decCanvasContent[A <: H2MeTLCanvasContent[A]](rec:A):ParsedCanvasContent = {
 		val mc = decStanza(rec)
-		ParsedCanvasContent(rec.target.get,rec.identity.get,rec.slide.get,toPrivacy(rec.privacy.get),mc.author,mc.timestamp)
+		ParsedCanvasContent(rec.target.get,rec.identity.get,rec.slide.get,toPrivacy(rec.privacy.get),mc.author,mc.timestamp,mc.audiences)
 	}
 	protected def incMeTLContent[A <: H2MeTLContent[A]](rec:A,s:MeTLData,metlType:String):A = rec.metlType(metlType).audiences(incAudiences(s.audiences).toString)
 	protected def incStanza[A <: H2MeTLStanza[A]](rec:A,s:MeTLStanza,metlType:String):A = incMeTLContent(rec,s,metlType).timestamp(s.timestamp).author(s.author)		
 	protected def incCanvasContent[A <: H2MeTLCanvasContent[A]](rec:A,cc:MeTLCanvasContent,metlType:String):A = incStanza(rec,cc,metlType).target(cc.target).privacy(fromPrivacy(cc.privacy)).slide(cc.slide).identity(cc.identity)
-
+  protected def incUnhandled[A <: H2MeTLUnhandled[A], B <: {val unhandled:String; val valueType:String}](rec:A,cc:B):A = {
+    rec.unhandled(cc.unhandled).valueType(cc.valueType)
+  }
   override def toMeTLData(inputObject:T):MeTLData = internalToMeTLStanza(inputObject)
   def internalToMeTLStanza[A <: H2MeTLStanza[A]](inputObject:T):MeTLStanza = Stopwatch.time("H2Serializer.toMeTLStanza",() => {
 		inputObject match {
@@ -72,6 +74,9 @@ class H2Serializer(configName:String) extends Serializer {
           case "attendance" => toMeTLAttendance(i.asInstanceOf[H2Attendance])
           case "file" => toMeTLFile(i.asInstanceOf[H2File])
 					case "quizResponse" => toMeTLQuizResponse(i.asInstanceOf[H2QuizResponse])
+          case "unhandledCanvasContent" => toMeTLUnhandledCanvasContent(i.asInstanceOf[H2UnhandledCanvasContent])
+          case "unhandledStanza" => toMeTLUnhandledStanza(i.asInstanceOf[H2UnhandledStanza])
+          //case "unhandledData" => toMeTLUnhandledData(i.asInstanceOf[H2UnhandledContent]) //this is below the interest of the serializer
 					case _ => throw new SerializationNotImplementedException
 				}
 			}
@@ -81,6 +86,31 @@ class H2Serializer(configName:String) extends Serializer {
 			}
 		}
 	})
+
+  def toMeTLUnhandledData(i:H2UnhandledContent):MeTLUnhandledData = {
+    MeTLUnhandledData(config, i.unhandled, i.valueType)
+  }
+  override def fromMeTLUnhandledData(i:MeTLUnhandledData):H2UnhandledContent = {
+    incUnhandled(incMeTLContent(H2UnhandledContent.create,i,"unhandledData"),i)
+      //.unhandled(i.unhandled).valueType(i.valueType)
+  }
+
+  def toMeTLUnhandledStanza(i:H2UnhandledStanza):MeTLUnhandledStanza = {
+    val c = decStanza(i)
+    MeTLUnhandledStanza(config,c.author,c.timestamp, i.unhandled, i.valueType, c.audiences)
+  }
+  override def fromMeTLUnhandledStanza(i:MeTLUnhandledStanza):H2UnhandledStanza = {
+    incUnhandled(incStanza(H2UnhandledStanza.create,i,"unhandledStanza"),i)//.unhandled(i.unhandled).valueType(i.valueType)
+  }
+
+  def toMeTLUnhandledCanvasContent(i:H2UnhandledCanvasContent):MeTLUnhandledCanvasContent = {
+    val cc = decCanvasContent(i)
+    MeTLUnhandledCanvasContent(config,cc.author,cc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,cc.audiences,1.0,1.0, i.unhandled, i.valueType)
+  }
+  override def fromMeTLUnhandledCanvasContent(i:MeTLUnhandledCanvasContent):H2UnhandledCanvasContent = {
+    incUnhandled(incCanvasContent(H2UnhandledCanvasContent.create,i,"unhandledCanvasContent"),i)//.unhandled(i.unhandled).valueType(i.valueType)
+  }
+
   def toMeTLAttendance(i:H2Attendance):Attendance = {
     val c = decStanza(i)
     Attendance(config,c.author,c.timestamp,i.location.get,i.present.get,c.audiences)
