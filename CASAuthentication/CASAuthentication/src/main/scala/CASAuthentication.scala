@@ -29,9 +29,9 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
 
   private def getHttpClient: IMeTLHttpClient = httpClient.getOrElse(Http.getClient)
 
-  override def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", () => alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated)
+  override def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("CASAuthenticator.checkWhetherAlreadyLoggedIn", alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated)
 
-  def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", () => {
+  def checkReqForCASCookies(req:Req):Boolean = Stopwatch.time("CASAuthenticator.checkReqForCASCookies", {
     val result = verifyCASTicket(req)
     if (result.authenticated) {
       InSessionLiftAuthState.set(result)
@@ -41,7 +41,7 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
       false
     }
   })
-  private def ticketlessUrl(originalRequest : Req):String = Stopwatch.time("CASAuthenticator.ticketlessUrl", () => {
+  private def ticketlessUrl(originalRequest : Req):String = Stopwatch.time("CASAuthenticator.ticketlessUrl",{
     val scheme = overrideScheme.openOr(originalRequest.request.scheme)
     val url = overrideHost.openOr(originalRequest.request.serverName)
     val port = overridePort.openOr(originalRequest.request.serverPort)
@@ -62,7 +62,7 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
      case _ => "%s://%s:%s/%s%s".format(scheme,url,port,path,newParams)
    }
   })
-  private def verifyCASTicket(req:Req) : LiftAuthStateData = Stopwatch.time("CASAuthenticator.verifyCASTicket", () => {
+  private def verifyCASTicket(req:Req) : LiftAuthStateData = Stopwatch.time("CASAuthenticator.verifyCASTicket",{
       req.param("ticket") match {
       case Full(ticket) =>
       {
@@ -83,7 +83,7 @@ class CASAuthenticator(realm:String, baseUrl:String, httpClient: Option[IMeTLHtt
     }
   })
   val redirectUrl = baseCasUrl + loginPath + "?service=%s" 
-  override def constructResponse(req:Req) = Stopwatch.time("CASAuthenticator.constructReq",() => {
+  override def constructResponse(req:Req) = Stopwatch.time("CASAuthenticator.constructReq",{
       val url = redirectUrl.format(URLEncoder.encode(ticketlessUrl(req),"utf-8"))
       new RedirectResponse(url, req)
   })

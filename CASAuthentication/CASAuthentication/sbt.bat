@@ -1,1 +1,1 @@
-java -jar sbt-launch.jar 
+java -XX:MaxPermSize=256m -Dsbt.boot.directory=%IVY_HOME%\.sbt-boot -Dsbt.global.home=%IVY_HOME%\.sbt -Dsbt.global.base=%IVY_HOME%\.sbt -Dsbt.home=%IVY_HOME%\.sbt -Dsbt.ivy.home=%IVY_HOME%\.ivy2\ -Dsbt.global.staging=%IVY_HOME%\.sbt-staging -jar sbt-launch.jar
