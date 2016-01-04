@@ -10,7 +10,7 @@ import net.liftweb.http.SHtml._
 import net.liftweb.http.js.JsCmds._
 import scala.xml._
 
-class OpenIdConnectAuthenticationSystem(googleClientId:String,googleAppDomainName:Option[String],alreadyLoggedIn:()=>Boolean,onSuccess:LiftAuthStateData => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) with LiftAuthenticationSystem {
+class OpenIdConnectAuthenticationSystem(googleClientId:String,googleAppDomainName:Option[String],alreadyLoggedIn:()=>Boolean,onSuccess:LiftAuthStateData => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) with LiftAuthenticationSystem with Logger{
   import com.google.api.client.googleapis.auth.oauth2.{GoogleIdToken,GoogleIdTokenVerifier}
   import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken.Payload
 
@@ -87,7 +87,7 @@ class OpenIdConnectAuthenticationSystem(googleClientId:String,googleAppDomainNam
             val payload:Payload = idToken.getPayload
             if (googleAppDomainName.map(gadn => payload.getHostedDomain() == gadn).getOrElse(true)){
               val userId:String = payload.getSubject()
-              println("authenticated: %s".format(
+              debug("authenticated: %s".format(
                 Map(
                   "email" -> payload.getEmail,
                   "userId" -> userId
