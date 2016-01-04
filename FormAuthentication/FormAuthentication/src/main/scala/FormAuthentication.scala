@@ -50,7 +50,7 @@ class FormAuthenticationSystem(mod:FormAuthenticator) extends LiftAuthentication
 
 class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector:String, passwordSelector:String, verifyCredentials:Tuple2[String,String]=>LiftAuthStateData, alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends LiftAuthenticator(alreadyLoggedIn,onSuccess) {
 
-  override def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("FormAuthenticator.checkWhetherAlreadyLoggedIn", () => alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated)
+  override def checkWhetherAlreadyLoggedIn:Boolean = Stopwatch.time("FormAuthenticator.checkWhetherAlreadyLoggedIn",alreadyLoggedIn() || InSessionLiftAuthState.is.authenticated)
 
   def tryLogin(username:Box[String],password:Box[String]):Either[Throwable,Boolean] = {
     val response = for (
@@ -74,7 +74,7 @@ class FormAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector
     "%s%s".format(req.uri,req.request.queryString.map(qs => "?%s".format(qs)).openOr("")) 
   }
   override def constructResponse(req:Req) = constructResponseWithMessages(req,List.empty[String]) 
-  def constructResponseWithMessages(req:Req,additionalMessages:List[String] = List.empty[String]) = Stopwatch.time("FormAuthenticator.constructReq",() => {
+  def constructResponseWithMessages(req:Req,additionalMessages:List[String] = List.empty[String]) = Stopwatch.time("FormAuthenticator.constructReq",{
       val loginPageNode = (
         "%s [method]".format(formSelector) #> "POST" &
         "%s [action]".format(formSelector) #> "/formLogon" &
