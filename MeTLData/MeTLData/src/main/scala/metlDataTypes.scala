@@ -229,10 +229,10 @@ object MeTLUnhandledData {
   def empty(unhandled:String,valueType:String) = MeTLUnhandledData(ServerConfiguration.empty,unhandled,valueType)
 }
 case class MeTLUnhandledStanza(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,unhandled:String,valueType:String,override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime) = Stopwatch.time("MeTLUnhandledStanza.adjustTimestamp", () => copy(timestamp = newTime))
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime) = Stopwatch.time("MeTLUnhandledStanza.adjustTimestamp",copy(timestamp = newTime))
 }
 class MeTLStanza(override val server:ServerConfiguration,val author:String,val timestamp:Long,override val audiences:List[Audience] = Nil) extends MeTLData(server,audiences){
-  def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLStanza = Stopwatch.time("MeTLStanza.adjustTimestamp", () => {
+  def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLStanza = Stopwatch.time("MeTLStanza.adjustTimestamp",{
     //copy(time=newTime)//
     MeTLStanza(server,author,newTime,audiences)
   })
@@ -252,7 +252,7 @@ object MeTLStanza{
 }
 
 case class Attendance(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,location:String,present:Boolean,override val audiences:List[Audience]) extends MeTLStanza(server,author,timestamp,audiences){
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime) = Stopwatch.time("Attendance.adjustTimestamp", () => copy(timestamp = newTime))
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime) = Stopwatch.time("Attendance.adjustTimestamp",copy(timestamp = newTime))
 }
 object Attendance{
   def empty = Attendance(ServerConfiguration.empty,"",0L,"",false,Nil)
@@ -310,12 +310,12 @@ case class MeTLInk(override val server:ServerConfiguration,override val author:S
   override val top:Double = points.map(p => p.y-offsetAt(p)).min
   override val bottom:Double = points.map(p => p.y+offsetAt(p)).max
   override def scale(factor:Double):MeTLInk = scale(factor,factor)
-  override def scale(xScale:Double,yScale:Double):MeTLInk = Stopwatch.time("MeTLInk.scale", () => {
+  override def scale(xScale:Double,yScale:Double):MeTLInk = Stopwatch.time("MeTLInk.scale",{
     val averageFactor = (xScale + yScale) / 2
     //MeTLInk(server,author,timestamp,checksum,startingSum,points.map(p => Point(p.x*xScale,p.y*yScale,p.thickness)),color,thickness*averageFactor,isHighlighter,target,privacy,slide,identity,scaleFactorX * xScale,scaleFactorY * yScale)
     copy(points = points.map(p => Point(p.x*xScale,p.y*yScale,p.thickness)),thickness = thickness*averageFactor,scaleFactorX = scaleFactorX * xScale,scaleFactorY = scaleFactorY * yScale)
   })
-  override def alterPrivacy(newPrivacy:Privacy):MeTLInk = Stopwatch.time("MeTLInk.alterPrivacy", () => {
+  override def alterPrivacy(newPrivacy:Privacy):MeTLInk = Stopwatch.time("MeTLInk.alterPrivacy",{
     newPrivacy match {
       case p:Privacy if (p == privacy) => this
       case Privacy.NOT_SET => this
@@ -323,7 +323,7 @@ case class MeTLInk(override val server:ServerConfiguration,override val author:S
       case _ => this
     }
   })
-  override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double) = Stopwatch.time("MeTLInk.adjustVisual", () => {
+  override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double) = Stopwatch.time("MeTLInk.adjustVisual",{
     val averageFactor = (xScale + yScale) / 2
     val newPoints = (xTranslate,yTranslate,xScale,yScale) match {
       case (0,0,1.0,1.0) => points
@@ -334,11 +334,11 @@ case class MeTLInk(override val server:ServerConfiguration,override val author:S
 //    MeTLInk(server,author,timestamp,checksum,startingSum,newPoints,color,thickness * averageFactor,isHighlighter,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
     copy(points = newPoints, thickness = thickness * averageFactor)
   })
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLInk = Stopwatch.time("MeTLInk.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLInk = Stopwatch.time("MeTLInk.adjustTimestamp",{
     //MeTLInk(server,author,newTime,checksum,startingSum,points,color,thickness,isHighlighter,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
     copy(timestamp = newTime)  
   })
-  override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyInk = Stopwatch.time("MeTLInk.generateDirty", () => {
+  override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyInk = Stopwatch.time("MeTLInk.generateDirty",{
     MeTLDirtyInk(server,author,dirtyTime,target,privacy,slide,identity,audiences)
   })
   override def generateNewIdentity(descriptor:String):MeTLInk = copy(identity = genNewIdentity("newInk:"+descriptor))//MeTLInk(server,author,timestamp,checksum,startingSum,points,color,thickness,isHighlighter,target,privacy,slide,genNewIdentity("newInk:%s".format(descriptor)),scaleFactorX,scaleFactorY)
@@ -362,11 +362,11 @@ case class MeTLImage(override val server:ServerConfiguration,override val author
   override val top:Double = y
   override val bottom:Double = y+height
   override def scale(factor:Double):MeTLImage = scale(factor,factor)
-  override def scale(xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.scale", () => {
+  override def scale(xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.scale",{
 //    MeTLImage(server,author,timestamp,tag,source,imageBytes,pngBytes,width*xScale,height*yScale,x*xScale,y*yScale,target,privacy,slide,identity,scaleFactorX * xScale,scaleFactorY * yScale)
     copy(width = width * xScale, height = height * yScale, x = x * xScale, y = y * yScale, scaleFactorX = scaleFactorX * xScale , scaleFactorY = scaleFactorY * yScale)
   })
-  override def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLImage = Stopwatch.time("MeTLImage.alterPrivacy", () => {
+  override def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLImage = Stopwatch.time("MeTLImage.alterPrivacy",{
     possiblyNewPrivacy match {
       case p:Privacy if (p == privacy) => this
       case Privacy.NOT_SET => this
@@ -374,14 +374,14 @@ case class MeTLImage(override val server:ServerConfiguration,override val author
       case _ => this
     }
   })
-  override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.adjustVisual", () => {
+  override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLImage = Stopwatch.time("MeTLImage.adjustVisual",{
     copy(width = width * xScale, height = height * yScale, x = x + xTranslate, y = y+ yTranslate)//MeTLImage(server,author,timestamp,tag,source,imageBytes,pngBytes,width * xScale,height * yScale,x + xTranslate,y + yTranslate,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
   })
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLImage = Stopwatch.time("MeTLimage.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLImage = Stopwatch.time("MeTLimage.adjustTimestamp",{
 //    MeTLImage(server,author,newTime,tag,source,imageBytes,pngBytes,width,height,x,y,target,privacy,slide,identity,scaleFactorX,scaleFactorY)
     copy(timestamp = newTime)
   })
-  override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyImage = Stopwatch.time("MeTLImage.generateDirty", () => {
+  override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyImage = Stopwatch.time("MeTLImage.generateDirty",{
     MeTLDirtyImage(server,author,dirtyTime,target,privacy,slide,identity)
   })
   override def generateNewIdentity(descriptor:String):MeTLImage = copy(identity = genNewIdentity("newImage:"+descriptor))//MeTLImage(server,author,timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,target,privacy,slide,genNewIdentity("newImage:%s".format(descriptor)),scaleFactorX,scaleFactorY)
@@ -452,7 +452,7 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
     }
   }
   override def scale(factor:Double):MeTLText = scale(factor,factor)
-  override def scale(xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.scale", () => {
+  override def scale(xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.scale",{
     val averageFactor = (xScale + yScale) / 2
     if (isRichText){
       copy(text = scaleRichText(text,averageFactor), height = height * yScale, width = width * xScale, x = x * xScale, y = y * yScale, size = size * averageFactor, scaleFactorX = scaleFactorX * xScale, scaleFactorY = scaleFactorY * yScale)
@@ -461,7 +461,7 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
       copy(height = height * yScale, width = width * xScale, x = x * xScale, y = y * yScale, size = size * averageFactor, scaleFactorX = scaleFactorX * xScale, scaleFactorY = scaleFactorY * yScale)
     }
   })
-  override def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLText = Stopwatch.time("MeTLText.alterPrivacy", () => {
+  override def alterPrivacy(possiblyNewPrivacy:Privacy):MeTLText = Stopwatch.time("MeTLText.alterPrivacy",{
     possiblyNewPrivacy match {
       case p:Privacy if (p == privacy) => this
       case Privacy.NOT_SET => this
@@ -469,7 +469,7 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
       case _ => this
     }
   })
-  override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.adjustVisual", () => {
+  override def adjustVisual(xTranslate:Double,yTranslate:Double,xScale:Double,yScale:Double):MeTLText = Stopwatch.time("MeTLText.adjustVisual",{
     val averageFactor = (xScale + yScale) / 2
     if (isRichText){
       copy(text = scaleRichText(text,averageFactor), height = height * yScale, width = width * xScale, x = x + xTranslate, y = y + yTranslate, size = size * averageFactor)
@@ -477,11 +477,11 @@ case class MeTLText(override val server:ServerConfiguration,override val author:
       copy(height = height * yScale, width = width * xScale, x = x + xTranslate, y = y + yTranslate, size = size * averageFactor)
     }
   })
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLText = Stopwatch.time("MeTLText.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLText = Stopwatch.time("MeTLText.adjustTimestamp",{
       copy(timestamp = newTime)
 //    MeTLText(server,author,newTime,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,identity,target,privacy,slide,color,scaleFactorX,scaleFactorY)
   })
-  override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyText = Stopwatch.time("MeTLText.generateDirty", () => {
+  override def generateDirty(dirtyTime:Long = new java.util.Date().getTime):MeTLDirtyText = Stopwatch.time("MeTLText.generateDirty",{
     MeTLDirtyText(server,author,dirtyTime,target,privacy,slide,identity)
   })
   override def generateNewIdentity(descriptor:String):MeTLText = copy(identity = genNewIdentity("newText:"+descriptor))//MeTLText(server,author,timestamp,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,genNewIdentity("newText:%s".format(descriptor)),target,privacy,slide,color,scaleFactorX,scaleFactorY)
@@ -497,19 +497,19 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
     case _ => false
   }
   override def generateNewIdentity(descriptor:String):MeTLMoveDelta = copy(identity = genNewIdentity("newMeTLMoveDelta:"+descriptor))//MeTLMoveDelta(server,author,timestamp,target,privacy,slide,genNewIdentity("newMeTLMoveDelta:"+descriptor),xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
-  def generateDirtier(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.generateDirtier", () => {
+  def generateDirtier(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.generateDirtier",{
     //MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,genNewIdentity("dirtierGeneratedFrom(%s)".format(identity)),xOrigin,yOrigin,newInkIds,newTextIds,newImageIds,0.0,0.0,1.0,1.0,Privacy.NOT_SET,true)
     copy(privacy = replacementPrivacy,identity = genNewIdentity("dirtierGeneratedFrom(%s)".format(identity)),inkIds = newInkIds,textIds = newTextIds,imageIds = newImageIds,xTranslate = 0.0,yTranslate = 0.0,xScale = 1.0,yScale = 1.0,isDeleted = true)
   })
-  def replaceIds(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.replaceIds", () => {
+  def replaceIds(newInkIds:Seq[String],newTextIds:Seq[String],newImageIds:Seq[String],replacementPrivacy:Privacy):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.replaceIds",{
     //MeTLMoveDelta(server,author,timestamp,target,replacementPrivacy,slide,genNewIdentity("adjusterGeneratedFrom(%s)".format(identity)),xOrigin,yOrigin,newInkIds,newTextIds,newImageIds,xTranslate,yTranslate,xScale,yScale,Privacy.NOT_SET,isDeleted)
     copy(privacy = replacementPrivacy,identity = genNewIdentity("adjusterGeneratedFrom(%s)".format(identity)),inkIds = newInkIds,textIds = newTextIds,imageIds = newImageIds)
   })
-  override def adjustVisual(newXTranslate:Double,newYTranslate:Double,newXScale:Double,newYScale:Double):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.adjustVisual", () => {
+  override def adjustVisual(newXTranslate:Double,newYTranslate:Double,newXScale:Double,newYScale:Double):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.adjustVisual",{
     //MeTLMoveDelta(server,author,timestamp,target,privacy,slide,identity,xOrigin + newXTranslate,yOrigin + newYTranslate,inkIds,textIds,imageIds,xTranslate + newXTranslate,yTranslate + newYTranslate,xScale * newXScale,yScale * newYScale,newPrivacy,isDeleted)
     copy(xOrigin = xOrigin + newXTranslate,yOrigin = yOrigin + newYTranslate,xTranslate = xTranslate + newXTranslate,yTranslate = yTranslate + newYTranslate,xScale = xScale * newXScale,yScale = yScale * newYScale,privacy = newPrivacy)
   })
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLMoveDelta = Stopwatch.time("MeTLMoveDelta.adjustTimestamp",{
 //    MeTLMoveDelta(server,author,newTime,target,privacy,slide,identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted)
     copy(timestamp = newTime)
   })
@@ -539,7 +539,7 @@ case class MeTLMoveDelta(override val server:ServerConfiguration, override val a
       case _ => cc
     }
   }
-  def generateChanges(rawPublicHistory:History,rawPrivateHistory:History):Tuple2[List[MeTLStanza],List[MeTLStanza]] = Stopwatch.time("MeTLMoveDelta.generateChanges", () => {
+  def generateChanges(rawPublicHistory:History,rawPrivateHistory:History):Tuple2[List[MeTLStanza],List[MeTLStanza]] = Stopwatch.time("MeTLMoveDelta.generateChanges",{
     val privateHistory = rawPrivateHistory.filterCanvasContentsForMoveDelta(this)
     val publicHistory = rawPublicHistory.filterCanvasContentsForMoveDelta(this)
     val (publicTexts,publicHighlighters,publicInks,publicImages) = publicHistory.getRenderableGrouped
@@ -612,7 +612,7 @@ case class MeTLDirtyInk(override val server:ServerConfiguration,override val aut
     case _ => false
   }
   override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyInk = copy(privacy = newPrivacy)//MeTLDirtyInk(server,author,timestamp,target,newPrivacy,slide,identity)
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLDirtyInk = Stopwatch.time("MeTLDirtyInk.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLDirtyInk = Stopwatch.time("MeTLDirtyInk.adjustTimestamp",{
     copy(timestamp = newTime)//MeTLDirtyInk(server,author,newTime,target,privacy,slide,identity)
   })
   override def generateNewIdentity(descriptor:String):MeTLDirtyInk = copy(identity = genNewIdentity("newMeTLDirtyInk:"+descriptor))//MeTLDirtyInk(server,author,timestamp,target,privacy,slide,genNewIdentity("newMeTLDirtyInk:"+descriptor))
@@ -631,7 +631,7 @@ case class MeTLDirtyText(override val server:ServerConfiguration,override val au
     case _ => false
   }
   override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyText = copy(privacy=newPrivacy)//MeTLDirtyText(server,author,timestamp,target,newPrivacy,slide,identity)
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLDirtyText = Stopwatch.time("MeTLDirtyText.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLDirtyText = Stopwatch.time("MeTLDirtyText.adjustTimestamp", {
     copy(timestamp=newTime)//MeTLDirtyText(server,author,newTime,target,privacy,slide,identity)
   })
   override def generateNewIdentity(descriptor:String):MeTLDirtyText = copy(identity=genNewIdentity("newMeTLDirtyText:"+descriptor))//MeTLDirtyText(server,author,timestamp,target,privacy,slide,genNewIdentity("newMeTLDirtyText:"+descriptor))
@@ -650,7 +650,7 @@ case class MeTLDirtyImage(override val server:ServerConfiguration,override val a
     case _ => false
   }
   override def alterPrivacy(newPrivacy:Privacy):MeTLDirtyImage = copy(privacy=newPrivacy)//MeTLDirtyImage(server,author,timestamp,target,newPrivacy,slide,identity)
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLDirtyImage = Stopwatch.time("MeTLDirtyImage.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLDirtyImage = Stopwatch.time("MeTLDirtyImage.adjustTimestamp",{
     copy(timestamp=newTime)//MeTLDirtyImage(server,author,newTime,target,privacy,slide,identity)
   })
   override def generateNewIdentity(descriptor:String):MeTLDirtyImage = copy(identity=genNewIdentity("newMeTLDirtyImage:"+descriptor))//MeTLDirtyImage(server,author,timestamp,target,privacy,slide,genNewIdentity("newMeTLDirtyImage:"+descriptor))
@@ -660,7 +660,7 @@ object MeTLDirtyImage{
 }
 
 case class MeTLCommand(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,command:String,commandParameters:List[String],override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLCommand = Stopwatch.time("MeTLCommand.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLCommand = Stopwatch.time("MeTLCommand.adjustTimestamp",{
     copy(timestamp = newTime)//MeTLCommand(server,author,newTime,command,commandParameters)
   })
 }
@@ -669,7 +669,7 @@ object MeTLCommand{
 }
 
 case class MeTLQuiz(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,created:Long,question:String,id:String,url:Box[String],imageBytes:Box[Array[Byte]],isDeleted:Boolean,options:List[QuizOption],override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp){
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLQuiz = Stopwatch.time("MeTLQuiz.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLQuiz = Stopwatch.time("MeTLQuiz.adjustTimestamp",{
     copy(timestamp = newTime)
   })
   def replaceQuestion(newQ:String) = copy(question = newQ)
@@ -688,7 +688,7 @@ object MeTLQuiz{
 }
 
 case class MeTLSubmission(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,title:String,slideJid:Int,url:String,imageBytes:Box[Array[Byte]] = Empty,blacklist:List[SubmissionBlacklistedPerson] = List.empty[SubmissionBlacklistedPerson], override val target:String = "submission",override val privacy:Privacy = Privacy.PUBLIC,override val identity:String = new Date().getTime.toString,override val audiences:List[Audience] = Nil) extends MeTLCanvasContent(server,author,timestamp,target,privacy,slideJid.toString,identity){
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLSubmission = Stopwatch.time("MeTLSubmission.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLSubmission = Stopwatch.time("MeTLSubmission.adjustTimestamp",{
     copy(timestamp = newTime)
   })
 }
@@ -736,7 +736,7 @@ object QuizOption{
 }
 
 case class MeTLQuizResponse(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,answer:String,answerer:String,id:String,override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLQuizResponse = Stopwatch.time("MeTLQuizResponse.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLQuizResponse = Stopwatch.time("MeTLQuizResponse.adjustTimestamp",{
       copy(timestamp = newTime)
   })
 }
@@ -745,7 +745,7 @@ object MeTLQuizResponse{
 }
 
 case class MeTLFile(override val server:ServerConfiguration, override val author:String, override val timestamp:Long, name:String, id:String, url:Option[String],bytes:Option[Array[Byte]],override val audiences:List[Audience] = Nil) extends MeTLStanza(server,author,timestamp,audiences){
-  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLFile = Stopwatch.time("MeTLFile.adjustTimestamp", () => {
+  override def adjustTimestamp(newTime:Long = new java.util.Date().getTime):MeTLFile = Stopwatch.time("MeTLFile.adjustTimestamp",{
     copy(timestamp = newTime)
   })
 }

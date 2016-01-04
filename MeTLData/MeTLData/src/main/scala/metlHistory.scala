@@ -11,7 +11,7 @@ import java.io.ByteArrayInputStream
 import java.util.Date
 import Privacy._
 
-case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:Double = 0,yOffset:Double = 0) {
+case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:Double = 0,yOffset:Double = 0) extends Logger {
   protected def createHistory(jid:String,xScale:Double,yScale:Double,xOffset:Double,yOffset:Double) = History(jid,xScale,yScale,xOffset,yOffset)
   protected var lastModifiedTime:Long = 0L
   protected var lastVisuallyModifiedTime:Long = 0L
@@ -83,8 +83,8 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getUnhandledStanzas = unhandledStanzas
   //def getUnhandledData = unhandledData
 
-  def getRenderable = Stopwatch.time("History.getRenderable", () => getCanvasContents.map(scaleItemToSuitHistory(_)))
-  def getRenderableGrouped:Tuple4[List[MeTLText],List[MeTLInk],List[MeTLInk],List[MeTLImage]] = Stopwatch.time("History.getRenderableGrouped", () => {
+  def getRenderable = Stopwatch.time("History.getRenderable",getCanvasContents.map(scaleItemToSuitHistory(_)))
+  def getRenderableGrouped:Tuple4[List[MeTLText],List[MeTLInk],List[MeTLInk],List[MeTLImage]] = Stopwatch.time("History.getRenderableGrouped",{
     getRenderable.foldLeft((List.empty[MeTLText],List.empty[MeTLInk],List.empty[MeTLInk],List.empty[MeTLImage]))((acc,item) => item match {
       case t:MeTLText => (acc._1 ::: List(t),acc._2,acc._3,acc._4)
       case h:MeTLInk if h.isHighlighter => (acc._1,acc._2 ::: List(h),acc._3,acc._4)
@@ -94,17 +94,17 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     })
   })
 
-  def merge(other:History):History = Stopwatch.time("History.merge", () => {
+  def merge(other:History):History = Stopwatch.time("History.merge",{
     val newHistory = createHistory(jid,xScale,yScale,xOffset,yOffset)
     (getAll ::: other.getAll).foreach(i => newHistory.addStanza(i))
     newHistory
   })
 
-  def getImageBySource(source:String) = Stopwatch.time("History.getImageBySource", () => getImages.find(i => i.source.map(s => s == source).openOr(false)))
-  def getImageByIdentity(identity:String) = Stopwatch.time("History.getImageByIdentity", () => getImages.find(i => i.identity == identity))
-  def getQuizByIdentity(identity:String) = Stopwatch.time("History.getQuizImageByIdentity", () => getQuizzes.filter(i => i.id == identity).sortBy(q => q.timestamp).reverse.headOption)
-  def getFileByIdentity(identity:String) = Stopwatch.time("History.getFileByIdentity",() => getFiles.filter(_.id == identity).sortBy(_.timestamp).reverse.headOption)
-  def getSubmissionByAuthorAndIdentity(author:String,identity:String) = Stopwatch.time("History.getSubmissionByAuthorAndIdentity", () => getSubmissions.find(s => s.author == author && s.identity == identity))
+  def getImageBySource(source:String) = Stopwatch.time("History.getImageBySource",getImages.find(i => i.source.map(s => s == source).openOr(false)))
+  def getImageByIdentity(identity:String) = Stopwatch.time("History.getImageByIdentity",getImages.find(i => i.identity == identity))
+  def getQuizByIdentity(identity:String) = Stopwatch.time("History.getQuizImageByIdentity",getQuizzes.filter(i => i.id == identity).sortBy(q => q.timestamp).reverse.headOption)
+  def getFileByIdentity(identity:String) = Stopwatch.time("History.getFileByIdentity",getFiles.filter(_.id == identity).sortBy(_.timestamp).reverse.headOption)
+  def getSubmissionByAuthorAndIdentity(author:String,identity:String) = Stopwatch.time("History.getSubmissionByAuthorAndIdentity",getSubmissions.find(s => s.author == author && s.identity == identity))
 
   protected def processNewStanza(s:MeTLStanza) = s match {
     case s:MeTLDirtyInk => removeInk(s)
@@ -125,19 +125,19 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     case s:MeTLUnhandledStanza => addMeTLUnhandledStanza(s)
     //case s:MeTLUnhandledData => addMeTLUnhandledData(s) // we don't add these - these are below the interest of a history.  History only cares about stanzas and up.
     case _ => {
-      println("makeHistory: I don't know what to do with a MeTLStanza: %s".format(s))
+      warn("makeHistory: I don't know what to do with a MeTLStanza: %s".format(s))
       this
     }
   }
 
-  def addStanza(s:MeTLStanza) = Stopwatch.time("History.addStanza", () => {
+  def addStanza(s:MeTLStanza) = Stopwatch.time("History.addStanza",{
     stanzas = stanzas ::: List(s)
     latestTimestamp = List(s.timestamp,latestTimestamp).max
     processNewStanza(s)
   })
 
 
-  protected def moveIndividualContent(s:MeTLMoveDelta,c:MeTLCanvasContent,left:Double = 0, top:Double = 0):Unit = Stopwatch.time("History.moveIndividualContent", () => {
+  protected def moveIndividualContent(s:MeTLMoveDelta,c:MeTLCanvasContent,left:Double = 0, top:Double = 0):Unit = Stopwatch.time("History.moveIndividualContent", {
     def matches(coll:Seq[String],i:MeTLCanvasContent):Boolean = coll.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
     c match {
       case i:MeTLInk if matches(s.inkIds,i) => {
@@ -159,7 +159,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       case _ => {}
     }
   })
-  protected def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",()=>{
+  protected def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",{
 		def matches(cc:MeTLCanvasContent):Boolean = cc match {
 			case i:MeTLInk => s.inkIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
 			case i:MeTLText => s.textIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
@@ -189,7 +189,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     !(dirtyTest || metlMoveDeltas.filter(md => md.isDirtierFor(cc)).exists(md => md.isDeleted))
   }
 
-  def addMeTLUnhandledCanvasContent(s:MeTLUnhandledCanvasContent,store:Boolean = true) = Stopwatch.time("History.addUnhandledCanvasContent", () => {
+  def addMeTLUnhandledCanvasContent(s:MeTLUnhandledCanvasContent,store:Boolean = true) = Stopwatch.time("History.addUnhandledCanvasContent",{
     //growBounds(s.left,s.right,s.top,s.bottom) can't grow bounds - not all canvas contents know their L,R,T,B.  If they did, we could make it part of their constructor, but as a result, MeTLUnhandledCanvasContent doesn't know its bounds.
     if (store){
       outputHook(s)
@@ -197,7 +197,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
     this
   })
-  def addMeTLUnhandledStanza(s:MeTLUnhandledStanza,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledStanza",() => {
+  def addMeTLUnhandledStanza(s:MeTLUnhandledStanza,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledStanza",{
     if (store){
       outputHook(s)
       unhandledStanzas = unhandledStanzas ::: List(s)
@@ -205,7 +205,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     this
   })
   /*
-  def addMeTLUnhandledData(s:MeTLUnhandledData,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledData", () => {
+  def addMeTLUnhandledData(s:MeTLUnhandledData,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledData", {
     if (store){
       outputHook(s)
       metlUnhandledData = metlUnhandledData ::: List(s)
@@ -213,7 +213,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     this
   })
   */
-  def addMeTLMoveDelta(s:MeTLMoveDelta,store:Boolean = true) = Stopwatch.time("History.addMeTLMoveDelta", () => {
+  def addMeTLMoveDelta(s:MeTLMoveDelta,store:Boolean = true) = Stopwatch.time("History.addMeTLMoveDelta",{
     if (!metlMoveDeltas.exists(mmd => mmd.matches(s))){
       moveContent(s)
       if (store){
@@ -224,7 +224,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     this
   })
 
-  def addHighlighter(s:MeTLInk,store:Boolean = true) = Stopwatch.time("History.addHighlighter", () => {
+  def addHighlighter(s:MeTLInk,store:Boolean = true) = Stopwatch.time("History.addHighlighter",{
     if (shouldAdd(s)){
       val adjustedInk = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(s)).sortBy(_.timestamp).foldLeft(s)((acc,item) => {
         item.adjustIndividualContent(acc).asInstanceOf[MeTLInk]
@@ -242,7 +242,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       highlighters = highlighters ::: List(s)
     this
   })
-  def addInk(s:MeTLInk,store:Boolean = true) = Stopwatch.time("History.addInk", () => {
+  def addInk(s:MeTLInk,store:Boolean = true) = Stopwatch.time("History.addInk", {
     if (shouldAdd(s)){
       val adjustedInk = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(s)).sortBy(_.timestamp).foldLeft(s)((acc,item) => {
         item.adjustIndividualContent(acc).asInstanceOf[MeTLInk]
@@ -261,21 +261,21 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     this
   })
 
-  def addAttendance(s:Attendance,store:Boolean = true) = Stopwatch.time("History.addAttendance",() => {
+  def addAttendance(s:Attendance,store:Boolean = true) = Stopwatch.time("History.addAttendance",{
     if (store){
       outputHook(s)
       attendances = attendances ::: List(s)
     }
     this
   })
-  def addFile(s:MeTLFile,store:Boolean = true) = Stopwatch.time("History.addFile",() => {
+  def addFile(s:MeTLFile,store:Boolean = true) = Stopwatch.time("History.addFile",{
     if (store){
       outputHook(s)
       files = files ::: List(s)
     }
     this
   })
-  def addImage(s:MeTLImage,store:Boolean = true) = Stopwatch.time("History.addImage", () => {
+  def addImage(s:MeTLImage,store:Boolean = true) = Stopwatch.time("History.addImage",{
     if (shouldAdd(s)){
       val adjustedImage = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(s)).sortBy(_.timestamp).foldLeft(s)((acc,item) => {
         item.adjustIndividualContent(acc).asInstanceOf[MeTLImage]
@@ -293,7 +293,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       images = images ::: List(s)
     this
   })
-  def addText(s:MeTLText,store:Boolean = true) = Stopwatch.time("History.addText", () => {
+  def addText(s:MeTLText,store:Boolean = true) = Stopwatch.time("History.addText",{
     if (shouldAdd(s)){
       val (suspectTexts,remainingContent) = canvasContents.partition(cc => cc match {
         case t:MeTLText => t.matches(s)
@@ -327,7 +327,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       texts = texts ::: List(s)
     this
   })
-  def addQuiz(s:MeTLQuiz,store:Boolean = true) = Stopwatch.time("History.addQuiz", () => {
+  def addQuiz(s:MeTLQuiz,store:Boolean = true) = Stopwatch.time("History.addQuiz",{
     if (store){
       val (suspectQuizzes,remainingQuizzes) = quizzes.partition(q => q.id == s.id)
       val newQuiz = (s :: suspectQuizzes).sortBy(q => q.timestamp).reverse.head
@@ -340,7 +340,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
     this
   })
-  def addQuizResponse(s:MeTLQuizResponse,store:Boolean = true) = Stopwatch.time("History.addQuizResponse", () => {
+  def addQuizResponse(s:MeTLQuizResponse,store:Boolean = true) = Stopwatch.time("History.addQuizResponse",{
     if (store) {
       quizResponses = quizResponses ::: List(s)
       outputHook(s)
@@ -348,7 +348,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
     this
   })
-  def addSubmission(s:MeTLSubmission,store:Boolean = true) = Stopwatch.time("History.addSubmission", () => {
+  def addSubmission(s:MeTLSubmission,store:Boolean = true) = Stopwatch.time("History.addSubmission",{
     if (store){
       submissions = submissions ::: List(s)
       outputHook(s)
@@ -356,7 +356,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
     this
   })
-  def addCommand(s:MeTLCommand,store:Boolean = true) = Stopwatch.time("History.addCommand", () => {
+  def addCommand(s:MeTLCommand,store:Boolean = true) = Stopwatch.time("History.addCommand",{
     if (store){
       latestCommands = latestCommands.updated(s.command,s)
       commands = commands ::: List(s)
@@ -365,7 +365,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
     this
   })
-  def removeInk(dirtyInk:MeTLDirtyInk,store:Boolean = true) = Stopwatch.time("History.removeInk", () => {
+  def removeInk(dirtyInk:MeTLDirtyInk,store:Boolean = true) = Stopwatch.time("History.removeInk",{
     val (item,remaining) = getCanvasContents.partition(s => s match {
       case i:MeTLInk => dirtyInk.isDirtierFor(i)
       case _ => false
@@ -384,7 +384,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       dirtyInks = dirtyInks ::: List(dirtyInk)
     this
   })
-  def removeImage(dirtyImage:MeTLDirtyImage,store:Boolean = true) = Stopwatch.time("History.removeImage", () => {
+  def removeImage(dirtyImage:MeTLDirtyImage,store:Boolean = true) = Stopwatch.time("History.removeImage",{
     val (item,remaining) = getCanvasContents.partition(s => s match {
       case i:MeTLImage => dirtyImage.isDirtierFor(i)
       case _ => false
@@ -404,7 +404,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       dirtyImages = dirtyImages ::: List(dirtyImage)
     this
   })
-  def removeText(dirtyText:MeTLDirtyText,store:Boolean = true) = Stopwatch.time("History.removeText", () => {
+  def removeText(dirtyText:MeTLDirtyText,store:Boolean = true) = Stopwatch.time("History.removeText",{
     val (item,remaining) = getCanvasContents.partition(s => s match {
       case t:MeTLText => dirtyText.isDirtierFor(t)
       case _ => false
@@ -434,7 +434,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getTop = top
   def getBottom = bottom
 
-  protected def growBounds(sLeft:Double,sRight:Double,sTop:Double,sBottom:Double) = Stopwatch.time("History.growBounds", () => {
+  protected def growBounds(sLeft:Double,sRight:Double,sTop:Double,sBottom:Double) = Stopwatch.time("History.growBounds",{
     if (!sLeft.isNaN)
       left = Math.min(left,sLeft)
     if (!sRight.isNaN)
@@ -445,12 +445,12 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       bottom = Math.max(bottom,sBottom)
   })
 
-  protected def calculateBoundsWithout(sLeft:Double,sRight:Double,sTop:Double,sBottom:Double) = Stopwatch.time("History.calculateBoundsWithout", () => {
+  protected def calculateBoundsWithout(sLeft:Double,sRight:Double,sTop:Double,sBottom:Double) = Stopwatch.time("History.calculateBoundsWithout",{
     if (sLeft == left || sRight == right || sTop == top || sBottom == bottom)
       calculateBounds
   })
 
-  protected def calculateBounds = Stopwatch.time("History.calculateBounds", () => {
+  protected def calculateBounds = Stopwatch.time("History.calculateBounds", {
     top = 0
     left = 0
     right = 0
@@ -462,37 +462,23 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     })
   })
 
-	def until(before:Long):History = Stopwatch.time("History.until", () => {
+	def until(before:Long):History = Stopwatch.time("History.until",{
 		filter(i => i.timestamp < before)
 	})
-/*	private def printComparison(other:History):Unit = {
-		println("")
-		println("FILTERING: %s".format(jid))
-		println("")
-		println("OLD")
-		println("---")
-		getAll.foreach(println)
-		println("---")
-		println("NEW")
-		other.getAll.foreach(println)
-		println("---")
-		println("")
-	}
-*/
-	def filter(filterFunc:(MeTLStanza) => Boolean):History = Stopwatch.time("History.filter", () => {
+	def filter(filterFunc:(MeTLStanza) => Boolean):History = Stopwatch.time("History.filter",{
     val newHistory = createHistory(jid,xScale,yScale,xOffset,yOffset)
 		getAll.filter(filterFunc).foreach(i => newHistory.addStanza(i))
 //		printComparison(newHistory)
 		newHistory
 	})
-	def filterCanvasContents(filterFunc:(MeTLCanvasContent) => Boolean, includeNonCanvasContents:Boolean = true):History = Stopwatch.time("History.filterCanvasContents", () => {
+	def filterCanvasContents(filterFunc:(MeTLCanvasContent) => Boolean, includeNonCanvasContents:Boolean = true):History = Stopwatch.time("History.filterCanvasContents",{
 		filter(i => i match {
 			case cc:MeTLCanvasContent => filterFunc(cc)
 			case _ => includeNonCanvasContents
 		})
 	})
 
-  def filterCanvasContentsForMoveDelta(md:MeTLMoveDelta):History = Stopwatch.time("History.filterCanvasContentForMoveDelta", () => {
+  def filterCanvasContentsForMoveDelta(md:MeTLMoveDelta):History = Stopwatch.time("History.filterCanvasContentForMoveDelta",{
     filter(i => i match {
       case mmd:MeTLMoveDelta => mmd.timestamp < md.timestamp && (mmd.inkIds.exists(i => md.inkIds.contains(i)) || mmd.textIds.exists(i => md.textIds.contains(i)) || mmd.imageIds.exists(i => md.imageIds.contains(i)))
       case di:MeTLDirtyInk => md.inkIds.contains(di.identity)
@@ -503,23 +489,23 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     })
   })
 
-  def scale(factor:Double) = Stopwatch.time("History.scale", () => {
+  def scale(factor:Double) = Stopwatch.time("History.scale",{
     val newHistory = createHistory(jid,factor,factor,0,0)
     getAll.foreach(i => newHistory.addStanza(i))
     newHistory
   })
-  def resetToOriginalVisual = Stopwatch.time("History.resetToOriginalVisual", () => {
+  def resetToOriginalVisual = Stopwatch.time("History.resetToOriginalVisual",{
 		val newHistory = createHistory(jid, defaultXOffset, defaultYOffset, defaultXScale, defaultYScale)
 		getAll.foreach(i => newHistory.addStanza(i))
 		newHistory
 		//adjustToVisual(xOffset * -1, yOffset * -1, 1 / xScale, 1 / yScale)
 	})
-  def adjustToVisual(xT:Double,yT:Double,xS:Double,yS:Double) = Stopwatch.time("History.adjustVisual",() => {
+  def adjustToVisual(xT:Double,yT:Double,xS:Double,yS:Double) = Stopwatch.time("History.adjustVisual",{
     val newHistory = createHistory(jid,xS * xScale,yS * yScale,xT + xOffset,yT + yOffset)
     getAll.foreach(i => newHistory.addStanza(i))
     newHistory
   })
-  def getUserSpecificHistory(user:String, isTeacher:Boolean = false) = Stopwatch.time("History.getUserSpecificHistory(%s)".format(user), () => {
+  def getUserSpecificHistory(user:String, isTeacher:Boolean = false) = Stopwatch.time("History.getUserSpecificHistory(%s)".format(user),{
     val newHistory = createHistory(jid,xScale,yScale,xOffset,yOffset)
     getAll.foreach(i => i match {
       case q:MeTLQuiz => newHistory.addStanza(q)
@@ -543,7 +529,7 @@ object History {
 abstract class HistoryRetriever(serverName:String) {
   lazy val server = ServerConfiguration.configForName(serverName)
   def getMeTLHistory(jid:String):History
-  def makeHistory(jid:String,stanzas:List[MeTLStanza]):History = Stopwatch.time("History.makeHistory", () => {
+  def makeHistory(jid:String,stanzas:List[MeTLStanza]):History = Stopwatch.time("History.makeHistory",{
     stanzas.sortBy(s => s.timestamp).foldLeft(new History(jid))((h,item) => h.addStanza(item))
   })
 }

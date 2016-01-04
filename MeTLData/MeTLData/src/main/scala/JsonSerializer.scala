@@ -8,13 +8,13 @@ import Privacy._
 import net.liftweb.json.{Serialization, NoTypeHints, TypeInfo, Formats, MappingException}
 import net.liftweb.json.JsonAST._
 
-object ConversionHelper {
+object ConversionHelper extends Logger {
   def toDouble(a:Any):Double = a match{
     case d:Double => d
     case i:scala.math.BigInt => i.doubleValue
     case JString("NaN") => Double.NaN
     case other =>{
-      println("Attempted to apply ConversionHelper.toDouble to [%s]".format(other))
+      warn("Attempted to apply ConversionHelper.toDouble to [%s]".format(other))
       Double.NaN
     }
   }
@@ -112,7 +112,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     val identity = getStringByName(input,"identity")
     ParsedCanvasContent(target,privacy,slide,identity)
   }
-  override def fromHistory(input:History):JValue = Stopwatch.time("JsonSerializer.fromHistory",() => {
+  override def fromHistory(input:History):JValue = Stopwatch.time("JsonSerializer.fromHistory",{
 		val (texts,highlighters,inks,images) = input.getRenderableGrouped
     toJsObj("history",List(
       JField("jid",JString(input.jid)),
@@ -140,7 +140,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => List.empty[JField]
     }
   }
-  override def toHistory(i:JValue):History = Stopwatch.time("JsonSerializer.toHistory",() => {
+  override def toHistory(i:JValue):History = Stopwatch.time("JsonSerializer.toHistory",{
     val jid = i match {
       case input:JObject => getStringByName(input,"jid")
       case _ => ""
@@ -161,20 +161,20 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
 //    getFields(i,"unhandledData").foreach(jf => history.addStanza(toMeTLUnhandledData(jf.value)))
     history
   })
-  protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has", () => {
+  protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has",{
     input.values.contains(fieldName)
   })
-  protected def hasFields(input:JObject,fieldNames:List[String]) = Stopwatch.time("JsonSerializer.hasFields",() => {
+  protected def hasFields(input:JObject,fieldNames:List[String]) = Stopwatch.time("JsonSerializer.hasFields",{
     val allValues = input.values
     !fieldNames.exists(fn => !allValues.contains(fn))
   })
-  protected def isOfType(input:JObject,name:String) = Stopwatch.time("JsonSerializer.isOfType", () => {
+  protected def isOfType(input:JObject,name:String) = Stopwatch.time("JsonSerializer.isOfType",{
     input.values("type") == name
   })
-  protected def toJsObj(name:String,fields:List[JField]) = Stopwatch.time("JsonSerializer.toJsObj", () => {
+  protected def toJsObj(name:String,fields:List[JField]) = Stopwatch.time("JsonSerializer.toJsObj",{
     JObject(JField("type",JString(name)) :: fields)
   })
-  override def toMeTLData(input:JValue):MeTLData = Stopwatch.time("JsonSerializer.toMeTLStanza", () => {
+  override def toMeTLData(input:JValue):MeTLData = Stopwatch.time("JsonSerializer.toMeTLStanza",{
     input match {
       case jo:JObject if (isOfType(jo,"ink")) => toMeTLInk(jo)
       case jo:JObject if (isOfType(jo,"text")) => toMeTLText(jo)
@@ -229,7 +229,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case other => MeTLUnhandledCanvasContent.empty(other.toString,jsonType)
     }
   }
-  override def fromMeTLFile(input:MeTLFile):JValue = Stopwatch.time("JsonSerializer.fromMeTLFile",() => {
+  override def fromMeTLFile(input:MeTLFile):JValue = Stopwatch.time("JsonSerializer.fromMeTLFile",{
     toJsObj("file",List(
       JField("name",JString(input.name)),
       JField("id",JString(input.id))
@@ -240,7 +240,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     )
   })
 
-  override def toMeTLFile(i:JValue):MeTLFile = Stopwatch.time("JsonSerializer.toMeTLFile",() => {
+  override def toMeTLFile(i:JValue):MeTLFile = Stopwatch.time("JsonSerializer.toMeTLFile",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -254,7 +254,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLFile.empty
     }
   })
-  override def fromMeTLMoveDelta(input:MeTLMoveDelta):JValue = Stopwatch.time("JsonSerializer.fromMeTLMoveDelta",()=>{
+  override def fromMeTLMoveDelta(input:MeTLMoveDelta):JValue = Stopwatch.time("JsonSerializer.fromMeTLMoveDelta",{
     toJsObj("moveDelta",List(
       JField("inkIds",JArray(input.inkIds.map(JString).toList)),
       JField("imageIds",JArray(input.imageIds.map(JString).toList)),
@@ -269,7 +269,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
 			JField("yOrigin", JDouble(input.yOrigin))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",()=>{
+  override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",{
     i match{
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -290,7 +290,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLMoveDelta.empty
     }
   })
-  override def toMeTLAttendance(i:JValue):Attendance = Stopwatch.time("JsonSerializer.toMeTLAttendance",() => {
+  override def toMeTLAttendance(i:JValue):Attendance = Stopwatch.time("JsonSerializer.toMeTLAttendance",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -301,13 +301,13 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => Attendance.empty
     }
   })
-  override def fromMeTLAttendance(i:Attendance):JValue = Stopwatch.time("JsonSerializer.fromMeTLAttendance",() => {
+  override def fromMeTLAttendance(i:Attendance):JValue = Stopwatch.time("JsonSerializer.fromMeTLAttendance",{
     toJsObj("attendance",List(
       JField("location",JString(i.location)),
       JField("present",JBool(i.present))
       ) ::: parseMeTLContent(i))
   })
-  override def toMeTLInk(i:JValue):MeTLInk = Stopwatch.time("JsonSerializer.toMeTLInk", () => {
+  override def toMeTLInk(i:JValue):MeTLInk = Stopwatch.time("JsonSerializer.toMeTLInk", {
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -323,7 +323,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLInk.empty
     }
   })
-  override def fromMeTLInk(input:MeTLInk):JValue = Stopwatch.time("JsonSerializer.fromMeTLInk",() => {
+  override def fromMeTLInk(input:MeTLInk):JValue = Stopwatch.time("JsonSerializer.fromMeTLInk",{
     toJsObj("ink",List(
       JField("bounds",JArray(List(input.left,input.top,input.right,input.bottom).map(JDouble))),
       JField("checksum",JDouble(input.checksum)),
@@ -334,7 +334,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("isHighlighter",JBool(input.isHighlighter))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLImage(i:JValue):MeTLImage = Stopwatch.time("JsonSerializer.toMeTLImage", () => {
+  override def toMeTLImage(i:JValue):MeTLImage = Stopwatch.time("JsonSerializer.toMeTLImage",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -352,7 +352,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLImage.empty
     }
   })
-  override def fromMeTLImage(input:MeTLImage):JValue = Stopwatch.time("JsonSerializer.fromMeTLImage",() => {
+  override def fromMeTLImage(input:MeTLImage):JValue = Stopwatch.time("JsonSerializer.fromMeTLImage",{
     toJsObj("image",List(
       JField("tag",JString(input.tag)),
       JField("width",JDouble(if(input.width.isNaN) 0 else input.width)),
@@ -361,7 +361,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("y",JDouble(input.y))
     ) ::: input.source.map(u => List(JField("source",JString(u)))).openOr(List.empty[JField]) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLText(i:JValue):MeTLText = Stopwatch.time("JsonSerializer.toMeTLText", () => {
+  override def toMeTLText(i:JValue):MeTLText = Stopwatch.time("JsonSerializer.toMeTLText",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -384,7 +384,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLText.empty
     }
   })
-  override def fromMeTLText(input:MeTLText):JValue = Stopwatch.time("JsonSerializer.fromMeTLText",() => {
+  override def fromMeTLText(input:MeTLText):JValue = Stopwatch.time("JsonSerializer.fromMeTLText",{
     toJsObj("text",List(
       JField("text",JString(input.text)),
       JField("height",JDouble(input.height)),
@@ -402,7 +402,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("color",fromColor(input.color).asInstanceOf[JValue])
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLDirtyInk(i:JValue):MeTLDirtyInk = Stopwatch.time("JsonSerializer.toMeTLDirtyInk", () => {
+  override def toMeTLDirtyInk(i:JValue):MeTLDirtyInk = Stopwatch.time("JsonSerializer.toMeTLDirtyInk",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -412,10 +412,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLDirtyInk.empty
     }
   })
-  override def fromMeTLDirtyInk(input:MeTLDirtyInk):JValue = Stopwatch.time("JsonSerializer.fromMeTLDirtyInk",() => {
+  override def fromMeTLDirtyInk(input:MeTLDirtyInk):JValue = Stopwatch.time("JsonSerializer.fromMeTLDirtyInk",{
     toJsObj("dirtyInk",parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLDirtyImage(i:JValue):MeTLDirtyImage = Stopwatch.time("JsonSerializer.toMeTLDirtyImage", () => {
+  override def toMeTLDirtyImage(i:JValue):MeTLDirtyImage = Stopwatch.time("JsonSerializer.toMeTLDirtyImage",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -425,10 +425,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLDirtyImage.empty
     }
   })
-  override def fromMeTLDirtyImage(input:MeTLDirtyImage):JValue = Stopwatch.time("JsonSerializer.fromMeTLDirtyImage",() => {
+  override def fromMeTLDirtyImage(input:MeTLDirtyImage):JValue = Stopwatch.time("JsonSerializer.fromMeTLDirtyImage",{
     toJsObj("dirtyImage",parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLDirtyText(i:JValue):MeTLDirtyText = Stopwatch.time("JsonSerializer.toMeTLDirtyText", () => {
+  override def toMeTLDirtyText(i:JValue):MeTLDirtyText = Stopwatch.time("JsonSerializer.toMeTLDirtyText",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -438,10 +438,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLDirtyText.empty
     }
   })
-  override def fromMeTLDirtyText(input:MeTLDirtyText):JValue = Stopwatch.time("JsonSerializer.fromMeTLDirtyText",() => {
+  override def fromMeTLDirtyText(input:MeTLDirtyText):JValue = Stopwatch.time("JsonSerializer.fromMeTLDirtyText",{
     toJsObj("dirtyText",parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLCommand(i:JValue):MeTLCommand = Stopwatch.time("JsonSerializer.toMeTLCommand", () => {
+  override def toMeTLCommand(i:JValue):MeTLCommand = Stopwatch.time("JsonSerializer.toMeTLCommand",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -452,13 +452,13 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLCommand.empty
     }
   })
-  override def fromMeTLCommand(input:MeTLCommand):JValue = Stopwatch.time("JsonSerializer.fromMeTLCommand",() => {
+  override def fromMeTLCommand(input:MeTLCommand):JValue = Stopwatch.time("JsonSerializer.fromMeTLCommand",{
     toJsObj("command",List(
       JField("command",JString(input.command)),
       JField("parameters",JArray(input.commandParameters.map(cp => JString(cp))))
     ) ::: parseMeTLContent(input))
   })
-  override def toSubmission(i:JValue):MeTLSubmission = Stopwatch.time("JsonSerializer.toSubmission", () => {
+  override def toSubmission(i:JValue):MeTLSubmission = Stopwatch.time("JsonSerializer.toSubmission",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -476,14 +476,14 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLSubmission.empty
     }
   })
-  override def fromSubmission(input:MeTLSubmission):JValue = Stopwatch.time("JsonSerializer.fromSubmission",() => {
+  override def fromSubmission(input:MeTLSubmission):JValue = Stopwatch.time("JsonSerializer.fromSubmission",{
     toJsObj("submission",List(
       JField("url",JString(input.url)),
 			JField("title",JString(input.title)),
 			JField("blacklist",JArray(input.blacklist.map(bl => JObject(List(JField("username",JString(bl.username)),JField("highlight",fromColor(bl.highlight).asInstanceOf[JValue]))))))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
-  override def toMeTLQuiz(i:JValue):MeTLQuiz = Stopwatch.time("JsonSerializer.toMeTLQuiz", () => {
+  override def toMeTLQuiz(i:JValue):MeTLQuiz = Stopwatch.time("JsonSerializer.toMeTLQuiz",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -499,7 +499,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLQuiz.empty
     }
   })
-  override def fromMeTLQuiz(input:MeTLQuiz):JValue = Stopwatch.time("JsonSerializer.fromMeTLQuiz",() => {
+  override def fromMeTLQuiz(input:MeTLQuiz):JValue = Stopwatch.time("JsonSerializer.fromMeTLQuiz",{
     toJsObj("quiz",List(
       JField("created",JInt(input.created)),
       JField("question",JString(input.question)),
@@ -508,7 +508,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("options",JArray(input.options.map(o => fromQuizOption(o))))
     ) ::: input.url.map(u => List(JField("url",JString(u)))).openOr(List.empty[JField]) ::: parseMeTLContent(input))
   })
-  def toQuizOption(i:JValue):QuizOption = Stopwatch.time("JsonSerializer.toQuizOption", () => {
+  def toQuizOption(i:JValue):QuizOption = Stopwatch.time("JsonSerializer.toQuizOption",{
     i match {
       case input:JObject => {
         val name = getStringByName(input,"name")
@@ -520,7 +520,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => QuizOption.empty
     }
   })
-  def fromQuizOption(input:QuizOption):JValue = Stopwatch.time("JsonSerializer.fromQuizOption", () => {
+  def fromQuizOption(input:QuizOption):JValue = Stopwatch.time("JsonSerializer.fromQuizOption",{
     toJsObj("quizOption",List(
       JField("name",JString(input.name)),
       JField("text",JString(input.text)),
@@ -528,7 +528,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("color",fromColor(input.color).asInstanceOf[JValue])
     ))
   })
-  override def toMeTLQuizResponse(i:JValue):MeTLQuizResponse = Stopwatch.time("JsonSerializer.toMeTLQuizResponse", () => {
+  override def toMeTLQuizResponse(i:JValue):MeTLQuizResponse = Stopwatch.time("JsonSerializer.toMeTLQuizResponse",{
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
@@ -540,7 +540,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLQuizResponse.empty
     }
   })
-  override def fromMeTLQuizResponse(input:MeTLQuizResponse):JValue = Stopwatch.time("JsonSerializer.fromMeTLQuizResponse",() => {
+  override def fromMeTLQuizResponse(input:MeTLQuizResponse):JValue = Stopwatch.time("JsonSerializer.fromMeTLQuizResponse",{
     toJsObj("quizResponse",List(
       JField("answer",JString(input.answer)),
       JField("answerer",JString(input.answerer)),
@@ -548,7 +548,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     ) ::: parseMeTLContent(input))
   })
 
-  override def toConversation(i:JValue):Conversation = Stopwatch.time("JsonSerializer.toConversation", () => {
+  override def toConversation(i:JValue):Conversation = Stopwatch.time("JsonSerializer.toConversation",{
     i match {
       case input:JObject => {
         val author = getStringByName(input,"author")
@@ -569,8 +569,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => Conversation.empty
     }
   })
-  override def fromConversationList(input:List[Conversation]):JValue = Stopwatch.time("JsonSerializer.fromConversationList",() => JArray(input.map(c => fromConversation(c))))
-  override def fromConversation(input:Conversation):JValue = Stopwatch.time("JsonSerializer.fromConversation", () => {
+  override def fromConversationList(input:List[Conversation]):JValue = Stopwatch.time("JsonSerializer.fromConversationList",JArray(input.map(c => fromConversation(c))))
+  override def fromConversation(input:Conversation):JValue = Stopwatch.time("JsonSerializer.fromConversation",{
     JObject(List(
       JField("author",JString(input.author)),
       JField("lastAccessed",JInt(input.lastAccessed)),
@@ -584,7 +584,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
 			JField("configName",JString(input.server.name))
     ))
   })
-  override def toSlide(i:JValue):Slide = Stopwatch.time("JsonSerializer.toSlide", () => {
+  override def toSlide(i:JValue):Slide = Stopwatch.time("JsonSerializer.toSlide",{
     i match {
       case input:JObject => {
         val author = getStringByName(input,"author")
@@ -600,7 +600,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => Slide.empty
     }
   })
-  override def fromSlide(input:Slide):JValue = Stopwatch.time("JsonSerializer.fromSlide",() => {
+  override def fromSlide(input:Slide):JValue = Stopwatch.time("JsonSerializer.fromSlide",{
     JObject(List(
       JField("id",JInt(input.id)),
       JField("author",JString(input.author)),
@@ -611,7 +611,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("slideType",JString(input.slideType))
     ) ::: List(input.groupSet.map(gs => JField("groupSet",fromGroupSet(gs)))).flatten)
   })
- override def toGroupSet(i:JValue):GroupSet = Stopwatch.time("JsonSerializer.toGroupSet",() => {
+ override def toGroupSet(i:JValue):GroupSet = Stopwatch.time("JsonSerializer.toGroupSet",{
    i match {
      case input:JObject => {
         val audiences = parseJObjForAudiences(input)
@@ -624,7 +624,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
      case _ => GroupSet.empty
    }
   })
-  override def fromGroupSet(input:GroupSet):JValue = Stopwatch.time("JsonSerializer.fromGroupSet",() => {
+  override def fromGroupSet(input:GroupSet):JValue = Stopwatch.time("JsonSerializer.fromGroupSet",{
     toJsObj("groupSet",List(
       JField("id",JString(input.id)),
       JField("location",JString(input.location)),
@@ -633,7 +633,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     ) ::: parseAudiences(input))
   })
 
-  override def toGroupingStrategy(i:JValue):GroupingStrategy = Stopwatch.time("JsonSerializer.toGroupingStrategy",() => {
+  override def toGroupingStrategy(i:JValue):GroupingStrategy = Stopwatch.time("JsonSerializer.toGroupingStrategy",{
     i match {
       case input:JObject => {
         getStringByName(input,"name") match {
@@ -648,7 +648,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => EveryoneInOneGroup
     }
   })
-  override def fromGroupingStrategy(input:GroupingStrategy):JValue = Stopwatch.time("JsonSerializer.fromGroupingStrategy",() => {
+  override def fromGroupingStrategy(input:GroupingStrategy):JValue = Stopwatch.time("JsonSerializer.fromGroupingStrategy",{
     val contents = input match {
       case ByMaximumSize(groupSize) => List(JField("name",JString("byMaximumSize")),JField("groupSize",JInt(groupSize)))
       case ByTotalGroups(groupCount) => List(JField("name",JString("byTotalGroups")),JField("groupCount",JInt(groupCount)))
@@ -660,7 +660,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     toJsObj("groupingStrategy",contents)
   })
 
-  override def toGroup(i:JValue):Group = Stopwatch.time("JsonSerializer.toGroup",() => {
+  override def toGroup(i:JValue):Group = Stopwatch.time("JsonSerializer.toGroup",{
     i match {
       case input:JObject => {
         val audiences = parseJObjForAudiences(input,config)
@@ -672,14 +672,14 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => Group.empty
     }
   })
-  override def fromGroup(input:Group):JValue = Stopwatch.time("JsonSerializer.fromGroup",() => {
+  override def fromGroup(input:Group):JValue = Stopwatch.time("JsonSerializer.fromGroup",{
     toJsObj("group",List(
       JField("id",JString(input.id)),
       JField("location",JString(input.location)),
       JField("members",JArray(input.members.map(m => JString(m))))
     ) ::: parseAudiences(input))
   })
-  override def toPermissions(i:JValue):Permissions = Stopwatch.time("JsonSerializer.toPermissions", () => {
+  override def toPermissions(i:JValue):Permissions = Stopwatch.time("JsonSerializer.toPermissions", {
     i match {
       case input:JObject => {
         val studentsCanOpenFriends = getBooleanByName(input,"studentCanOpenFriends")
@@ -690,7 +690,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => Permissions.default(config)
     }
   })
-  override def fromPermissions(input:Permissions):JValue = Stopwatch.time("JsonSerializer.fromPermissions",() => {
+  override def fromPermissions(input:Permissions):JValue = Stopwatch.time("JsonSerializer.fromPermissions",{
     JObject(List(
       JField("studentCanOpenFriends",JBool(input.studentsCanOpenFriends)),
       JField("studentCanPublish",JBool(input.studentsCanPublish)),
@@ -699,7 +699,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   })
   protected def convert2AfterN(h:String,n:Int):Int = hexToInt(h.drop(n).take(2).mkString)
   protected def hexToInt(h:String):Int = tryo(Integer.parseInt(h,16)).openOr(0)
-  override def toColor(input:AnyRef):Color = Stopwatch.time("JsonSerializer.toColor", () => {
+  override def toColor(input:AnyRef):Color = Stopwatch.time("JsonSerializer.toColor", {
     input match {
       case List(c,a) => {
         val color = c.asInstanceOf[String]
@@ -713,10 +713,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => Color.empty
     }
   })
-  override def fromColor(input:Color):AnyRef = Stopwatch.time("JsonSerializer.fromColor",() => {
+  override def fromColor(input:Color):AnyRef = Stopwatch.time("JsonSerializer.fromColor",{
     JArray(List(JString("#%02x%02x%02x".format(input.red,input.green,input.blue)),JInt(input.alpha)))
   })
-  override def toPointList(input:AnyRef):List[Point] = Stopwatch.time("JsonSerializer.toPointList", () => {
+  override def toPointList(input:AnyRef):List[Point] = Stopwatch.time("JsonSerializer.toPointList",{
     input match {
       case l:List[Any] if (l.length >= 3) => {
         toPoint(l.take(3)) :: toPointList(l.drop(3))
@@ -724,10 +724,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => List.empty[Point]
     }
   })
-  override def fromPointList(input:List[Point]):AnyRef = Stopwatch.time("JsonSerializer.fromPointList", () => {
+  override def fromPointList(input:List[Point]):AnyRef = Stopwatch.time("JsonSerializer.fromPointList",{
     JArray(input.map(p => fromPoint(p).asInstanceOf[List[JValue]]).flatten)
   })
-  override def toPoint(input:AnyRef):Point = Stopwatch.time("JsonSerializer.toPoint", () => {
+  override def toPoint(input:AnyRef):Point = Stopwatch.time("JsonSerializer.toPoint",{
     input match {
       case l:List[Any] if (l.length == 3) => {
         val x = ConversionHelper.toDouble(l(0))
@@ -738,7 +738,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => Point.empty
     }
   })
-  override def fromPoint(input:Point):AnyRef = Stopwatch.time("JsonSerializer.fromPoint", () => {
+  override def fromPoint(input:Point):AnyRef = Stopwatch.time("JsonSerializer.fromPoint",{
     List(
       JDouble(input.x),
       JDouble(input.y),

@@ -13,7 +13,7 @@ import scala.xml._
 import com.metl.data._
 import Privacy._
 
-class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with QueryXml with MeTLImageMatchers with MeTLDataGenerators {
+class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with BeforeAndAfter with ShouldMatchers with QueryXml with MeTLImageMatchers with MeTLDataGenerators with Logger {
 
 	var xmlSerializer: GenericXmlSerializer = _
 
@@ -68,8 +68,7 @@ class MeTLImageSuite extends FunSuite with GeneratorDrivenPropertyChecks with Be
         xmlSerializer.fromMeTLImage(genImage)
       } catch {
         case e:Throwable => {
-          println("EXCEPTION: %s => %s\r\n%s".format(genImage,e.getMessage,e.getStackTraceString))
-          e.printStackTrace
+          error("EXCEPTION",e)
           NodeSeq.Empty
         }
       }

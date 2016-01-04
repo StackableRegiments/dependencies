@@ -15,7 +15,7 @@ class StopwatchSuite extends FunSuite with AsyncAssertions with MustMatchers {
 
       val w = new Waiter
 
-      Stopwatch.time("empty lambda", () => {
+      Stopwatch.time("empty lambda", {
         w.dismiss
       })
 
@@ -30,7 +30,7 @@ class StopwatchSuite extends FunSuite with AsyncAssertions with MustMatchers {
 
     test("stopwatch returns action's result") {
 
-        val result = Stopwatch.time("timed result of addition", () => {
+        val result = Stopwatch.time("timed result of addition", {
             val sum = 2 + 2
             sum
           })

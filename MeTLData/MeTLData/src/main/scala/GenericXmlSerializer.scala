@@ -75,7 +75,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
   type T = NodeSeq
   lazy val config = ServerConfiguration.configForName(configName)
 
-  override def toMeTLData(input:NodeSeq):MeTLData = Stopwatch.time("GenericXmlSerializer.toMeTLStanza", () => {
+  override def toMeTLData(input:NodeSeq):MeTLData = Stopwatch.time("GenericXmlSerializer.toMeTLStanza",{
     input match {
       case i:NodeSeq if hasChild(i,"ink") => toMeTLInk(i)
       case i:NodeSeq if hasChild(i,"textbox") => toMeTLText(i)
@@ -88,14 +88,15 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       case i:NodeSeq if hasChild(i,"quizResponse") => toMeTLQuizResponse(i)
       case i:NodeSeq if hasChild(i,"screenshotSubmission") => toSubmission(i)
       case i:NodeSeq if hasChild(i,"attendance") => toMeTLAttendance(i)
-      case i:NodeSeq if hasChild(i,"body") => toMeTLCommand(i)
+//      case i:NodeSeq if hasChild(i,"body") => toMeTLCommand(i)
+      case i:NodeSeq if hasChild(i,"command") => toMeTLCommand(i)
       case i:NodeSeq if hasChild(i,"fileResource") => toMeTLFile(i)
       case i:NodeSeq if hasSubChild(i,"target") && hasSubChild(i,"privacy") && hasSubChild(i,"slide") && hasSubChild(i,"identity") => toMeTLUnhandledCanvasContent(i)
       case i:NodeSeq if (((i \\ "author").length > 0) && ((i \\ "message").length > 0)) => toMeTLUnhandledStanza(i)
       case other:NodeSeq => toMeTLUnhandledData(other)
     }
   })
-  protected def metlXmlToXml(rootName:String,additionalNodes:Seq[Node],wrapWithMessage:Boolean = false,additionalAttributes:List[(String,String)] = List.empty[(String,String)]) = Stopwatch.time("GenericXmlSerializer.metlXmlToXml", () => {
+  protected def metlXmlToXml(rootName:String,additionalNodes:Seq[Node],wrapWithMessage:Boolean = false,additionalAttributes:List[(String,String)] = List.empty[(String,String)]) = Stopwatch.time("GenericXmlSerializer.metlXmlToXml", {
     val attrs = additionalAttributes.foldLeft(scala.xml.Null.asInstanceOf[scala.xml.MetaData])((acc,item) => {
       item match {
         case (k:String,v:String) => new UnprefixedAttribute(k,v,acc)
@@ -109,18 +110,18 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       case _ => new Elem(null, rootName, attrs, TopScope, false, additionalNodes:_*)
     }
   })
-  protected def metlContentToXml(rootName:String,input:MeTLStanza,additionalNodes:Seq[Node]) = Stopwatch.time("GenericXmlSerializer.metlContentToXml", () => {
+  protected def metlContentToXml(rootName:String,input:MeTLStanza,additionalNodes:Seq[Node]) = Stopwatch.time("GenericXmlSerializer.metlContentToXml", {
     val pmc = parsedMeTLContentToXml(ParsedMeTLContent(input.author,input.timestamp,input.audiences)) ++ additionalNodes
     metlXmlToXml(rootName,pmc,true,List(("timestamp",input.timestamp.toString)))
   })
-  protected def canvasContentToXml(rootName:String,input:MeTLCanvasContent,additionalNodes:Seq[Node]) = Stopwatch.time("GenericXmlSerializer.canvasContentToXml", () => {
+  protected def canvasContentToXml(rootName:String,input:MeTLCanvasContent,additionalNodes:Seq[Node]) = Stopwatch.time("GenericXmlSerializer.canvasContentToXml", {
     metlContentToXml(rootName,input,parsedCanvasContentToXml(ParsedCanvasContent(input.target,input.privacy,input.slide,input.identity)) ++ additionalNodes)
   })
-  override def fromHistory(input:History):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromHistory", () => {
+  override def fromHistory(input:History):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromHistory", {
     <history jid={input.jid}>{input.getAll.map(i => fromMeTLData(i))}</history>
   })
 
-  override def toHistory(input:NodeSeq):History = Stopwatch.time("GenericXmlSerializer.toHistory",() => {
+  override def toHistory(input:NodeSeq):History = Stopwatch.time("GenericXmlSerializer.toHistory",{
     val history = new History((input \ "@jid").headOption.map(_.text).getOrElse(""))
     input match {
       case e:Elem => e.child.foreach(c => toMeTLData(c) match {
@@ -155,7 +156,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     case _ => NodeSeq.Empty
   }
 
-  override def toMeTLMoveDelta(input:NodeSeq):MeTLMoveDelta = Stopwatch.time("GenericXmlSerializer.toMeTLMoveDelta", () => {
+  override def toMeTLMoveDelta(input:NodeSeq):MeTLMoveDelta = Stopwatch.time("GenericXmlSerializer.toMeTLMoveDelta", {
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     val inkIds = getListOfStringsByNameWithin(input,"inkId","inkIds")
@@ -171,7 +172,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
 		val yOrigin = getDoubleByName(input,"yOrigin")
     MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted,m.audiences)
   })
-  override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", () => {
+  override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", {
     canvasContentToXml("moveDelta",input, Seq(
       <inkIds>{input.inkIds.map(i => <inkId>{i}</inkId>)}</inkIds>,
       <imageIds>{input.imageIds.map(i => <imageId>{i}</imageId>)}</imageIds>,
@@ -186,19 +187,19 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
 			<yOrigin>{input.yOrigin}</yOrigin>
     ))
   })
-  override def toMeTLAttendance(input:NodeSeq):Attendance = Stopwatch.time("GenericXmlSerializer.toMeTLAttendance",() => {
+  override def toMeTLAttendance(input:NodeSeq):Attendance = Stopwatch.time("GenericXmlSerializer.toMeTLAttendance",{
     val m = parseMeTLContent(input,config)
     val location = getStringByName(input,"location")
     val present = getBooleanByName(input,"present")
     Attendance(config,m.author,m.timestamp,location,present,m.audiences)
   })
-  override def fromMeTLAttendance(input:Attendance):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLAttenance",() => {
+  override def fromMeTLAttendance(input:Attendance):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLAttenance",{
     metlContentToXml("attendance",input,List(
       <location>{input.location}</location>,
       <present>{input.present}</present>
     ))
   })
-  override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLInk", () => {
+  override def toMeTLInk(input:NodeSeq):MeTLInk = Stopwatch.time("GenericXmlSerializer.toMeTLInk",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     val checksum = getDoubleByName(input,"checksum")
@@ -213,7 +214,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
 		}
     MeTLInk(config,m.author,m.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,c.target,c.privacy,c.slide,identity,m.audiences)
   })
-  override def fromMeTLInk(input:MeTLInk):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLInk",() => {
+  override def fromMeTLInk(input:MeTLInk):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLInk",{
     canvasContentToXml("ink",input,List(
       <checksum>{input.checksum}</checksum>,
       <startingSum>{input.startingSum}</startingSum>,
@@ -223,7 +224,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <highlight>{input.isHighlighter}</highlight>
     ))
   })
-  override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("GenericXmlSerializer.toMeTLImage",() => {
+  override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("GenericXmlSerializer.toMeTLImage",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     val tag = getStringByName(input,"tag")
@@ -239,7 +240,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val y = getDoubleByName(input,"y")
     MeTLImage(config,m.author,m.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,c.target,c.privacy,c.slide,c.identity,m.audiences)
   })
-  override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLImage",() => {
+  override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLImage",{
     canvasContentToXml("image",input,List(
       <tag>{input.tag}</tag>,
       <source>{input.source.openOr("unknown")}</source>,
@@ -249,7 +250,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <y>{input.y}</y>
     ))
   })
-  override def toMeTLText(input:NodeSeq):MeTLText = Stopwatch.time("GenericXmlSerializer.toMeTLText",() => {
+  override def toMeTLText(input:NodeSeq):MeTLText = Stopwatch.time("GenericXmlSerializer.toMeTLText",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     val tag = getStringByName(input,"tag")
@@ -267,7 +268,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val y = getDoubleByName(input,"y")
     MeTLText(config,m.author,m.timestamp,text,height,width,caret,x,y,tag,style,family,weight,size,decoration,c.identity,c.target,c.privacy,c.slide,color,m.audiences)
   })
-  override def fromMeTLText(input:MeTLText):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLText", () => {
+  override def fromMeTLText(input:MeTLText):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLText",{
     canvasContentToXml("textbox",input,List(
       <tag>{input.tag}</tag>,
       <caret>{input.caret}</caret>,
@@ -284,43 +285,43 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <y>{input.y}</y>
     ))
   })
-  override def toMeTLDirtyInk(input:NodeSeq):MeTLDirtyInk = Stopwatch.time("GenericXmlSerializer.toMeTLDirtyInk", () => {
+  override def toMeTLDirtyInk(input:NodeSeq):MeTLDirtyInk = Stopwatch.time("GenericXmlSerializer.toMeTLDirtyInk",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     MeTLDirtyInk(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,m.audiences)
   })
-  override def fromMeTLDirtyInk(input:MeTLDirtyInk):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLDirtyInk", () => {
+  override def fromMeTLDirtyInk(input:MeTLDirtyInk):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLDirtyInk",{
     canvasContentToXml("dirtyInk",input,NodeSeq.Empty)
   })
-  override def toMeTLDirtyImage(input:NodeSeq):MeTLDirtyImage = Stopwatch.time("GenericXmlSerializer.toMeTLDirtyImage", () => {
+  override def toMeTLDirtyImage(input:NodeSeq):MeTLDirtyImage = Stopwatch.time("GenericXmlSerializer.toMeTLDirtyImage",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     MeTLDirtyImage(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,m.audiences)
   })
-  override def fromMeTLDirtyImage(input:MeTLDirtyImage):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLDirtyImage", () => {
+  override def fromMeTLDirtyImage(input:MeTLDirtyImage):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLDirtyImage",{
     canvasContentToXml("dirtyImage",input,NodeSeq.Empty)
   })
-  override def toMeTLDirtyText(input:NodeSeq):MeTLDirtyText = Stopwatch.time("GenericXmlSerializer.toMeTLDirtyText", () => {
+  override def toMeTLDirtyText(input:NodeSeq):MeTLDirtyText = Stopwatch.time("GenericXmlSerializer.toMeTLDirtyText",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     MeTLDirtyText(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,m.audiences)
   })
-  override def fromMeTLDirtyText(input:MeTLDirtyText):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLDirtyText", () => {
+  override def fromMeTLDirtyText(input:MeTLDirtyText):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLDirtyText",{
     canvasContentToXml("dirtyText",input,NodeSeq.Empty)
   })
-  override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("GenericXmlSerializer.toMeTLCommand", () => {
+  override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("GenericXmlSerializer.toMeTLCommand",{
     val m = parseMeTLContent(input,config)
     val comm = getStringByName(input,"command")
     val parameters = getListOfStringsByNameWithin(input,"parameter","parameters")
     MeTLCommand(config,m.author,m.timestamp,comm,parameters,m.audiences)
   })
-  override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLCommand", () => {
+  override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLCommand",{
     metlContentToXml("command",input,List(
       <command>{input.command}</command>,
       <parameters>{input.commandParameters.map(cp => <parameter>{cp}</parameter>)}</parameters>
     ))
   })
-  override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission", () => {
+  override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     val title = getStringByName(input,"title")
@@ -333,14 +334,14 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     }).toList
     MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity,m.audiences)
   })
-  override def fromSubmission(input:MeTLSubmission):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSubmission", () => {
+  override def fromSubmission(input:MeTLSubmission):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSubmission",{
     canvasContentToXml("screenshotSubmission",input,List(
       <url>{input.url}</url>,
       <title>{input.title}</title>,
       <time>{input.timestamp.toString}</time>
     ) ::: input.blacklist.map(bl => <blacklist><username>{bl.username}</username><highlight>{ColorConverter.toRGBAString(bl.highlight)}</highlight></blacklist> ).toList)
   })
-  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("GenericXmlSerializer.toMeTLQuiz", () => {
+  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("GenericXmlSerializer.toMeTLQuiz",{
     val m = parseMeTLContent(input,config)
     val created = getLongByName(input,"created")
     val question = getStringByName(input,"question") match {
@@ -357,7 +358,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val options = getXmlByName(input,"quizOption").map(qo => toQuizOption(qo)).toList
     MeTLQuiz(config,m.author,m.timestamp,created,question,id,url,quizImage,isDeleted,options,m.audiences)
   })
-  override def fromMeTLQuiz(input:MeTLQuiz):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLQuiz", () => {
+  override def fromMeTLQuiz(input:MeTLQuiz):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLQuiz",{
     metlContentToXml("quiz",input,List(
       <created>{input.created}</created>,
       <question>{input.question}</question>,
@@ -366,7 +367,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <options>{input.options.map(o => fromQuizOption(o))}</options>
     ) ::: input.url.map(u => List(<url>{u}</url>)).openOr(List.empty[Node]))
   })
-  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("GenericXmlSerializer.toMeTLFile",() => {
+  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("GenericXmlSerializer.toMeTLFile",{
     val m = parseMeTLContent(input,config)
     val name = getStringByName(input,"name")
     val id = getStringByName(input,"identity")
@@ -374,21 +375,21 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val bytes = url.map(u => config.getResource(u))
     MeTLFile(config,m.author,m.timestamp,name,id,url,bytes)
   })
-  override def fromMeTLFile(input:MeTLFile):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLFile",() => {
+  override def fromMeTLFile(input:MeTLFile):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLFile",{
     metlContentToXml("fileResource",input,List(
       <name>{input.name}</name>,
       <identity>{input.id}</identity>
       ) ::: 
       input.url.map(u => List(<url>{u}</url>)).getOrElse(List.empty[Node]))
   })
-  def toQuizOption(input:NodeSeq):QuizOption = Stopwatch.time("GenericXmlSerializer.toMeTLQuizOption", () => {
+  def toQuizOption(input:NodeSeq):QuizOption = Stopwatch.time("GenericXmlSerializer.toMeTLQuizOption",{
     val name = getStringByName(input,"name")
     val text = getStringByName(input,"text")
     val correct = getBooleanByName(input,"correct")
     val color = getColorByName(input,"color")
     QuizOption(name,text,correct,color)
   })
-  def fromQuizOption(input:QuizOption):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLQuizOption", () => {
+  def fromQuizOption(input:QuizOption):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLQuizOption",{
     metlXmlToXml("quizOption",List(
       <name>{input.name}</name>,
       <text>{input.text}</text>,
@@ -396,21 +397,21 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <color>{input.color}</color>
     ))
   })
-  override def toMeTLQuizResponse(input:NodeSeq):MeTLQuizResponse = Stopwatch.time("GenericXmlSerializer.toMeTLQuizResponse", () => {
+  override def toMeTLQuizResponse(input:NodeSeq):MeTLQuizResponse = Stopwatch.time("GenericXmlSerializer.toMeTLQuizResponse", {
     val m = parseMeTLContent(input,config)
     val answer = getStringByName(input,"answer")
     val answerer = getStringByName(input,"answerer")
     val id = getStringByName(input,"id")
     MeTLQuizResponse(config,m.author,m.timestamp,answer,answerer,id,m.audiences)
   })
-  override def fromMeTLQuizResponse(input:MeTLQuizResponse):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLQuizResponse", () => {
+  override def fromMeTLQuizResponse(input:MeTLQuizResponse):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLQuizResponse",{
     metlContentToXml("quizResponse",input,List(
       <answer>{input.answer}</answer>,
       <answerer>{input.answerer}</answerer>,
       <id>{input.id}</id>
     ))
   })
-  override def toConversation(input:NodeSeq):Conversation = Stopwatch.time("GenericXmlSerializer.toConversation",() => {
+  override def toConversation(input:NodeSeq):Conversation = Stopwatch.time("GenericXmlSerializer.toConversation",{
     val m = parseMeTLContent(input,config)
     val author = getStringByName(input,"author")
     val lastAccessed = getLongByName(input,"lastAccessed")
@@ -429,7 +430,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
 		}
     Conversation(thisConfig,author,lastAccessed,slides,subject,tag,jid,title,created,permissions,blacklist.toList,m.audiences)
   })
-  override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversation", () => {
+  override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversation",{
     metlXmlToXml("conversation",List(
       <author>{input.author}</author>,
       <lastAccessed>{input.lastAccessed}</lastAccessed>,
@@ -446,10 +447,10 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       fromPermissions(input.permissions)
     ))
   })
-  override def fromConversationList(input:List[Conversation]):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversationList", () => {
+  override def fromConversationList(input:List[Conversation]):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversationList",{
     <conversations>{input.map(c => fromConversation(c))}</conversations>
   })
-  override def toSlide(input:NodeSeq):Slide = Stopwatch.time("GenericXmlSerializer.toSlide",() => {
+  override def toSlide(input:NodeSeq):Slide = Stopwatch.time("GenericXmlSerializer.toSlide",{
     val m = parseMeTLContent(input,config)  
     val author = getStringByName(input,"author")
     val id = getIntByName(input,"id")
@@ -461,7 +462,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val groupSets = (input \ "groupSet").map(gs => toGroupSet(gs)).toList
     Slide(config,author,id,index,defHeight,defWidth,exposed,slideType,groupSets,m.audiences)
   })
-  override def fromSlide(input:Slide):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSlide",() => {
+  override def fromSlide(input:Slide):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSlide",{
     metlXmlToXml("slide",List(
       <id>{input.id}</id>,
       <author>{input.author}</author>,
@@ -472,7 +473,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <type>{input.slideType}</type>
     ) ::: List(input.groupSet.map(gs => fromGroupSet(gs))).flatten.flatMap(_.theSeq).toList)
   })
-  override def toGroupSet(input:NodeSeq):GroupSet = Stopwatch.time("GenericXmlSerializer.toGroupSet",() => {
+  override def toGroupSet(input:NodeSeq):GroupSet = Stopwatch.time("GenericXmlSerializer.toGroupSet",{
     val m = parseMeTLContent(input,config)
     val id = getStringByName(input,"id")
     val location = getStringByName(input,"location")
@@ -480,7 +481,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val groups = ((input \ "groups") \ "group").map(gn => toGroup(gn)).toList
     GroupSet(config,id,location,groupingStrategy,groups,m.audiences)
   })
-  override def fromGroupSet(input:GroupSet):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroupSet",() => {
+  override def fromGroupSet(input:GroupSet):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroupSet",{
     metlXmlToXml("groupSet",List(
       <id>{input.id}</id>,
       <location>{input.location}</location>,
@@ -510,14 +511,14 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     }
   }
 
-  override def toGroup(input:NodeSeq):Group = Stopwatch.time("GenericXmlSerializer.toGroup",() => {
+  override def toGroup(input:NodeSeq):Group = Stopwatch.time("GenericXmlSerializer.toGroup",{
     val m = parseMeTLContent(input,config)
     val id = getStringByName(input,"id")
     val location = getStringByName(input,"location")
     val members = ((input \ "members") \ "member").map(_.text).toList
     Group(config,id,location,members,m.audiences)
   })
-  override def fromGroup(input:Group):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroup",() => {
+  override def fromGroup(input:Group):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromGroup",{
     metlXmlToXml("group",List(
       <id>{input.id}</id>,
       <location>{input.location}</location>,
@@ -527,16 +528,16 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     ))
   })
 
-  override def toPermissions(input:NodeSeq):Permissions = Stopwatch.time("GenericXmlSerializer.toPermissions", () => {
+  override def toPermissions(input:NodeSeq):Permissions = Stopwatch.time("GenericXmlSerializer.toPermissions",{
     val studentsCanOpenFriends = getBooleanByName(input,"studentCanOpenFriends")
     val studentsCanPublish = getBooleanByName(input,"studentCanPublish")
     val usersAreCompulsorilySynced = getBooleanByName(input,"usersAreCompulsorilySynced")
     Permissions(config,studentsCanOpenFriends,studentsCanPublish,usersAreCompulsorilySynced)
   })
-  override def fromPermissions(input:Permissions):Node = Stopwatch.time("GenericXmlSerializer.fromPermissions",() => {
+  override def fromPermissions(input:Permissions):Node = Stopwatch.time("GenericXmlSerializer.fromPermissions",{
     <permissions><studentCanOpenFriends>{input.studentsCanOpenFriends}</studentCanOpenFriends><studentCanPublish>{input.studentsCanPublish}</studentCanPublish><usersAreCompulsorilySynced>{input.usersAreCompulsorilySynced}</usersAreCompulsorilySynced></permissions>
   })
-  override def toColor(input:AnyRef):Color = Stopwatch.time("GenericXmlSerializer.toColor", () =>{
+  override def toColor(input:AnyRef):Color = Stopwatch.time("GenericXmlSerializer.toColor",{
     Color.empty
   })
   override def fromColor(input:Color):AnyRef = "%s %s %s %s".format(input.alpha,input.red,input.green,input.blue)

@@ -1,6 +1,7 @@
 package com.metl.data
 
 import com.metl.utils._
+import net.liftweb.common.Logger
 
 // the feedback name should be bound to a particular onReceive function, so that we can use that feedbackName to match particular behaviours (given that the anonymous functions won't work that way for us)
 class MessageBusDefinition(val location:String, val feedbackName:String, val onReceive:(MeTLStanza) => Unit = (s:MeTLStanza) => {}, val onConnectionLost:() => Unit = () => {}, val onConnectionRegained:() => Unit = () => {}){
@@ -21,8 +22,8 @@ abstract class MessageBusProvider {
 abstract class OneBusPerRoomMessageBusProvider extends MessageBusProvider {
   protected lazy val busses = new SynchronizedWriteMap[MessageBusDefinition,MessageBus](scala.collection.mutable.HashMap.empty[MessageBusDefinition,MessageBus],true,(k:MessageBusDefinition) => createNewMessageBus(k))
   protected def createNewMessageBus(definition:MessageBusDefinition):MessageBus
-  override def getMessageBus(definition:MessageBusDefinition) = Stopwatch.time("OneBusPerRoomMessageBusProvider", () => busses.getOrElseUpdate(definition,createNewMessageBus(definition)))
-  override def releaseMessageBus(definition:MessageBusDefinition) = Stopwatch.time("OneBusPerRoomMessageBusProvider", () => busses.remove(definition))
+  override def getMessageBus(definition:MessageBusDefinition) = Stopwatch.time("OneBusPerRoomMessageBusProvider",busses.getOrElseUpdate(definition,createNewMessageBus(definition)))
+  override def releaseMessageBus(definition:MessageBusDefinition) = Stopwatch.time("OneBusPerRoomMessageBusProvider",busses.remove(definition))
   override def sendMessageToBus(busFilter:MessageBusDefinition => Boolean,message:MeTLStanza):Unit = {
     busses.foreach(b => {
       if (busFilter(b._1)){
@@ -32,7 +33,7 @@ abstract class OneBusPerRoomMessageBusProvider extends MessageBusProvider {
   }
 }
 class LoopbackMessageBusProvider extends OneBusPerRoomMessageBusProvider {
-  override def createNewMessageBus(definition:MessageBusDefinition) = Stopwatch.time("LoopbackMessageBusProvider", () => new LoopbackBus(definition,this))
+  override def createNewMessageBus(definition:MessageBusDefinition) = Stopwatch.time("LoopbackMessageBusProvider",new LoopbackBus(definition,this))
 }
 object EmptyMessageBusProvider extends MessageBusProvider{
   def getMessageBus(definition:MessageBusDefinition) = EmptyMessageBus
@@ -47,10 +48,10 @@ abstract class MessageBus(definition:MessageBusDefinition, creator:MessageBusPro
   def notifyConnectionResumed = definition.onConnectionRegained()
   def release = creator.releaseMessageBus(definition)
 }
-class LoopbackBus(definition:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(definition,creator){
+class LoopbackBus(definition:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(definition,creator) with Logger {
   override def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean = {
     val newMessage = stanza.adjustTimestamp(new java.util.Date().getTime)
-    println("LoopbackBus: %s returning: %s -> %s".format(definition,stanza,newMessage))
+    debug("LoopbackBus: %s returning: %s -> %s".format(definition,stanza,newMessage))
     recieveStanzaFromRoom(newMessage)
     true
   }

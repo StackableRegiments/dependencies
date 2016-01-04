@@ -32,6 +32,7 @@ import org.apache.http.params.BasicHttpParams
 import org.apache.http.protocol.BasicHttpContext
 import net.liftweb.util._
 import java.util.Date
+import net.liftweb.common.Logger
 
 case class RedirectException(message:String,exceptions:List[Throwable] = List.empty[Throwable]) extends Exception(message){}
 case class RetryException(message:String,exceptions:List[Throwable] = List.empty[Throwable]) extends Exception(message){}
@@ -74,7 +75,7 @@ case class HTTPResponse(requestUrl:String,actOnConn:(ManagedClientConnection,Str
 	def responseAsString = IOUtils.toString(bytes)
 }
 
-class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient(connMgr) with IMeTLHttpClient {
+class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient(connMgr) with IMeTLHttpClient with Logger {
   protected val connectionTimeout = 120
   //protected val connectionTimeout = 30
   protected val keepAliveTimeout = 120
@@ -131,7 +132,7 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     else
       message.addHeader(new BasicHeader("Host","%s:%s".format(host,port)))
   }
-  protected def withConn(uri:String,actOnConn:(ManagedClientConnection,String,String) => Unit,redirectNumber:Int = 0,retryNumber:Int = 0, exceptionsSoFar:List[Throwable] = List.empty[Throwable],start:Long = new Date().getTime):HTTPResponse = Stopwatch.time("Http.withConn", () => {
+  protected def withConn(uri:String,actOnConn:(ManagedClientConnection,String,String) => Unit,redirectNumber:Int = 0,retryNumber:Int = 0, exceptionsSoFar:List[Throwable] = List.empty[Throwable],start:Long = new Date().getTime):HTTPResponse = Stopwatch.time("Http.withConn", {
     try {
       if ((maxRedirects > 0) && (redirectNumber > maxRedirects || exceptionsSoFar.filter(e => e.isInstanceOf[RedirectException]).length > maxRedirects)) {
 				throw new RedirectException("exceeded configured maximum number of redirects (%s) when requesting: %s".format(maxRedirects,uri),exceptionsSoFar)
@@ -181,14 +182,14 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
   })
   protected def displayMetrics(conn:ManagedClientConnection):Unit = {
     val m = conn.getMetrics
-    println("sent: %s (%s bytes)".format(m.getRequestCount,m.getSentBytesCount))
+    debug("sent: %s (%s bytes)".format(m.getRequestCount,m.getSentBytesCount))
 
-    println("rec'd:     %s (%s bytes)".format(m.getResponseCount,m.getReceivedBytesCount))
+    debug("rec'd:     %s (%s bytes)".format(m.getResponseCount,m.getReceivedBytesCount))
   }
-  override def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postBytes", () => {
+  override def postBytes(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postBytes", {
 		respondToResponse(postBytesExpectingHTTPResponse(uri,bytes,additionalHeaders),additionalHeaders).bytes
 	})
-  override def postBytesExpectingHTTPResponse(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):HTTPResponse = Stopwatch.time("Http.postBytesExpectingHTTPResponse", () => {
+  override def postBytesExpectingHTTPResponse(uri:String,bytes:Array[Byte],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):HTTPResponse = Stopwatch.time("Http.postBytesExpectingHTTPResponse", {
     val bytePostingPost = (conn:ManagedClientConnection,url:String,path:String) => {
 			val correctlyFormedUrl = new URI(url)
       val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
@@ -203,10 +204,10 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     }
     executeHttpConnAction(uri,bytePostingPost)
   })
-  override def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postForm", () => {
+  override def postForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postForm", {
 		respondToResponse(postFormExpectingHTTPResponse(uri,postItemList,additionalHeaders),additionalHeaders).bytes
 	})
-  override def postFormExpectingHTTPResponse(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):HTTPResponse = Stopwatch.time("Http.postFormExpectingHTTPResponse", () => {
+  override def postFormExpectingHTTPResponse(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):HTTPResponse = Stopwatch.time("Http.postFormExpectingHTTPResponse", {
     val formPostingPost = (conn:ManagedClientConnection,url:String,path:String) => {
 			val correctlyFormedUrl = new URI(url)
       val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
@@ -226,10 +227,10 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     }
     executeHttpConnAction(uri,formPostingPost)
   })
-  override def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postUnencodedForm", () => {
+  override def postUnencodedForm(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.postUnencodedForm", {
 		respondToResponse(postUnencodedFormExpectingHttpResponse(uri,postItemList,additionalHeaders),additionalHeaders).bytes
 	})
-  override def postUnencodedFormExpectingHttpResponse(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):HTTPResponse = Stopwatch.time("Http.postUnencodedFormExpectingHTTPResponse", () => {
+  override def postUnencodedFormExpectingHttpResponse(uri:String,postItemList:List[(String,String)],additionalHeaders:List[(String,String)] = List.empty[(String,String)]):HTTPResponse = Stopwatch.time("Http.postUnencodedFormExpectingHTTPResponse", {
     val unencodedFormPostingPost = (conn:ManagedClientConnection,url:String,path:String) => {
 			val correctlyFormedUrl = new URI(url)
       val postMethod = new BasicHttpEntityEnclosingRequest("POST",path){override val expectContinue = false}
@@ -246,17 +247,17 @@ class CleanHttpClient(connMgr:ClientConnectionManager) extends DefaultHttpClient
     }
 		executeHttpConnAction(uri,unencodedFormPostingPost)
   })
-  override def get(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.get", () => {
+  override def get(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.get", {
     getAsString(uri,additionalHeaders)
   })
-  override def getAsString(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.getAsString", () => {
+  override def getAsString(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):String = Stopwatch.time("Http.getAsString", {
     IOUtils.toString(getAsBytes(uri,additionalHeaders))
   })
 
-  override def getAsBytes(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.getAsBytes", () => {
+  override def getAsBytes(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)]):Array[Byte] = Stopwatch.time("Http.getAsBytes", {
 		respondToResponse(getExpectingHTTPResponse(uri,additionalHeaders),additionalHeaders).bytes
   })
-  override def getExpectingHTTPResponse(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)],retriesSoFar:Int = 0, redirectsSoFar:Int = 0,exceptions:List[Throwable] = List.empty[Throwable],startTime:Long = new Date().getTime):HTTPResponse = Stopwatch.time("Http.getExpectingHTTPResponse", () => {
+  override def getExpectingHTTPResponse(uri:String,additionalHeaders:List[(String,String)] = List.empty[(String,String)],retriesSoFar:Int = 0, redirectsSoFar:Int = 0,exceptions:List[Throwable] = List.empty[Throwable],startTime:Long = new Date().getTime):HTTPResponse = Stopwatch.time("Http.getExpectingHTTPResponse", {
     val bytesGettingGet = (conn:ManagedClientConnection,url:String,path:String) => {
       val getMethod = new BasicHttpRequest("GET",path)
 			val correctlyFormedUrl = new URI(url)
@@ -403,21 +404,21 @@ object Http{
     connMgr.setMaxTotal(1000)
     connMgr
   }
-  def getClient = Stopwatch.time("Http.getClient", () => {
+  def getClient = Stopwatch.time("Http.getClient", {
     new CleanHttpClient(getConnectionManager)
   })
-  def getAuthedClient(username:String,password:String,domain:String = "*") = Stopwatch.time("Http.getAuthedClient", () => {
+  def getAuthedClient(username:String,password:String,domain:String = "*") = Stopwatch.time("Http.getAuthedClient", {
     val client = new CleanHttpClient(getConnectionManager)
     client.addAuthorization(domain,username,password)
     client
   })
-  def cloneClient(incoming:CleanHttpClient):CleanHttpClient = Stopwatch.time("Http.cloneClient", () => {
+  def cloneClient(incoming:CleanHttpClient):CleanHttpClient = Stopwatch.time("Http.cloneClient", {
     val client = new CleanHttpClient(getConnectionManager)
     client.setCookies(incoming.getCookies)
     client.setHttpHeaders(incoming.getHttpHeaders)
     client
   })
-  def getClient(headers:List[(String,String)]):CleanHttpClient = Stopwatch.time("Http.getClient(headers)", () => {
+  def getClient(headers:List[(String,String)]):CleanHttpClient = Stopwatch.time("Http.getClient(headers)", {
     val newHeaders = headers.map(tup => new BasicHeader(tup._1,tup._2)).toList
     val client = new CleanHttpClient(getConnectionManager){
       override val connectionTimeout = 3600

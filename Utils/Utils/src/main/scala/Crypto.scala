@@ -13,7 +13,7 @@ import net.liftweb.common._
 
 import scala.xml._
 
-object CryptoTester {
+object CryptoTester extends Logger {
 	val seeds = List("hello all","8charact","16characterslong","a worm","15","a")
 	def testAll(crypto:Crypto) = {
 		seeds.map(s => testSymmetric(crypto,s))
@@ -23,24 +23,24 @@ object CryptoTester {
 	}
 	def testSymmetric(c:Crypto,input:String):Boolean = {
 		try {
-			println("testSymmetric: %s, %s".format(c,input))
+		  debug("testSymmetric: %s, %s".format(c,input))
 			val inputBytes = input.getBytes
 			val s1 = c.encryptCred(inputBytes)
 			val s2 = c.decryptCred(s1)
 			val s3 = new String(s2).trim == input.trim
-			List(s1,s2,s3).foreach(li => println("step: %s".format(li.toString)))
-			println("orig: %s, res: %s".format(input.trim,new String(s2).trim))
+			List(s1,s2,s3).foreach(li => trace("step: %s".format(li.toString)))
+			debug("orig: %s, res: %s".format(input.trim,new String(s2).trim))
 			s3
 		} catch {
 			case e:Throwable => {
-				println("step: false")
+				error("step: false",e)
 				false
 			}
 		}
 	}
 	def testCommutative(c1:Crypto,c2:Crypto,input:String):Boolean = {
 		try {
-			println("testCommutative, %s, %s".format(c1,input))
+			debug("testCommutative, %s, %s".format(c1,input))
 			val inputBytes = input.getBytes
 			val s1 = c1.encryptCred(inputBytes)
 			val s2 = c2.encryptCred(s1)
@@ -50,12 +50,12 @@ object CryptoTester {
 			val s6 = c2.encryptCred(inputBytes)
 			val s7 = c1.encryptCred(s6)
 			val s8 = new String(s7).trim == new String(s2).trim
-			List(s1,s2,s3,s4,s5,s6,s7,s8).foreach(li => println("step: %s".format(li.toString)))
-			println("orig: %s, res: %s".format(input.trim,new String(s4).trim))
+			List(s1,s2,s3,s4,s5,s6,s7,s8).foreach(li => trace("step: %s".format(li.toString)))
+			debug("orig: %s, res: %s".format(input.trim,new String(s4).trim))
 			s5 && s8
 		} catch {
 			case e:Throwable => {
-				println("step: false")
+				error("step: false",e)
 				false
 			}
 		}
@@ -88,7 +88,7 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 	var keyGenerator:Option[Object] = None
 
 	val cipher = List(cipherName,cipherMode,padding).filter(i => i.length > 0).mkString("/")
-	val (ecipher,dcipher) = Stopwatch.time("Crypto(%s,%s,%s)".format(cipher,inputKey,inputIv), () => {
+	val (ecipher,dcipher) = Stopwatch.time("Crypto(%s,%s,%s)".format(cipher,inputKey,inputIv), {
 		val eciph = Cipher.getInstance(cipher)
 		val dciph = Cipher.getInstance(cipher)
 
@@ -180,7 +180,7 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 		}
 		(eciph,dciph)
 	})
-	def cloneCrypto = Stopwatch.time("Crypto.cloneCrypto",() => new Crypto(cipherName,cipherMode,padding,inputKey,inputIv))
+	def cloneCrypto = Stopwatch.time("Crypto.cloneCrypto",new Crypto(cipherName,cipherMode,padding,inputKey,inputIv))
 
     override def toString = "Crypto(%s,%s,%s)".format(cipher,inputKey,inputIv)
 
@@ -190,20 +190,20 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 		val b64Encoder = new sun.misc.BASE64Encoder()
 		b64Encoder.encode(encryptCred(plainText.getBytes))
 	}
-	def encryptCred(plainText:Array[Byte]):Array[Byte] = Stopwatch.time("Crypto.encryptCred",() => {
+	def encryptCred(plainText:Array[Byte]):Array[Byte] = Stopwatch.time("Crypto.encryptCred",{
 	  ecipher.doFinal(plainText)
 	})
 	def decryptCred(encryptedText:String):String = {
 		val b64Encoder = new sun.misc.BASE64Decoder()
 		new String(decryptCred(b64Encoder.decodeBuffer(encryptedText)))
 	}
-	def decryptCred(encryptedText:Array[Byte]):Array[Byte] = Stopwatch.time("Crypto.decryptCred", () => {
+	def decryptCred(encryptedText:Array[Byte]):Array[Byte] = Stopwatch.time("Crypto.decryptCred", {
 	  dcipher.doFinal(encryptedText)
 	})
 	def decryptToken(username:String, encryptedText:String):String = {
 		"not yet implemented"
 	}
-	def getXmlPublicKey:Node = Stopwatch.time("Crypto.getXmlPublicKey", () => {
+	def getXmlPublicKey:Node = Stopwatch.time("Crypto.getXmlPublicKey", {
 		privateKey.map(pk => {
 			val b64Encoder = new sun.misc.BASE64Encoder()
 			val privKey = pk.asInstanceOf[RSAPrivateCrtKey]
@@ -214,7 +214,7 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 			<RSAKeyValue><Modulus>{mod}</Modulus><Exponent>{pubExp}</Exponent></RSAKeyValue>
 		}).getOrElse(<NoKey/>)
 	})
-	def getXmlPrivateKey:Node = Stopwatch.time("Crypto.getXmlPrivateKey", () => {
+	def getXmlPrivateKey:Node = Stopwatch.time("Crypto.getXmlPrivateKey", {
 		privateKey.map(pk => {
 			val b64Encoder = new sun.misc.BASE64Encoder()
 			val privKey = pk.asInstanceOf[RSAPrivateCrtKey]
@@ -231,7 +231,7 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 			<RSAKeyValue><Modulus>{mod}</Modulus><Exponent>{pubExp}</Exponent><P>{p}</P><Q>{q}</Q><DP>{dp}</DP><DQ>{dq}</DQ><InverseQ>{iq}</InverseQ><D>{d}</D></RSAKeyValue>
 		}).getOrElse(<NoKey/>)
 	})
-	def getXmlKey:Node = Stopwatch.time("Crypto.getXmlKey", () => {
+	def getXmlKey:Node = Stopwatch.time("Crypto.getXmlKey", {
 		key.map(k => {
 			val internalKeyBytes = k.asInstanceOf[java.security.Key].getEncoded
 			val b64Encoder = new sun.misc.BASE64Encoder()
@@ -239,7 +239,7 @@ class Crypto(cipherName:String = "AES",cipherMode:String = "CBC",padding:String 
 			<KeyPair><Key>{internalKey}</Key></KeyPair>
 		}).getOrElse(<NoKey/>)
 	})
-	def getXmlKeyAndIv:Node = Stopwatch.time("Crypto.getXmlKeyAndIv", () => {
+	def getXmlKeyAndIv:Node = Stopwatch.time("Crypto.getXmlKeyAndIv", {
 		key.map(k => {
 			val b64Encoder = new sun.misc.BASE64Encoder()
 			val internalKey = b64Encoder.encode(k.asInstanceOf[java.security.Key].getEncoded)

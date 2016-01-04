@@ -1,5 +1,5 @@
 name := "common-utils"
-version := "0.2.0"
+version := "0.3.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"
