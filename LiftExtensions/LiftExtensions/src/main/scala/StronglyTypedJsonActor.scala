@@ -112,7 +112,7 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
 			case funcArgs:JValue if matchesRequirements(funcArgs) => {
 				val (reqId,deconstructedArgs) = deconstructArgs(funcArgs)
 				try {
-					val output = Stopwatch.time("MeTLActor.ClientSideFunction.%s.serverSideFunc".format(name),() => {
+					val output = Stopwatch.time("MeTLActor.ClientSideFunction.%s.serverSideFunc".format(name),{
 						serverSideFunc(deconstructedArgs)
 					})
 					returnResultFunction.map(rrf => {
@@ -135,7 +135,7 @@ abstract class StronglyTypedJsonActor extends CometActor with CometListener {
   val functions = NodeSeq.fromSeq(strongFuncs.values.map(_.jsCreationFunc).toList)
 	override def render = NodeSeq.Empty
 	override def fixedRender = {
-		Stopwatch.time("StronglyTypedJsonActor.fixedRender", () => functions)
+		Stopwatch.time("StronglyTypedJsonActor.fixedRender", functions)
 	}
 	override def receiveJson = {
 		case ClientUpdate(commandName,commandParams) => {
