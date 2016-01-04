@@ -3,6 +3,7 @@ package com.metl.metl2011
 import com.metl.data._
 import com.metl.utils._
 import scala.xml._
+import net.liftweb.common.Logger
 
 object MeTL2011ServerConfiguration{
   def initialize = List(
@@ -17,7 +18,7 @@ object MeTL2015ServerConfiguration{
   ).foreach(sc => ServerConfiguration.addServerConfigurator(sc))
 }
 
-class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentialFunc:()=>Tuple2[String,String],conversationBusCredentialFunc:()=>Tuple2[String,String],httpCredentialFunc:()=>Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
+class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentialFunc:()=>Tuple2[String,String],conversationBusCredentialFunc:()=>Tuple2[String,String],httpCredentialFunc:()=>Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated) with Logger {
   protected val http:HttpProvider = new DynamicallyAuthedHttpProvider(httpCredentialFunc)
   protected lazy val history = new MeTL2011History(name,http)
   protected lazy val messageBusProvider = new PooledXmppProvider(name,hostname,messageBusCredentialFunc,xmppDomainName)
@@ -61,7 +62,7 @@ class MeTL2011BackendAdaptor(name:String,hostname:String,xmppDomainName:String,o
 		val uri = "%s/upload_nested.yaws?path=%s&overwrite=%s&filename=%s".format(rootAddress,generatePath(jid),overwrite,generateFilename(userGeneratedId))	
 		val response = http.getClient.postBytes(uri,data)
 		val responseString = org.apache.commons.io.IOUtils.toString(response)
-		println("postedResource response: %s".format(responseString))
+		debug("postedResource response: %s".format(responseString))
 		((XML.loadString(responseString) \\ "resource").head \ "@url").text
 	}
 }
@@ -123,7 +124,7 @@ object MeTL2015BackendAdaptorConfigurator extends ServerConfigurator{
 }
 
 
-class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversationDetailsUpdated:Conversation=>Unit,httpCredentialFunc:()=>Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated){
+class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversationDetailsUpdated:Conversation=>Unit,httpCredentialFunc:()=>Tuple2[String,String]) extends ServerConfiguration(name,hostname,onConversationDetailsUpdated) with Logger {
   protected val http = new DynamicallyAuthedHttpProvider(httpCredentialFunc)
   protected val history = new MeTL2011History(name,http)
   protected val messageBusProvider = new LoopbackMessageBusProvider
@@ -163,7 +164,7 @@ class TransientMeTL2011BackendAdaptor(name:String,hostname:String,onConversation
 		val uri = "%s/upload_nested.yaws?path=%s&overwrite=%s&filename=%s".format(rootAddress,generatePath(jid),overwrite,generateFilename(userGeneratedId))	
 		val response = http.getClient.postBytes(uri,data)
 		val responseString = org.apache.commons.io.IOUtils.toString(response)
-		println("postedResource response: %s".format(responseString))
+		debug("postedResource response: %s".format(responseString))
 		((XML.loadString(responseString) \\ "resource").head \ "@url").text
 	}
 

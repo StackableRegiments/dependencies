@@ -12,19 +12,19 @@ import Privacy._
 import javax.imageio._
 import java.io.{ByteArrayInputStream,ByteArrayOutputStream}
 
-class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transcodePng:Boolean = false) extends GenericXmlSerializer(configName){
+class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transcodePng:Boolean = false) extends GenericXmlSerializer(configName) with Logger {
 
   private val imageCache = new SynchronizedWriteMap[String,Array[Byte]](scala.collection.mutable.HashMap.empty[String,Array[Byte]],true,(k:String) => config.getResource(k))
-  private def getCachedImage(url:String) = Stopwatch.time("MeTL2011XmlSerializer.getCachedImage", () => imageCache.getOrElseUpdate(url,config.getResource(url)))
+  private def getCachedImage(url:String) = Stopwatch.time("MeTL2011XmlSerializer.getCachedImage", imageCache.getOrElseUpdate(url,config.getResource(url)))
   private val metlUtils = new MeTL2011Utils(configName)
-  override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLImage",() => {
+  override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLImage",{
     val newSource = input.source.map(u => metlUtils.deabsolutizeUri(u,config)).getOrElse(Empty)
     val newImage = MeTLImage(input.server,input.author,input.timestamp,input.tag,newSource,input.imageBytes,input.pngBytes,input.width,input.height,input.x,input.y,input.target,input.privacy,input.slide,input.identity,input.audiences,input.scaleFactorX,input.scaleFactorY)
-    //println("serializing newImage for xmpp: %s".format(newImage))
+    trace("serializing newImage for xmpp: %s".format(newImage))
     super.fromMeTLImage(newImage)
   })
-  override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("MeTL2011XmlSerializer.toMeTLImage",() => {
-    //println("deserializing image from xmpp: %s".format(input))
+  override def toMeTLImage(input:NodeSeq):MeTLImage = Stopwatch.time("MeTL2011XmlSerializer.toMeTLImage",{
+    trace("deserializing image from xmpp: %s".format(input))
     val m = parseMeTLContent(input)
     val c = parseCanvasContent(input)
     val tag = getStringByName(input,"tag")
@@ -55,7 +55,7 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
     val y = getDoubleByName(input,"y")
     MeTLImage(config,m.author,m.timestamp,tag,source,imageBytes,pngBytes,width,height,x,y,c.target,c.privacy,c.slide,c.identity,m.audiences)
   })
-  override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("MeTL2011XmlSerializer.toMeTLCommand", () => {
+  override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("MeTL2011XmlSerializer.toMeTLCommand",{
     val m = parseMeTLContent(input)
     val body = input match {
       case t:Text => t.toString.split(" ")
@@ -66,11 +66,11 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
     val parameters = body.tail.toList
     MeTLCommand(config,m.author,m.timestamp,comm,parameters,m.audiences)
   })
-  override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLCommand", () => {
+  override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("MeTL2011XmlSerializer.fromMeTLCommand",{
     <body>{Text((input.command :: input.commandParameters).mkString(" "))}</body>
   })
-  override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission", () => {
-		//println("submission attempted: %s".format(input))
+  override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission",{
+		trace("submission attempted: %s".format(input))
     val m = parseMeTLContent(input)
     val c = parseCanvasContent(input)
     val title = getStringByName(input,"title")
@@ -98,8 +98,8 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
     }).toList
     MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity,m.audiences)
   })
-  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MeTL2011XmlSerializer.toMeTLQuiz", () => {
-		//println("quiz attempted: %s".format(input))
+  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MeTL2011XmlSerializer.toMeTLQuiz",{
+		trace("quiz attempted: %s".format(input))
     val m = parseMeTLContent(input)
 		try {
 			val created = getLongByName(input,"created")
@@ -123,13 +123,13 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
 			MeTLQuiz(config,m.author,m.timestamp,created,question,id,url,quizImage,isDeleted,options,m.audiences)
 		} catch {
 			case e:Throwable => {
-				println("failed to construct MeTLQuiz: %s -> %s".format(e,e.getMessage))
+				error("failed to construct MeTLQuiz",e)
 				MeTLQuiz(config,m.author,m.timestamp,0L,"","",Empty,Empty,true,List.empty[QuizOption],m.audiences)	
 			}
 		}
   })
-  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("MeTL2011XmlSerializer.toMeTLFile", () => {
-		//println("quiz attempted: %s".format(input))
+  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("MeTL2011XmlSerializer.toMeTLFile",{
+		trace("quiz attempted: %s".format(input))
     val m = parseMeTLContent(input)
 		try {
       val name = getStringByName(input,"name")
@@ -147,7 +147,7 @@ class MeTL2011XmlSerializer(configName:String,cacheImages:Boolean = false,transc
 			MeTLFile(config,m.author,m.timestamp,name,id,url,bytes,m.audiences)
 		} catch {
 			case e:Throwable => {
-				println("failed to construct MeTLQuiz: %s -> %s".format(e,e.getMessage))
+				error("failed to construct MeTLQuiz",e)
         MeTLFile.empty
 			}
 		}

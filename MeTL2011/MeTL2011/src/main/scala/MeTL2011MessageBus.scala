@@ -6,21 +6,22 @@ import com.metl.xmpp._
 
 import java.util.Random
 import net.liftweb.util.Helpers._
+import net.liftweb.common.Logger
 import scala.xml._
 import java.util.Date
 import scala.collection.mutable.HashMap
 
-class XmppProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) extends OneBusPerRoomMessageBusProvider{
-  override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("XmppProvider.createNewMessageBus", () => {
+class XmppProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) extends OneBusPerRoomMessageBusProvider with Logger {
+  override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("XmppProvider.createNewMessageBus",{
     new XmppMessageBus(configName,hostname,credentialsFunc,domainName,d,this)
   })
 	def getHostname = hostname
 	def getDomainName = domainName
 }
 
-class PooledXmppProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) extends OneBusPerRoomMessageBusProvider{
+class PooledXmppProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) extends OneBusPerRoomMessageBusProvider with Logger {
 	protected val connMgr = new XmppConnProvider(configName,hostname,credentialsFunc,domainName)
-  override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("PooledXmppProvider.createNewMessageBus", () => {
+  override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("PooledXmppProvider.createNewMessageBus",{
 		val conn = connMgr.getConn
     val bus = new XmppSharedConnMessageBus(configName,hostname,credentialsFunc,domainName,d,this)
 		bus.addConn(conn)
@@ -31,30 +32,30 @@ class PooledXmppProvider(configName:String,hostname:String,credentialsFunc:()=>T
 	def getDomainName = domainName
 }
 
-class XmppConnProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) {
+class XmppConnProvider(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domainName:String) extends Logger {
 	protected var conns = List.empty[MeTL2011XmppMultiConn]	
 	protected val maxCount = 20	
 	def getConn:MeTL2011XmppMultiConn = {
-		//println("XMPPConnProvider:getConn")
+		debug("XMPPConnProvider:getConn")
 		conns.find(c => c.getCount < maxCount).getOrElse({
 			val now = new Date().getTime.toString
 			val newConn = new MeTL2011XmppMultiConn(credentialsFunc,"metlxConnector_"+now,hostname,domainName,configName,this)
 			conns = newConn :: conns
-			//println("XMPPConnProvider:getConn.createConn(%s)".format(newConn))
+			debug("XMPPConnProvider:getConn.createConn(%s)".format(newConn))
 			newConn
 		})
 	}
 	def releaseConn(c:MeTL2011XmppMultiConn) = {
-		//println("XMPPConnProvider:releaseConn")
+		debug("XMPPConnProvider:releaseConn")
 		if (c.getCount < 1){
 			conns = conns.filterNot(conn => conn == c)
-			//println("XMPPConnProvider:releaseConn.disconnectingConn(%s)".format(c))
+			trace("XMPPConnProvider:releaseConn.disconnectingConn(%s)".format(c))
     	c.disconnectFromXmpp
 		}
 	}
 }
 
-class MeTL2011XmppMultiConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,configName:String,creator:XmppConnProvider) extends XmppConnection[MeTLData](cf,r,h,d,None){
+class MeTL2011XmppMultiConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,configName:String,creator:XmppConnProvider) extends XmppConnection[MeTLData](cf,r,h,d,None) with Logger {
 	protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
 	private lazy val config = ServerConfiguration.configForName(configName)
 	
@@ -68,19 +69,19 @@ class MeTL2011XmppMultiConn(cf:()=>Tuple2[String,String],r:String,h:String,d:Str
 
 	override def onConnLost = {
 		subscribedBusses.values.foreach(sbl => sbl.keys.foreach(mbd => {
-			println("connLost: %s -> %s".format(mbd.location,mbd.feedbackName))
+			debug("connLost: %s -> %s".format(mbd.location,mbd.feedbackName))
 			mbd.onConnectionLost()
 		}))
 	}
 	override def onConnRegained = {
 		subscribedBusses.values.foreach(sbl => sbl.keys.foreach(mbd => {
-			println("connRegained: %s -> %s".format(mbd.location,mbd.feedbackName))
+			debug("connRegained: %s -> %s".format(mbd.location,mbd.feedbackName))
 			mbd.onConnectionRegained()
 		}))
 	}	
 
 	def addMessageBus(d:MessageBusDefinition,m:MessageBus) = {
-		//println("XMPPMultiConn(%s):addMessageBus(%s)".format(this,d))
+		debug("XMPPMultiConn(%s):addMessageBus(%s)".format(this,d))
 		val oldLocMap = subscribedBusses.get(d.location).getOrElse(HashMap.empty[MessageBusDefinition,MessageBus])
 		oldLocMap.put(d,m) match {
 			case Some(_) => {}
@@ -89,15 +90,15 @@ class MeTL2011XmppMultiConn(cf:()=>Tuple2[String,String],r:String,h:String,d:Str
 		subscribedBusses.put(d.location,oldLocMap)
 	}
 	def removeMessageBus(d:MessageBusDefinition) = {
-		//println("XMPPMultiConn(%s):removeMessageBus(%s)".format(this,d))
+		debug("XMPPMultiConn(%s):removeMessageBus(%s)".format(this,d))
 		subscriptionCount -= 1
 		subscribedBusses(d.location).remove(d)
 		creator.releaseConn(this)
 	}
 	override def onMessageRecieved(room:String, messageType:String, message:MeTLData) = {
-		//println("XMPPMultiConn(%s):onMessageReceived(%s,%s)".format(this,room,messageType))
+		trace("XMPPMultiConn(%s):onMessageReceived(%s,%s)".format(this,room,messageType))
 		val targets = subscribedBusses(room).values
-		//println("XMPPMultiConn(%s):onMessageReceived.sendTo(%s)".format(this,targets))
+		trace("XMPPMultiConn(%s):onMessageReceived.sendTo(%s)".format(this,targets))
     message match {
       case s:MeTLStanza => targets.foreach(_.recieveStanzaFromRoom(s))
       case _ => {}
@@ -106,9 +107,9 @@ class MeTL2011XmppMultiConn(cf:()=>Tuple2[String,String],r:String,h:String,d:Str
 	}
 	override def onUntypedMessageRecieved(room:String,message:String) = {
     val parts = message.split(" ")
-		//println("XMPPMultiConn(%s):onUntypedMessageReceived(%s,%s,%s)".format(this,room,message))
+		trace("XMPPMultiConn(%s):onUntypedMessageReceived(%s,%s,%s)".format(this,room,message))
 		val targets = subscribedBusses(room).values
-		//println("XMPPMultiConn(%s):onUntypedMessageReceived.sendTo(%s)".format(this,targets))
+		trace("XMPPMultiConn(%s):onUntypedMessageReceived.sendTo(%s)".format(this,targets))
 		targets.foreach(mb => mb.recieveStanzaFromRoom(MeTLCommand(config,"unknown",new java.util.Date().getTime,parts.head,parts.tail.toList)))
 	}
 	override lazy val ignoredTypes = List("metlMetaData")
@@ -129,7 +130,7 @@ class MeTL2011XmppMultiConn(cf:()=>Tuple2[String,String],r:String,h:String,d:Str
   })
 }
 
-class MeTL2011XmppConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLData](cf,r,h,d,None,bus.notifyConnectionLost _,bus.notifyConnectionResumed _){
+class MeTL2011XmppConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,configName:String,bus:MessageBus) extends XmppConnection[MeTLData](cf,r,h,d,None,bus.notifyConnectionLost _,bus.notifyConnectionResumed _) with Logger {
   protected lazy val serializer = new MeTL2011XmlSerializer(configName,true)
   private lazy val config = ServerConfiguration.configForName(configName)
 
@@ -137,12 +138,12 @@ class MeTL2011XmppConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,c
 
 	override def onConnLost = {
 		val mbd = bus.getDefinition
-		println("singleConnLost: %s -> %s".format(mbd.location,mbd.feedbackName))
+		debug("singleConnLost: %s -> %s".format(mbd.location,mbd.feedbackName))
 		mbd.onConnectionLost()
 	}
 	override def onConnRegained = {
 		val mbd = bus.getDefinition
-		println("singleConnRegained: %s -> %s".format(mbd.location,mbd.feedbackName))
+		debug("singleConnRegained: %s -> %s".format(mbd.location,mbd.feedbackName))
 		mbd.onConnectionRegained()
 	}	
 
@@ -174,16 +175,16 @@ class MeTL2011XmppConn(cf:()=>Tuple2[String,String],r:String,h:String,d:String,c
   })
 }
 
-class XmppSharedConnMessageBus(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
+class XmppSharedConnMessageBus(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator) with Logger {
   val jid = d.location
 	protected var xmpp:Option[MeTL2011XmppMultiConn] = None
 	def addConn(conn:MeTL2011XmppMultiConn) = {
-		//println("XMPPSharedConnMessageBus(%s):addConn(%s)".format(d,conn))
+		debug("XMPPSharedConnMessageBus(%s):addConn(%s)".format(d,conn))
 		xmpp = Some(conn)
 		xmpp.map(x => x.joinRoom(jid,this.hashCode.toString))
 	}
-  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean = Stopwatch.time("XmppSharedConnMessageBus.sendStanzaToRoom", () => {
-		//println("XMPPSharedConnMessageBus(%s):sendStanzaToRoom(%s)".format(d,xmpp))
+  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean = Stopwatch.time("XmppSharedConnMessageBus.sendStanzaToRoom",{
+		debug("XMPPSharedConnMessageBus(%s):sendStanzaToRoom(%s)".format(d,xmpp))
 		stanza match {
 			case i:MeTLInk =>{
 				xmpp.map(x => x.sendMessage(jid,"ink",i))
@@ -228,13 +229,13 @@ class XmppSharedConnMessageBus(configName:String,hostname:String,credentialsFunc
 		}
   })
   override def release = {
-		//println("XMPPSharedConnMessageBus(%s):release".format(d))
+		debug("XMPPSharedConnMessageBus(%s):release".format(d))
 		xmpp.map(x => x.leaveRoom(jid,this.hashCode.toString))
 		xmpp.map(x => x.removeMessageBus(d))
     super.release
   }
 }
-class XmppMessageBus(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator){
+class XmppMessageBus(configName:String,hostname:String,credentialsFunc:()=>Tuple2[String,String],domain:String,d:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(d,creator) with Logger {
   val jid = d.location
   lazy val xmpp = new MeTL2011XmppConn(credentialsFunc,"metlxConnector_%s".format(new Date().getTime.toString),hostname,domain,configName,this)
   xmpp.joinRoom(jid,this.hashCode.toString)

@@ -6,35 +6,37 @@ import java.io.ByteArrayInputStream
 
 import net.liftweb.util._
 import org.apache.commons.io.IOUtils
-class MeTL2011CachedConversations(configName:String, http:HttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) {
+import net.liftweb.common.Logger 
+
+class MeTL2011CachedConversations(configName:String, http:HttpProvider, messageBusProvider:MessageBusProvider, onConversationDetailsUpdated:(Conversation) => Unit) extends MeTL2011Conversations(configName,"",http,messageBusProvider,onConversationDetailsUpdated) with Logger {
   override val mbDef = new MessageBusDefinition("global","conversationUpdating",
 		(m:MeTLStanza)=>{
-			println("Message received from the conversationUpdater's message bus: %s".format(m))
+			trace("Message received from the conversationUpdater's message bus: %s".format(m))
 			receiveConversationDetailsUpdated(m)
 		},
 		()=>{
-			println("MeTL2011CachedConversations connection lost")
+			debug("MeTL2011CachedConversations connection lost")
 		},
 		()=>{
-			println("MeTL2011CachedConversations connection regained")
+			debug("MeTL2011CachedConversations connection regained")
 			precacheConversations
 		}
 	)
   val conversations = scala.collection.mutable.HashMap.empty[Int,Conversation]
 
-  private def precacheConversations = Stopwatch.time("MeTL2011CachedConversations.precacheConversations", () => {
+  private def precacheConversations = Stopwatch.time("MeTL2011CachedConversations.precacheConversations", {
 		try {
-			println("recaching conversations")
+			trace("recaching conversations")
 			val directoryUrl = "%s/Structure/".format(rootAddress)
 			http.getClient.get(directoryUrl)
 			val stream = new ByteArrayInputStream(http.getClient.getAsBytes("%s/all.zip".format(directoryUrl)))
 			Unzipper.unzip(stream).map(x => {
 				serializer.toConversation(x)
 			}).filterNot(_ == Conversation.empty).foreach(c => conversations.put(c.jid,c))
-			println("recaching conversations completed")
+			trace("recaching conversations completed")
 		} catch {
 			case e:Throwable => {
-				println("recaching conversations failed: %s".format(e.getMessage))
+				error("recaching conversations failed",e)
 			}
 		}
   })
@@ -44,7 +46,7 @@ class MeTL2011CachedConversations(configName:String, http:HttpProvider, messageB
     true
   }
 
-  override def search(query:String):List[Conversation] = Stopwatch.time("CachedConversations.search",() => {
+  override def search(query:String):List[Conversation] = Stopwatch.time("CachedConversations.search",{
     if(query == null || query.length == 0) List.empty[Conversation]
     else{
       val lq = query.toLowerCase
@@ -66,15 +68,15 @@ class MeTL2011CachedConversations(configName:String, http:HttpProvider, messageB
     }
   }
   override def pushConversationToServer(conversation:Conversation):Conversation = {
-    //println("pushConversationToServer (cache): %s".format(conversation))
+    //debug("pushConversationToServer (cache): %s".format(conversation))
     val pushedConv = super.pushConversationToServer(conversation)
     conversations.put(pushedConv.jid,pushedConv)
-    //println("pushConversationToServer (cache): %s".format(pushedConv))
+    //debug("pushConversationToServer (cache): %s".format(pushedConv))
     pushedConv
   }
   /*
    // this is the correct way of doing it, but too slow for the large bulk of conversations in the prod dataset
-   override def conversationFor(slide:Int):Int = Stopwatch.time("CachedConversations.conversationFor", () => {
+   override def conversationFor(slide:Int):Int = Stopwatch.time("CachedConversations.conversationFor", {
    conversations.find{
    case (jid,c) => {
    c.slides.exists(s => s.id == slide)
@@ -83,19 +85,19 @@ class MeTL2011CachedConversations(configName:String, http:HttpProvider, messageB
    });
    */
   override def receiveConversationDetailsUpdated(m:MeTLStanza):Option[Conversation] = {
-    //println("receiveConversationDetailsUpdated (cache): %s".format(m))
+    //debug("receiveConversationDetailsUpdated (cache): %s".format(m))
     m match {
       case c:MeTLCommand if c.command == "/UPDATE_CONVERSATION_DETAILS" && c.commandParameters.length == 1 => {
         try{
           val conversation = super.detailsOf(c.commandParameters(0).toInt)
-          //println("updating cache: %s".format(conversation))
+          //trace("updating cache: %s".format(conversation))
           conversations.put(conversation.jid,conversation)
           onConversationDetailsUpdated(conversation)
           Some(conversation)
         }
         catch {
           case e:Throwable =>{
-            println("threw exception: "+e.getMessage)
+            error("receiveConversationDetailsUpdated threw exception",e)
             None
           }
         }
@@ -111,20 +113,20 @@ class MeTL2011CachedConversations(configName:String, http:HttpProvider, messageB
   }
 }
 
-class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:HttpProvider,messageBusProvider:MessageBusProvider,onConversationDetailsUpdated:(Conversation) => Unit) extends ConversationRetriever(configName,onConversationDetailsUpdated) {
+class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:HttpProvider,messageBusProvider:MessageBusProvider,onConversationDetailsUpdated:(Conversation) => Unit) extends ConversationRetriever(configName,onConversationDetailsUpdated) with Logger {
   lazy val utils = new MeTL2011Utils(configName)
   lazy val serializer = new MeTL2011XmlSerializer(configName)
   lazy val rootAddress = "https://%s:1188".format(config.host)
   protected val mbDef = new MessageBusDefinition("global","conversationUpdating",
 		(m:MeTLStanza)=>{
-			println("Message received from the conversationUpdater's message bus: %s".format(m))
+			trace("Message received from the conversationUpdater's message bus: %s".format(m))
 			receiveConversationDetailsUpdated(m)
 		},
 		()=>{
-			println("MeTL2011Conversations connection lost")
+			debug("MeTL2011Conversations connection lost")
 		},
 		()=>{
-			println("MeTL2011Conversations connection regained")
+			debug("MeTL2011Conversations connection regained")
 		}
 	)
   lazy val mb = messageBusProvider.getMessageBus(mbDef)
@@ -144,7 +146,7 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Ht
         }
         catch {
           case e:Throwable =>{
-            println("threw exception: "+e.getMessage)
+            error("receiveConversationDetailsUpdated threw exception",e)
             None
           }
         }
@@ -155,10 +157,10 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Ht
     }
   }
 
-  override def search(query:String):List[Conversation] = Stopwatch.time("Conversations.search", () => {
+  override def search(query:String):List[Conversation] = Stopwatch.time("Conversations.search",{
     (scala.xml.XML.loadString(http.getClient.get(searchBaseUrl + "search?query=" + Helpers.urlEncode(query))) \\ "conversation").map(c => serializer.toConversation(c)).toList
   })
-  override def conversationFor(slide:Int):Int = Stopwatch.time("Conversations.conversationFor",() => {
+  override def conversationFor(slide:Int):Int = Stopwatch.time("Conversations.conversationFor",{
     config.name match {
       case "reifier" => ((slide / 1000) * 1000) + 400
       case "deified" => ((slide / 1000) * 1000) + 400
@@ -166,8 +168,8 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Ht
       case _ => (slide /1000) * 1000
     }
   })
-  override def detailsOf(jid:Int):Conversation = Stopwatch.time("Conversations.detailsOf",() => internalDetailsOf(jid))
-  private def internalDetailsOf(jid:Int):Conversation = Stopwatch.time("Conversations.internalDetailsOf", () => {
+  override def detailsOf(jid:Int):Conversation = Stopwatch.time("Conversations.detailsOf",internalDetailsOf(jid))
+  private def internalDetailsOf(jid:Int):Conversation = Stopwatch.time("Conversations.internalDetailsOf",{
     try{
       (scala.xml.XML.loadString(http.getClient.get("https://"+config.host+":1188/Structure/"+utils.stem(jid.toString)+"/"+jid.toString+"/details.xml")) \\ "conversation").headOption.map(c => serializer.toConversation(c)).getOrElse(Conversation.empty)
     }
@@ -240,19 +242,19 @@ class MeTL2011Conversations(configName:String, val searchBaseUrl:String, http:Ht
     }
   }
   protected def pushConversationToServer(conversation:Conversation):Conversation = {
-    //println("pushConversationToServer (proposed): %s".format(conversation))
+    //trace("pushConversationToServer (proposed): %s".format(conversation))
     val jid = conversation.jid
     val bytes = serializer.fromConversation(conversation).toString.getBytes("UTF-8")
     val url = "%s/upload_nested.yaws?overwrite=true&path=%s&filename=details.xml".format(rootAddress,Helpers.urlEncode("Structure/%s/%s".format(utils.stem(jid.toString),jid.toString)))
     http.getClient.postBytes(url,bytes)
     val remote = internalDetailsOf(jid)
     notifyXmpp(remote)
-    //println("pushConversationToServer (confirmed): %s".format(remote))
+    //trace("pushConversationToServer (confirmed): %s".format(remote))
     remote
   }
   protected def notifyXmpp(newConversation:Conversation) = {
 		val stanza = MeTLCommand(config,newConversation.author,new java.util.Date().getTime,"/UPDATE_CONVERSATION_DETAILS",List(newConversation.jid.toString))
-		println("conversationUpdater sent message: %s".format(stanza))
+		trace("conversationUpdater sent message: %s".format(stanza))
     mb.sendStanzaToRoom(stanza)
   }
   private def getNewJid:Int = http.getClient.get("https://"+config.host+":1188/primarykey.yaws").trim.toInt

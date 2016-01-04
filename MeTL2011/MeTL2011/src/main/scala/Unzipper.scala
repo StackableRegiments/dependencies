@@ -3,11 +3,12 @@ package com.metl.metl2011
 import java.io._
 import org.apache.commons.io.IOUtils
 import net.liftweb.util.Helpers._
+import net.liftweb.common.Logger
 import org.apache.commons.compress.archivers.zip._
 import xml.XML
 import collection.mutable.ListBuffer
 
-object Unzipper {
+object Unzipper  extends Logger{
   def unzip(input:InputStream):collection.mutable.ListBuffer[xml.Node] = {
     try {
       val bytes = IOUtils.toByteArray(input)
@@ -21,7 +22,7 @@ object Unzipper {
             details += XML.loadString(zipString)
           } catch {
             case e:Throwable => {
-              println("failed to xmlify entry %s from input stream %s, with exception: %s".format(zipString,input,e))
+              error("failed to xmlify entry %s from input stream %s".format(zipString,input),e)
             }
           }
         }
@@ -31,7 +32,7 @@ object Unzipper {
       details
     } catch {
       case e:Throwable => {
-        println("failed to decompress input stream %s, with exception: %s".format(input,e))
+        error("failed to decompress input stream %s".format(input),e)
         throw e
       }
     }
