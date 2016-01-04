@@ -10,10 +10,10 @@ object H2Constants{
 	val author = 64
 	val room = 64
 	val target = 64
-	val identity = 256
+	val identity = 1024
 	val color = 9
-	val url = 512
-	val tag = 256
+	val url = 1024
+	val tag = 4196
 	val privacy = 20
   val metlType = 64
   val unhandledType = 64
