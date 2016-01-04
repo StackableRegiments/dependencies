@@ -11,7 +11,7 @@ import net.liftweb.common._
 import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, StandardDBVendor}
 import _root_.java.sql.{Connection, DriverManager}
 
-class H2Interface(configName:String,filename:Option[String],onConversationDetailsUpdated:Conversation=>Unit) extends PersistenceInterface{
+class H2Interface(configName:String,filename:Option[String],onConversationDetailsUpdated:Conversation=>Unit) extends PersistenceInterface with Logger{
 	lazy val serializer = new H2Serializer(configName)
 	lazy val config = ServerConfiguration.configForName(configName)
 
@@ -66,7 +66,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 	val COMMANDS = "command"
 	
 	//stanzas table
-	def storeStanza[A <: MeTLStanza](jid:String,stanza:A):Option[A] = Stopwatch.time("H2Interface.storeStanza", () => {
+	def storeStanza[A <: MeTLStanza](jid:String,stanza:A):Option[A] = Stopwatch.time("H2Interface.storeStanza",{
 		val transformedStanza:Option[_ <: H2MeTLStanza[_]] = stanza match {
       case s:MeTLStanza if s.isInstanceOf[Attendance] => Some(serializer.fromMeTLAttendance(s.asInstanceOf[Attendance]).room(jid))
       case s:Attendance => Some(serializer.fromMeTLAttendance(s).room(jid)) // for some reason, it just can't make this match
@@ -85,7 +85,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
       case s:MeTLUnhandledStanza => Some(serializer.fromMeTLUnhandledStanza(s).room(jid))
       case s:MeTLUnhandledCanvasContent => Some(serializer.fromMeTLUnhandledCanvasContent(s).room(jid))
 			case other => {
-        println("didn't know how to transform stanza: %s".format(other))
+        warn("didn't know how to transform stanza: %s".format(other))
         None
       }
 		} 
@@ -97,7 +97,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
               case _ => None
             })
         } else {
-          println("store in jid %s failed: %s".format(jid,stanza))
+          warn("store in jid %s failed: %s".format(jid,stanza))
           None
         }
       }
@@ -105,7 +105,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 		}
 	})
 
-	def getHistory(jid:String):History = Stopwatch.time("H2Interface.getHistory",() => {
+	def getHistory(jid:String):History = Stopwatch.time("H2Interface.getHistory",{
 		val newHistory = History(jid)
 		val inks = H2Ink.findAll(By(H2Ink.room,jid)).map(s => serializer.toMeTLInk(s))
 		val texts = H2Text.findAll(By(H2Text.room,jid)).map(s => serializer.toMeTLText(s))
@@ -170,7 +170,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 					updateMaxJid
 					onConversationDetailsUpdated(conversation)
 				} catch {
-					case e:Throwable => println("exception while attempting to update conversation details")
+					case e:Throwable => error("exception while attempting to update conversation details",e)
 				}
 			}
 			case _ => {}
@@ -186,7 +186,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 		updateConversation(details)
 		details	
 	}
-	protected def findAndModifyConversation(jidString:String,adjustment:Conversation => Conversation):Conversation  = Stopwatch.time("H2Interface.findAndModifyConversation", () => {
+	protected def findAndModifyConversation(jidString:String,adjustment:Conversation => Conversation):Conversation  = Stopwatch.time("H2Interface.findAndModifyConversation",{
 		try {
 			val jid = jidString.toInt
 			detailsOfConversation(jid) match {
@@ -202,7 +202,7 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 			}
 		} catch {
 			case e:Throwable => {
-				println("failed to alter conversation, throwing: %s".format(e.getMessage))
+				error("failed to alter conversation",e)
 				Conversation.empty
 			}
 		}
@@ -223,51 +223,51 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
   }
 
 	//resources table
-	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource", () => {
+	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource",{
 		H2Resource.find(By(H2Resource.url,identity)).map(r => {
 			val b = r.bytes.get
-			println("retrieved %s bytes for %s".format(b.length,identity))
+			debug("retrieved %s bytes for %s".format(b.length,identity))
 			b
 		}).openOr({
-			println("failed to find bytes for %s".format(identity))
+			debug("failed to find bytes for %s".format(identity))
 			Array.empty[Byte]
 		})
 
 	})
-	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource", () => {
+	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource",{
 		val now = new Date().getTime.toString
 		val possibleNewIdentity = "%s:%s:%s".format(jid,userProposedId,now)
 		H2Resource.find(By(H2Resource.url,possibleNewIdentity)) match {
 			case Full(r) => {
-				println("postResource: identityAlready exists for %s".format(userProposedId))
+				warn("postResource: identityAlready exists for %s".format(userProposedId))
 				val newUserProposedIdentity = "%s_%s".format(userProposedId,now) 
 				postResource(jid,newUserProposedIdentity,data)
 			}
 			case _ => {
 				H2Resource.create.url(possibleNewIdentity).bytes(data).room(jid).save
-				println("postResource: saved %s bytes in %s at %s".format(data.length,jid,possibleNewIdentity))
+				debug("postResource: saved %s bytes in %s at %s".format(data.length,jid,possibleNewIdentity))
 				possibleNewIdentity
 			}
 		}
 	})
-  def getResource(jid:String,identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource",() => {
+  def getResource(jid:String,identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource",{
 		H2ContextualizedResource.find(
       By(H2ContextualizedResource.context,jid),
       By(H2ContextualizedResource.identity,identity)
     ).map(r => {
 			val b = r.bytes.get
-			println("retrieved %s bytes for %s".format(b.length,identity))
+			debug("retrieved %s bytes for %s".format(b.length,identity))
 			b
 		}).openOr({
-			println("failed to find bytes for %s".format(identity))
+			debug("failed to find bytes for %s".format(identity))
 			Array.empty[Byte]
 		})
 
   })
-  def insertResource(jid:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.insertResource",() => {
+  def insertResource(jid:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.insertResource",{
     H2ContextualizedResource.create.context(jid).bytes(data).saveMe.identity.get
   })
-  def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.upsertResource",() => {
+  def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.upsertResource",{
 		H2ContextualizedResource.find(
       By(H2ContextualizedResource.context,jid),
       By(H2ContextualizedResource.identity,identifier)

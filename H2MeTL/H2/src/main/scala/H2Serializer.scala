@@ -4,12 +4,12 @@ import com.metl.data._
 import com.metl.utils._
 import com.metl.h2.dbformats._
 
-import net.liftweb.common._
+import net.liftweb.common.{Logger => LiftLogger,_}
 import net.liftweb.mapper._
 import net.liftweb.util.Helpers._
 import Privacy._
 
-class H2Serializer(configName:String) extends Serializer {
+class H2Serializer(configName:String) extends Serializer with LiftLogger {
 	override type T = Object
 	//type A = _ <: Object
 	//override type T = A <: H2MeTLContent[A]
@@ -57,7 +57,7 @@ class H2Serializer(configName:String) extends Serializer {
     rec.unhandled(cc.unhandled).valueType(cc.valueType)
   }
   override def toMeTLData(inputObject:T):MeTLData = internalToMeTLStanza(inputObject)
-  def internalToMeTLStanza[A <: H2MeTLStanza[A]](inputObject:T):MeTLStanza = Stopwatch.time("H2Serializer.toMeTLStanza",() => {
+  def internalToMeTLStanza[A <: H2MeTLStanza[A]](inputObject:T):MeTLStanza = Stopwatch.time("H2Serializer.toMeTLStanza",{
 		inputObject match {
 			case i:A => {
 				i.metlType.get match {
@@ -81,7 +81,7 @@ class H2Serializer(configName:String) extends Serializer {
 				}
 			}
 			case other => {
-				println("H2Serializer didn't know how to serialize: %s".format(other))
+				warn("H2Serializer didn't know how to serialize: %s".format(other))
 				throw new SerializationNotImplementedException
 			}
 		}
@@ -238,8 +238,8 @@ class H2Serializer(configName:String) extends Serializer {
 	def permissionsFromString(s:String):Permissions = {
 		xmlSerializer.toPermissions(scala.xml.XML.loadString(s))
 	}
-  override def toPointList(input:AnyRef):List[Point] = Stopwatch.time("H2Serializer.toPointList", () => PointConverter.fromText(input.toString))
-  override def fromPointList(input:List[Point]):AnyRef = Stopwatch.time("H2Serializer.fromPointList", () => PointConverter.toText(input)) 
+  override def toPointList(input:AnyRef):List[Point] = Stopwatch.time("H2Serializer.toPointList",PointConverter.fromText(input.toString))
+  override def fromPointList(input:List[Point]):AnyRef = Stopwatch.time("H2Serializer.fromPointList",PointConverter.toText(input)) 
   override def toColor(input:AnyRef):Color = ColorConverter.fromARGBHexString(input.toString)
   override def fromColor(input:Color):AnyRef = ColorConverter.toARGBHexString(input)
 }
