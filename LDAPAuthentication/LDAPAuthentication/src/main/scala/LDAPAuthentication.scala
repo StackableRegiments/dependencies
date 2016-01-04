@@ -22,21 +22,17 @@ class LDAPAuthenticationSystem(mod:LDAPAuthenticator) extends FormAuthentication
 }
 
 class LDAPAuthenticator(loginPage:NodeSeq, formSelector:String, usernameSelector:String, passwordSelector:String, ldap: Option[IMeTLLDAP], alreadyLoggedIn:() => Boolean,onSuccess:(LiftAuthStateData) => Unit) extends FormAuthenticator(loginPage,formSelector,usernameSelector,passwordSelector,c => ldap.map(l => {
-  println("trying to authenticate with LDAP authenticator")
   val u = c._1
   val p = c._2
   l.authenticate(u,p) match {
     case Some(true) => {
-      println("successful auth")
       LiftAuthStateData(true,u,List.empty[Tuple2[String,String]],List.empty[Tuple2[String,String]])
     }
     case _ => {
-      println("failed auth")
       LiftAuthStateDataForbidden
     }
   }
 }).getOrElse({
-  println("no LDAP connector provided")
   LiftAuthStateDataForbidden
 }),alreadyLoggedIn,onSuccess) {
 }
