@@ -8,7 +8,7 @@ import net.liftweb.common._
 import java.util.Date
 
 class PersistedHistory(serverName:String,dbInterface:PersistenceInterface) extends HistoryRetriever(serverName) {
-  def getMeTLHistory(jid:String) = Stopwatch.time("EmbeddedHistory.getMeTLHistory", () => {
+  def getMeTLHistory(jid:String) = Stopwatch.time("EmbeddedHistory.getMeTLHistory", {
 		dbInterface.getHistory(jid)
   })
 }

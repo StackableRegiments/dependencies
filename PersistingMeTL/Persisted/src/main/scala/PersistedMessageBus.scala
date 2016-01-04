@@ -4,14 +4,14 @@ import com.metl.data._
 import com.metl.utils._
 
 class PersistingMessageBusProvider(configName:String,dbInterface:PersistenceInterface) extends OneBusPerRoomMessageBusProvider {
-	override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("EmbeddedPersistingMessageBusProvider.createNewMessageBus", () => {
+	override def createNewMessageBus(d:MessageBusDefinition) = Stopwatch.time("EmbeddedPersistingMessageBusProvider.createNewMessageBus",{
 		new PersistingLoopbackMessageBus(configName,d,dbInterface,this)
 	})
 }
 
 class PersistingLoopbackMessageBus(configName:String,d:MessageBusDefinition,dbInterface:PersistenceInterface,provider:MessageBusProvider) extends MessageBus(d,provider){
 	val jid = d.location
-	override def sendStanzaToRoom[A <: MeTLStanza](stanza:A) = Stopwatch.time("EmbeddedPersistingMessageBusProvider.sendStanzaToRoom", () => {
+	override def sendStanzaToRoom[A <: MeTLStanza](stanza:A) = Stopwatch.time("EmbeddedPersistingMessageBusProvider.sendStanzaToRoom",{
 		val newMessage = stanza.adjustTimestamp(new java.util.Date().getTime)
 		storeStanzaInDB(newMessage).map(m => {
 			// this shares the message between all busses that reach this location, which aren't this bus, because that's already taken care of, because in this case, they aren't connected to a higher level shared bus.
@@ -20,7 +20,7 @@ class PersistingLoopbackMessageBus(configName:String,d:MessageBusDefinition,dbIn
 			true
 		}).getOrElse(false)
 	})
-	private def storeStanzaInDB[A <: MeTLStanza](stanza:A):Option[A] = Stopwatch.time("EmbeddedPersistingMessageBusProvider.storeStanzaInDB", () => {
+	private def storeStanzaInDB[A <: MeTLStanza](stanza:A):Option[A] = Stopwatch.time("EmbeddedPersistingMessageBusProvider.storeStanzaInDB",{
 		dbInterface.storeStanza(jid,stanza)
 	})
 }
