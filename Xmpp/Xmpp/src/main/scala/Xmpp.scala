@@ -106,7 +106,7 @@ class MeTLExtensionProvider extends PacketExtensionProvider {
 }
 */
 
-class MeTLExtensionProvider extends ExtensionElementProvider[ExtensionElement] {
+class MeTLExtensionProvider extends ExtensionElementProvider[ExtensionElement] with Logger{
   import org.jivesoftware.smackx.pubsub.SimplePayload
 	protected def parseInternal(parser:XmlPullParser):ExtensionElement = {
 		val (elemName,xmlString) = parseTag(parser,"","")	
@@ -191,35 +191,35 @@ object XmppUtils {
 	}
 }
 
-class XmppConnectionManager(getConn:()=>Option[AbstractXMPPConnection],onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener {
+class XmppConnectionManager(getConn:()=>Option[AbstractXMPPConnection],onConnectionLost:()=>Unit,onConnectionRegained:()=>Unit) extends ConnectionListener with Logger {
   override def authenticated(conn:XMPPConnection,resumed:Boolean):Unit = {
-		println("XMPPConnectionManager:connection authenticated (previous stream: %s)".format(resumed))
+		debug("XMPPConnectionManager:connection authenticated (previous stream: %s)".format(resumed))
   }
   override def connected(conn:XMPPConnection):Unit = {
-		println("XMPPConnectionManager:connection connected")
+		debug("XMPPConnectionManager:connection connected")
   }
 	override def connectionClosed():Unit = {
-		println("XMPPConnectionManager:connection closed")
+		debug("XMPPConnectionManager:connection closed")
 		onConnectionLost()
 	}
 	override def connectionClosedOnError(e:Exception):Unit = {
-		println("XMPPConnectionManager:connection closed with error: "+e.getMessage)
+		warn("XMPPConnectionManager:connection closed with error: "+e.getMessage)
 		onConnectionLost()
 	}
 	override def reconnectingIn(seconds:Int):Unit = {
-		println("XMPPConnectionManager:reconnecting in... "+seconds)
+		trace("XMPPConnectionManager:reconnecting in... "+seconds)
 	}
 	override def reconnectionFailed(e:Exception):Unit = {
-		println("XMPPConnectionManager:reconnection failed: "+e.getMessage)
+		warn("XMPPConnectionManager:reconnection failed: "+e.getMessage)
 		onConnectionLost()
 	}
 	override def reconnectionSuccessful():Unit = {
-		println("XMPPConnectionManager:reconnection successful")
+		trace("XMPPConnectionManager:reconnection successful")
 		onConnectionRegained()
 	}
 }
 
-abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Option[AbstractXMPPConnection],onConnectionLost:()=>Unit = () => {},onConnectionRegained:()=>Unit = () => {}) {
+abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],incomingResource:String,incomingHost:String, incomingDomain:String, xmppConnection: Option[AbstractXMPPConnection],onConnectionLost:()=>Unit = () => {},onConnectionRegained:()=>Unit = () => {}) extends Logger {
 
   def this(credentailsFunc:() => Tuple2[String,String], incomingResource: String, incomingHost: String) {
         this(credentailsFunc, incomingResource, incomingHost, incomingHost, xmppConnection = None)
@@ -238,7 +238,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 	protected def onConnLost:Unit = onConnectionLost()
 	protected def onConnRegained:Unit = onConnectionRegained()
 
-	def sendMessage(room:String,messageType:String,message:T):Unit = Stopwatch.time("XmppConnection.sendMessage", () => {			
+	def sendMessage(room:String,messageType:String,message:T):Unit = Stopwatch.time("XmppConnection.sendMessage",{			
 		rooms.find(r => r._1 == room).map(r => {
 			subscribedTypes.find(st => st.name == messageType).map(st => {
 				val muc = r._2
@@ -248,7 +248,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 			})
 		})
 	})
-	def sendSimpleMessage(room:String,message:String):Unit = Stopwatch.time("XmppConnection.sendSimpleMessage", () => {
+	def sendSimpleMessage(room:String,message:String):Unit = Stopwatch.time("XmppConnection.sendSimpleMessage",{
 		rooms.find(r => r._1 == room).map(r => {
 			val muc = r._2
 			val roomMessage = muc.createMessage
@@ -278,12 +278,12 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 	var rooms:Map[String,MultiUserChat] = Map.empty[String,MultiUserChat] 
 	private var conn:Option[AbstractXMPPConnection] = None 
   private val additionalConnectionListener = new XmppConnectionManager(() => conn,onConnLost _, () => {
-		conn.map(c => println("room reconnected: %s -> (Connected:%s,Authenticated:%s)".format(resource,c.isConnected,c.isAuthenticated)))
+		conn.foreach(c => debug("room reconnected: %s -> (Connected:%s,Authenticated:%s)".format(resource,c.isConnected,c.isAuthenticated)))
 		onConnRegained
 		rooms.foreach(roomDefinition => {
 			val roomJid = roomDefinition._1
 			val room = roomDefinition._2
-			println("rejoining room %s on connection %s".format(roomJid,resource))
+			debug("rejoining room %s on connection %s".format(roomJid,resource))
 			room.leave
 			room.join(resource)
 		})
@@ -302,7 +302,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
      .setCompressionEnabled(allowCompression)
     disableHostnameVerificationForTlsCertificicates(acceptAllCertificates(conf)).build()
 	}
-	protected def initializeXmpp:Unit = Stopwatch.time("Xmpp.initializeXmpp", () => {
+	protected def initializeXmpp:Unit = Stopwatch.time("Xmpp.initializeXmpp", {
 		relevantElementNames.foreach(ren => XmppUtils.possiblyAddExtensionProvider(ren))
 		connectToXmpp
 		val filter = new AndFilter( new PacketTypeFilter(classOf[Message]), new MessageTypeFilter(relevantElementNames))
@@ -324,7 +324,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
     }
 	}
 
-	def connectToXmpp:Unit = Stopwatch.time("Xmpp.connectToXmpp", () => {
+	def connectToXmpp:Unit = Stopwatch.time("Xmpp.connectToXmpp",{
 		disconnectFromXmpp
 		conn = createXmppConnection 
 		conn.map(c => {
@@ -350,29 +350,29 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 		}
 	})
 
-	def disconnectFromXmpp:Unit = Stopwatch.time("Xmpp.disconnectFromXmpp", () => {
+	def disconnectFromXmpp:Unit = Stopwatch.time("Xmpp.disconnectFromXmpp",{
 		conn.map(c => {
 			c.removeConnectionListener(additionalConnectionListener)
 			c.disconnect(new Presence(Presence.Type.unavailable))
 		})
 	})
 
-	protected def register:Unit = Stopwatch.time("Xmpp.register", () => {
+	protected def register:Unit = Stopwatch.time("Xmpp.register",{
 		conn.map(c => {
 			val accountManager = AccountManager.getInstance(c)
 			accountManager.createAccount(username,password)
 		})
 	})
 
-	protected def mucFor(room:String):Option[MultiUserChat] = Stopwatch.time("Xmpp.mucFor", () => {
+	protected def mucFor(room:String):Option[MultiUserChat] = Stopwatch.time("Xmpp.mucFor",{
 		conn.map(c => {
 			val roomJid = "%s@conference.%s".format(room,domain)
       val mucMan = MultiUserChatManager.getInstanceFor(c)
 			mucMan.getMultiUserChat(roomJid)
 		})
 	})
-	def joinRoom(room:String,interestId:String = ""):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom", () => {
-		//println("XMPP(%s):joinRoom(%s)".format(this.hashCode,room))
+	def joinRoom(room:String,interestId:String = ""):Option[MultiUserChat] = Stopwatch.time("Xmpp.joinRoom",{
+		//debug("XMPP(%s):joinRoom(%s)".format(this.hashCode,room))
 		val oldRoomInterests = roomInterests.getOrElseUpdate(room,List.empty[String])
 		val creatingRoom = roomInterests(room) match {
 			case l:List[String] if l.length > 0 => false
@@ -380,7 +380,7 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 		}
 		roomInterests.update(room,interestId :: oldRoomInterests)
 		if (creatingRoom){
-			//println("XMPP(%s):joinRoom.creatingRoom(%s)".format(this.hashCode,room))
+			//debug("XMPP(%s):joinRoom.creatingRoom(%s)".format(this.hashCode,room))
 			val roomJid = "%s@conference.%s".format(room,domain)
 			conn.map(c => {
         val mucMan = MultiUserChatManager.getInstanceFor(c)
@@ -395,13 +395,13 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 	def leaveRoom(roomName:String, interestId:String = ""):Unit = {
 		roomInterests.getOrElseUpdate(roomName,List.empty[String]) match {
 			case l:List[String] if l.length > 0 && l.contains(interestId) => {
-				//println("XMPP(%s):leaveRoom.removeInterestsFromExistingInterests".format(this))
+				//debug("XMPP(%s):leaveRoom.removeInterestsFromExistingInterests".format(this))
 				roomInterests.update(roomName,roomInterests(roomName).filterNot(_ == interestId))
 			}
 			case _ => {}
 		}
 		if (roomInterests(roomName).length == 0){
-			//println("XMPP(%s):leaveRoom".format(this))
+			//debug("XMPP(%s):leaveRoom".format(this))
 			rooms.get(roomName).map(r => leaveRoom(r))
 		}
 	}
@@ -409,16 +409,16 @@ abstract class XmppConnection[T](credentialsFunc:() => Tuple2[String,String],inc
 		room.leave
 		rooms = rooms.filterNot(r => r._2 == room)
 	}
- 	class MessageTypeFilter(predicates:List[String]) extends StanzaFilter{
-    def accept(message:Stanza)= Stopwatch.time("Xmpp.MessageTypeFilter.accept", () => {
+ 	class MessageTypeFilter(predicates:List[String]) extends StanzaFilter with Logger{
+    def accept(message:Stanza)= Stopwatch.time("Xmpp.MessageTypeFilter.accept",{
      	var smackMessage = message.asInstanceOf[Message]
 			// added the getBody filter to ensure that messages that are commands (which is apparently necessary because they won't show up as extensions) are allowed through
       //List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[PacketExtension].getElementName)).length > 0
       List(smackMessage.getExtensions.toArray:_*).filter(ex => predicates.contains(ex.asInstanceOf[ExtensionElement].getElementName)).length > 0 || smackMessage.getBody().length > 0
     })
   }
-  class RemoteSyncListener extends StanzaListener{
-		def processPacket(packet:Stanza)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket", () => {
+  class RemoteSyncListener extends StanzaListener with Logger {
+		def processPacket(packet:Stanza)= Stopwatch.time("Xmpp.RemoteSyncListener.processPacket",{
 			val room = packet.getFrom.split("@").head
 			if (List(packet.getExtensions.toArray:_*).map(e => {
 				val ext = e.asInstanceOf[ExtensionElement]
