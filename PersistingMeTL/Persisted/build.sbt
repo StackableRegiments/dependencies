@@ -14,6 +14,7 @@ unmanagedResourceDirectories in Test <+= (baseDirectory) { _ / "src/main/webapp"
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
+libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.13"
 
 libraryDependencies ++= {
   val liftVersion = "2.6.2"
