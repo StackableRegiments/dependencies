@@ -311,13 +311,13 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
   })
   override def toMeTLCommand(input:NodeSeq):MeTLCommand = Stopwatch.time("GenericXmlSerializer.toMeTLCommand",{
     val m = parseMeTLContent(input,config)
-    val comm = getStringByName(input,"command")
+    val comm = getStringByName(input,"name")
     val parameters = getListOfStringsByNameWithin(input,"parameter","parameters")
     MeTLCommand(config,m.author,m.timestamp,comm,parameters,m.audiences)
   })
   override def fromMeTLCommand(input:MeTLCommand):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLCommand",{
     metlContentToXml("command",input,List(
-      <command>{input.command}</command>,
+      <name>{input.command}</name>,
       <parameters>{input.commandParameters.map(cp => <parameter>{cp}</parameter>)}</parameters>
     ))
   })

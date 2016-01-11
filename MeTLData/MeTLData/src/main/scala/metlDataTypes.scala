@@ -676,7 +676,7 @@ case class MeTLQuiz(override val server:ServerConfiguration,override val author:
   def addOption(newO:QuizOption) = copy(options = options ::: List(newO.adjustName(QuizOption.nextName(options))))
   def replaceImage(newImageUrl:Box[String]) = copy(url = newImageUrl,imageBytes = Empty)
   def replaceOption(optionName:String,newText:String) = {
-    options.find(o => o.name == optionName).map(or => copy(options = options.filterNot(_ == or) ::: List(or.adjustName(QuizOption.nextName(options))))).getOrElse(copy())
+    options.find(o => o.name == optionName).map(or => copy(options = options.filterNot(_ == or) ::: List(or.adjustText(newText)))).getOrElse(copy())
   }
   def removeOption(optionName:String) = {
     options.find(_.name == optionName).map(or => copy(options = options.filterNot(o => o == or).foldLeft(List.empty[QuizOption])((os,o)=> o.adjustName(QuizOption.nextName(os)) :: os))).getOrElse(copy())

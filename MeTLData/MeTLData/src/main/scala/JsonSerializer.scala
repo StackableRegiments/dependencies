@@ -513,7 +513,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case input:JObject => {
         val name = getStringByName(input,"name")
         val text = getStringByName(input,"text")
-        val correct = getBooleanByName(input,"text")
+        val correct = getBooleanByName(input,"correct")
         val color = toColor(getColorByName(input,"color"))
         QuizOption(name,text,correct,color)
       }
