@@ -37,13 +37,13 @@ object SqlServerConfigurator extends ServerConfigurator{
     ) yield {
       val username = (e \\ "username").headOption.map(_.text)
       val password = (e \\ "password").headOption.map(_.text)
-      val allowPoolExpansion = (e \\ "allowPoolExpansion").headOption.exists(_.text.toLowerCase.trim == "true")
-      val maxPoolSize = (e \\ "maxPoolSize").headOption.map(_.text.toInt).getOrElse(100)
-      val maxExpandedSize = (e \\ "maxExpansion").headOption.map(_.text.toInt).getOrElse(200)
+      val vendorAllowPoolExpansion = (e \\ "allowPoolExpansion").headOption.exists(_.text.toLowerCase.trim == "true")
+      val vendorMaxPoolSize = (e \\ "maxPoolSize").headOption.map(_.text.toInt).getOrElse(100)
+      val vendorMaxExpandedSize = (e \\ "maxExpansion").headOption.map(_.text.toInt).getOrElse(200)
       val vendor = new StandardDBVendor(driver,url,username,password){
-        override def allowTemporaryPoolExpansion = allowPoolExpansion
-        override def maxPoolSize = maxPoolSize
-        override def doNotExpandBeyond = maxExpandedSize
+        override def allowTemporaryPoolExpansion = vendorAllowPoolExpansion
+        override def maxPoolSize = vendorMaxPoolSize
+        override def doNotExpandBeyond = vendorMaxExpandedSize
       }
       new SqlBackendAdaptor("sql",vendor,onConversationDetailsUpdated)
     }
