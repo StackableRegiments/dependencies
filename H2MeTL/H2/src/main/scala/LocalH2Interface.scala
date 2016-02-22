@@ -231,7 +231,7 @@ class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetai
 
 	//resources table
 	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource",{
-		H2Resource.find(By(H2Resource.url,identity)).map(r => {
+		H2Resource.find(By(H2Resource.identity,identity)).map(r => {
 			val b = r.bytes.get
 			debug("retrieved %s bytes for %s".format(b.length,identity))
 			b
@@ -244,14 +244,14 @@ class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetai
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource",{
 		val now = new Date().getTime.toString
 		val possibleNewIdentity = "%s:%s:%s".format(jid,userProposedId,now)
-		H2Resource.find(By(H2Resource.url,possibleNewIdentity)) match {
+		H2Resource.find(By(H2Resource.identity,possibleNewIdentity)) match {
 			case Full(r) => {
 				warn("postResource: identityAlready exists for %s".format(userProposedId))
 				val newUserProposedIdentity = "%s_%s".format(userProposedId,now) 
 				postResource(jid,newUserProposedIdentity,data)
 			}
 			case _ => {
-				H2Resource.create.url(possibleNewIdentity).bytes(data).room(jid).save
+				H2Resource.create.identity(possibleNewIdentity).bytes(data).room(jid).save
 				debug("postResource: saved %s bytes in %s at %s".format(data.length,jid,possibleNewIdentity))
 				possibleNewIdentity
 			}

@@ -264,7 +264,7 @@ object MeTLUnhandledCanvasContent {
   def empty(unhandled:String,valueType:String) = MeTLUnhandledCanvasContent(ServerConfiguration.empty,"",0L,"",Privacy.NOT_SET,"","",Nil,1.0,1.0,unhandled,valueType)
 }
 class MeTLCanvasContent(override val server:ServerConfiguration,override val author:String,override val timestamp:Long,val target:String,val privacy:Privacy,val slide:String,val identity:String,override val audiences:List[Audience] = Nil,val scaleFactorX:Double = 1.0,val scaleFactorY:Double = 1.0) extends MeTLStanza(server,author,timestamp,audiences) {
-  protected def genNewIdentity(role:String) = "%s:%s:%s_from:%s".format(new java.util.Date().getTime.toString,author,role,identity).reverse.take(256).reverse
+  protected def genNewIdentity(role:String) = "%s:%s:%s_from:%s".format(new java.util.Date().getTime.toString,author,role,identity).take(256)
   def left:Double = 0.0
   def right:Double = 0.0
   def top:Double = 0.0
