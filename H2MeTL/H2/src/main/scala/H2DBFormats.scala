@@ -10,7 +10,8 @@ object H2Constants{
 	val author = 64
 	val room = 64
 	val target = 64
-	val identity = 256 
+	val identity = 128 
+  val fullIdentity = 2048
 	val color = 9
 	val url = 2048 
 	val tag = 4196
@@ -47,7 +48,7 @@ trait H2MeTLCanvasContent[C <: H2MeTLCanvasContent[C]] extends H2MeTLStanza[C] {
 	object target extends MappedString[C](this,H2Constants.target)
 	object privacy extends MappedString[C](this,H2Constants.privacy)
 	object slide extends MappedString[C](this,H2Constants.room)
-	object identity extends MappedString[C](this,H2Constants.identity)
+	object identity extends MappedString[C](this,H2Constants.fullIdentity)
 }
 
 trait H2MeTLUnhandled[C <: H2MeTLUnhandled[C]] extends H2MeTLContent[C]{
@@ -154,7 +155,7 @@ class H2Quiz extends H2MeTLStanza[H2Quiz]{
 	def getSingleton = H2Quiz
 	object created extends MappedLong(this)
 	object question extends MappedText(this)
-	object quizId extends MappedString(this,H2Constants.identity)
+	object quizId extends MappedString(this,H2Constants.fullIdentity)
 	object url extends MappedString(this,H2Constants.url)
 	object isDeleted extends MappedBoolean(this)
 	object options extends MappedText(this)
@@ -165,7 +166,7 @@ class H2QuizResponse extends H2MeTLStanza[H2QuizResponse]{
 	def getSingleton = H2QuizResponse
 	object answer extends MappedString(this,8)
 	object answerer extends MappedString(this,H2Constants.author)
-	object quizId extends MappedString(this,H2Constants.identity)
+	object quizId extends MappedString(this,H2Constants.fullIdentity)
 }
 object H2QuizResponse extends H2QuizResponse with LongKeyedMetaMapper[H2QuizResponse]{
 }
@@ -203,6 +204,7 @@ class H2File extends H2MeTLStanza[H2File]{
   def getSingleton = H2File
   object name extends MappedText(this)
   object identity extends MappedString(this,H2Constants.identity) with H2MeTLIndexedString
+  object fullIdentity extends MappedString(this,H2Constants.fullIdentity)
   object url extends MappedString(this,H2Constants.url)
 }
 object H2File extends H2File with LongKeyedMetaMapper[H2File]{
@@ -211,6 +213,7 @@ object H2File extends H2File with LongKeyedMetaMapper[H2File]{
 class H2Resource extends H2MeTLContent[H2Resource]{
 	def getSingleton = H2Resource
 	object identity extends MappedString(this,H2Constants.identity) with H2MeTLIndexedString
+  object fullIdentity extends MappedString(this,H2Constants.fullIdentity)
 	object bytes extends MappedBinary(this)
 }
 object H2Resource extends H2Resource with LongKeyedMetaMapper[H2Resource]{
