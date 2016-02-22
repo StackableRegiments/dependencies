@@ -11,11 +11,18 @@ import net.liftweb.common._
 import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, StandardDBVendor}
 import _root_.java.sql.{Connection, DriverManager}
 
-class H2Interface(configName:String,filename:Option[String],onConversationDetailsUpdated:Conversation=>Unit) extends PersistenceInterface with Logger{
+class H2Interface(configName:String,filename:Option[String],onConversationDetailsUpdated:Conversation=>Unit) extends SqlInterface(configName,new StandardDBVendor("org.h2.Driver", filename.map(f => "jdbc:h2:%s;AUTO_SERVER=TRUE".format(f)).getOrElse("jdbc:h2:mem:%s".format(configName)),Empty,Empty){
+    //adding extra db connections - it defaults to 4, with 20 being the maximum
+    override def allowTemporaryPoolExpansion = true
+    override def maxPoolSize = 1000
+    override def doNotExpandBeyond = 2000
+  },onConversationDetailsUpdated) {
+}
+
+class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetailsUpdated:Conversation=>Unit) extends PersistenceInterface with Logger{
 	lazy val serializer = new H2Serializer(configName)
 	lazy val config = ServerConfiguration.configForName(configName)
-
-  private val vendor = new StandardDBVendor("org.h2.Driver", filename.map(f => "jdbc:h2:%s;AUTO_SERVER=TRUE".format(f)).getOrElse("jdbc:h2:mem:%s".format(configName)),Empty,Empty)
+  
   if (!DB.jndiJdbcConnAvailable_?) {
 //			this right here?  This needs to be addressed.  Looks like I'm going to have to bring some lift libraries into this one.
 //      LiftRules.unloadHooks.append(vendor.closeAllConnections_! _)
@@ -107,25 +114,25 @@ class H2Interface(configName:String,filename:Option[String],onConversationDetail
 
 	def getHistory(jid:String):History = Stopwatch.time("H2Interface.getHistory",{
 		val newHistory = History(jid)
-		val inks = H2Ink.findAll(By(H2Ink.room,jid)).map(s => serializer.toMeTLInk(s))
-		val texts = H2Text.findAll(By(H2Text.room,jid)).map(s => serializer.toMeTLText(s))
-		val images = H2Image.findAll(By(H2Image.room,jid)).map(s => serializer.toMeTLImage(s))
-		val dirtyInks = H2DirtyInk.findAll(By(H2DirtyInk.room,jid)).map(s => serializer.toMeTLDirtyInk(s))
-		val dirtyTexts = H2DirtyText.findAll(By(H2DirtyText.room,jid)).map(s => serializer.toMeTLDirtyText(s))
-		val dirtyImages = H2DirtyImage.findAll(By(H2DirtyImage.room,jid)).map(s => serializer.toMeTLDirtyImage(s))
-		val moveDeltas = H2MoveDelta.findAll(By(H2MoveDelta.room,jid)).map(s => serializer.toMeTLMoveDelta(s))
-		val submissions = H2Submission.findAll(By(H2Submission.room,jid)).map(s => serializer.toSubmission(s))
-		val quizzes = H2Quiz.findAll(By(H2Quiz.room,jid)).map(s => serializer.toMeTLQuiz(s))
-		val quizResponses = H2QuizResponse.findAll(By(H2QuizResponse.room,jid)).map(s => serializer.toMeTLQuizResponse(s))
-    val files = H2File.findAll(By(H2File.room,jid)).map(s => serializer.toMeTLFile(s))
-    val attendances = H2Attendance.findAll(By(H2Attendance.location,jid)).map(s => serializer.toMeTLAttendance(s))
-		val commands = H2Command.findAll(By(H2Command.room,jid)).map(s => serializer.toMeTLCommand(s))
-    val unhandledCanvasContent = H2UnhandledCanvasContent.findAll(By(H2UnhandledCanvasContent.room,jid)).map(s => serializer.toMeTLUnhandledCanvasContent(s))
-    val unhandledStanzas = H2UnhandledStanza.findAll(By(H2UnhandledStanza.room,jid)).map(s => serializer.toMeTLUnhandledStanza(s))
-
+    List(
+      () => H2Ink.findAll(By(H2Ink.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLInk(s))),
+      () => H2Text.findAll(By(H2Text.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLText(s))),
+      () => H2Image.findAll(By(H2Image.room,jid)).toList.par.map(s => newHistory.addStanza(serializer.toMeTLImage(s))).toList,
+      () => H2DirtyInk.findAll(By(H2DirtyInk.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLDirtyInk(s))),
+      () => H2DirtyText.findAll(By(H2DirtyText.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLDirtyText(s))),
+      () => H2DirtyImage.findAll(By(H2DirtyImage.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLDirtyImage(s))),
+      () => H2MoveDelta.findAll(By(H2MoveDelta.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLMoveDelta(s))),
+      () => H2Submission.findAll(By(H2Submission.room,jid)).toList.par.map(s => newHistory.addStanza(serializer.toSubmission(s))).toList,
+      () => H2Quiz.findAll(By(H2Quiz.room,jid)).toList.par.map(s => newHistory.addStanza(serializer.toMeTLQuiz(s))).toList,
+      () => H2QuizResponse.findAll(By(H2QuizResponse.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLQuizResponse(s))),
+      () => H2File.findAll(By(H2File.room,jid)).toList.par.map(s => newHistory.addStanza(serializer.toMeTLFile(s))).toList,
+      () => H2Attendance.findAll(By(H2Attendance.location,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLAttendance(s))),
+      () => H2Command.findAll(By(H2Command.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLCommand(s))),
+      () => H2UnhandledCanvasContent.findAll(By(H2UnhandledCanvasContent.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLUnhandledCanvasContent(s))),
+      () => H2UnhandledStanza.findAll(By(H2UnhandledStanza.room,jid)).foreach(s => newHistory.addStanza(serializer.toMeTLUnhandledStanza(s)))
+    ).par.map(f => f()).toList//.toList.foreach(group => group.foreach(gf => gf()))
     //val unhandledContent = H2UnhandledContent.findAll(By(H2UnhandledContent.room,jid)).map(s => serializer.toMeTLUnhandledData(s))
-
-		(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions ::: files ::: attendances ::: unhandledCanvasContent ::: unhandledStanzas /*:: unhandledContent */).foreach(s => newHistory.addStanza(s))
+		//(inks ::: texts ::: images ::: dirtyInks ::: dirtyTexts ::: dirtyImages ::: moveDeltas ::: quizzes ::: quizResponses ::: commands ::: submissions ::: files ::: attendances ::: unhandledCanvasContent ::: unhandledStanzas /*:: unhandledContent */).foreach(s => newHistory.addStanza(s))
 		newHistory
 	})
 
