@@ -52,9 +52,28 @@ class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetai
       H2ContextualizedResource,
       H2UnhandledCanvasContent,
       H2UnhandledStanza,
-      H2UnhandledContent
+      H2UnhandledContent,
+      DatabaseVersion
 		):_*
 	)
+
+  //database migration script actions go here.  No try/catch, because I want to break if I can't bring it up to an appropriate version.
+  DatabaseVersion.find(By(DatabaseVersion.key,"version"),By(DatabaseVersion.scope,"db")).getOrElse({
+    DatabaseVersion.create.key("version").scope("db").intValue(-1).save
+  })
+  DatabaseVersion.find(By(DatabaseVersion.key,"version"),By(DatabaseVersion.scope,"db")).filter(_.intValue.get < 2).map(versionNumber => {
+    println("upgrading db to use partialIndexes for mysql limitations (v2)")
+    // update the partialIndexes if it's under version 2, and then increment to version 2
+    H2Resource.findAll.foreach(res => {
+      res.partialIdentity(res.identity.get.take(H2Constants.identity)).save
+    })
+    H2File.findAll.foreach(file => {
+      file.partialIdentity(file.identity.get.take(H2Constants.identity)).save
+    })
+    versionNumber.intValue(2).save
+    println("upgraded db to use partialIndexes for mysql limitations (v2)")
+    versionNumber
+  }).foreach(versionNumber => println("using dbSchema version: %s".format(versionNumber.intValue.get)))
 
 	type H2Object = Object
 	val RESOURCES = "resource"
@@ -231,7 +250,7 @@ class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetai
 
 	//resources table
 	def getResource(identity:String):Array[Byte] = Stopwatch.time("H2Interface.getResource",{
-		H2Resource.find(By(H2Resource.identity,identity.take(H2Constants.identity)),By(H2Resource.fullIdentity,identity)).map(r => {
+		H2Resource.find(By(H2Resource.partialIdentity,identity.take(H2Constants.identity)),By(H2Resource.identity,identity)).map(r => {
 			val b = r.bytes.get
 			debug("retrieved %s bytes for %s".format(b.length,identity))
 			b
@@ -244,14 +263,14 @@ class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetai
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource",{
 		val now = new Date().getTime.toString
 		val possibleNewIdentity = "%s:%s:%s".format(jid,userProposedId,now)
-		H2Resource.find(By(H2Resource.identity,possibleNewIdentity.take(H2Constants.identity)),By(H2Resource.fullIdentity,possibleNewIdentity)) match {
+		H2Resource.find(By(H2Resource.identity,possibleNewIdentity.take(H2Constants.identity)),By(H2Resource.identity,possibleNewIdentity)) match {
 			case Full(r) => {
 				warn("postResource: identityAlready exists for %s".format(userProposedId))
 				val newUserProposedIdentity = "%s_%s".format(userProposedId,now) 
 				postResource(jid,newUserProposedIdentity,data)
 			}
 			case _ => {
-				H2Resource.create.identity(possibleNewIdentity.take(H2Constants.identity)).fullIdentity(possibleNewIdentity).bytes(data).room(jid).save
+				H2Resource.create.partialIdentity(possibleNewIdentity.take(H2Constants.identity)).identity(possibleNewIdentity).bytes(data).room(jid).save
 				debug("postResource: saved %s bytes in %s at %s".format(data.length,jid,possibleNewIdentity))
 				possibleNewIdentity
 			}
