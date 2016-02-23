@@ -1,12 +1,14 @@
 package com.metl.datamigrator
 import com.metl.data._
 import com.metl.metl2011._
-import com.metl.utils._
+import com.metl.utils.{Http => MeTLHttp,_}
 import com.metl.h2._
 import net.liftweb.common._
 import net.liftweb.util._
 import net.liftweb.util.Helpers._
 import scala.xml._
+import dispatch._
+import Defaults._
 
 object Application {
   def main(args:Array[String]):Unit = {
@@ -62,9 +64,12 @@ object Application {
       }
       println("loading server: %s".format(config))
       config.searchForConversation("").foreach(conversation => {
-        val xml = exportConversation(conversation.author,conversation.jid.toString)
-        println("exporting conversation: %s".format(xml.toString.take(80)))
-      }) // hopefully every conversation will be returned by this query?
+        exportConversation(conversation.author,conversation.jid.toString).map(xml => {
+          println("exporting conversation: %s".format(xml.toString.take(80)))
+          val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString
+          println("pushed to server: %s".format(Http(svc OK as.xml.Elem).either))
+        })
+      }) // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
     })
   }
 }
