@@ -214,7 +214,9 @@ object H2File extends H2File with LongKeyedMetaMapper[H2File]{
 class H2Resource extends H2MeTLContent[H2Resource]{
 	def getSingleton = H2Resource
 	object partialIdentity extends MappedMeTLString(this,H2Constants.identity) with H2MeTLIndexedString
-  object identity extends MappedMeTLString(this,H2Constants.fullIdentity)
+  object identity extends MappedMeTLString(this,H2Constants.fullIdentity){
+    override def dbColumnName = "url"
+  }
 	object bytes extends MappedBinary(this)
 }
 object H2Resource extends H2Resource with LongKeyedMetaMapper[H2Resource]{
