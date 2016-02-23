@@ -65,10 +65,16 @@ class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetai
     println("upgrading db to use partialIndexes for mysql limitations (v2)")
     // update the partialIndexes if it's under version 2, and then increment to version 2
     H2Resource.findAll.foreach(res => {
-      res.partialIdentity(res.identity.get.take(H2Constants.identity)).save
+      res.partialIdentity(res.identity.get match {
+        case null => ""
+        case other => other.take(H2Constants.identity)
+      }).save
     })
     H2File.findAll.foreach(file => {
-      file.partialIdentity(file.identity.get.take(H2Constants.identity)).save
+      file.partialIdentity(file.identity.get match {
+        case null => ""
+        case other => other.take(H2Constants.identity)
+      }).save
     })
     versionNumber.intValue(2).save
     println("upgraded db to use partialIndexes for mysql limitations (v2)")
