@@ -7,5 +7,5 @@
 			<url>jdbc:h2:./testdb.h2;AUTO_SERVER=TRUE;MVCC=TRUE</url>
     </server>
 	</servers>
-	<targetServer>http://locahost:8080</targetServer>
+	<targetServer cookieKey="JSESSIONID" cookieValue="test">http://locahost:8080</targetServer>
 </serverConfiguration>
