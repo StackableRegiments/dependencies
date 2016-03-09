@@ -10,7 +10,7 @@ import scala.xml._
 import dispatch._
 import Defaults._
 
-object Application {
+object Application extends Logger {
   def main(args:Array[String]):Unit = {
     val configurationFileLocation = System.getProperty("metlx.configurationFile")
     MeTL2011ServerConfiguration.initialize
@@ -24,9 +24,20 @@ object Application {
       httpCredentialsFunc = () => ("","")
     )
     val servers = ServerConfiguration.getServerConfigurations
-    val targetServer = (XML.load(configurationFileLocation) \\ "targetServer").headOption.map(_.text).getOrElse({throw new Exception("please specify a target server baseUrl in the configuration file")})
-    println("servers: %s => %s".format(servers,targetServer))
+    val (targetServer,cookieKey,cookieValue) = (XML.load(configurationFileLocation) \\ "targetServer").headOption.map(cn => {
+        (
+          cn.text,
+          (cn \\ "@cookieKey").headOption.map(_.text).getOrElse("JSESSIONID"),
+          (cn \\ "@cookieValue").headOption.map(_.text).getOrElse({
+            throw new Exception("please specify the target server's cookie in the configuration file")
+          })
+        )
+      }).getOrElse({
+        throw new Exception("please specify the target server's baseUrl in the configuration file")
+      })
+    info("servers: %s => %s".format(servers,targetServer))
     servers.filterNot(_ == EmptyBackendAdaptor).foreach(config => {
+      info("exporing server: %s".format(config))  
       var exportSerializer = new MigratorXmlSerializer(config.name)
       def exportConversation(onBehalfOfUser:String,conversation:String):Box[NodeSeq] = {
         for (
@@ -62,12 +73,11 @@ object Application {
         })
         histories
       }
-      println("loading server: %s".format(config))
-      config.searchForConversation("").foreach(conversation => {
+      config.searchForConversation("").par.foreach(conversation => {
         exportConversation(conversation.author,conversation.jid.toString).map(xml => {
-          println("exporting conversation: %s".format(xml.toString.take(80)))
-          val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString
-          println("pushed to server: %s".format(Http(svc OK as.xml.Elem).either))
+          info("exporting conversation: %s".format(xml.toString.take(80)))
+          val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map("Cookie" -> "%s=%s".format(cookieKey,cookieValue))
+          info("pushed to server: %s".format(Http(svc OK as.xml.Elem).either))
         })
       }) // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
     })
