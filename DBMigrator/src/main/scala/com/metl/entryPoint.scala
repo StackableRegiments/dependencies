@@ -4,6 +4,7 @@ import com.metl.metl2011._
 import com.metl.utils.{Http => MeTLHttp,_}
 import com.metl.h2._
 import net.liftweb.common._
+import net.liftweb.actor._
 import net.liftweb.util._
 import net.liftweb.util.Helpers._
 import scala.xml._
@@ -11,7 +12,42 @@ import dispatch._
 import Defaults._
 
 object Application extends Logger {
+  case class AddKey(h:String,k:String,v:String)
+  case class RemoveKey(h:String,k:String,v:String)
+  class MaintainKeys(start:Long) extends LiftActor {
+    case object Ping
+    var keys:List[Tuple3[String,String,String]] = Nil
+    def repeat = {
+      if (keys.length > 0){
+        Schedule.schedule(this,Ping,10 seconds) 
+      }
+    }
+    def messageHandler = {
+      case AddKey(host,key,value) => {
+        keys = (host,key,value) :: keys
+        repeat
+      }
+      case RemoveKey(host,key,value) => {
+        keys = keys.filterNot(k => k._1 == host && k._2 == key && k._3 == value)
+        repeat
+      }
+      case Ping => {
+        keys.foreach(k => {
+          val svc = url("%s/authenticationState".format(k._1)).GET <:< Map("Cookie" -> "%s=%s".format(k._2,k._3))
+          val result = Http(svc OK as.String).either.right.map(r => (XML.loadString(r) \\ "@id").exists(_.text.toString == "authData"))
+          info("[%sms] maintainingKey: %s".format(new java.util.Date().getTime - start, result()))
+        })
+        repeat
+      }
+    }
+  }
+
   def main(args:Array[String]):Unit = {
+    val start = new java.util.Date().getTime
+    val maintainKeys = new MaintainKeys(start)
+    def mark(msg:String) = {
+      info("[%sms] %s".format(new java.util.Date().getTime - start,msg))
+    }
     val configurationFileLocation = System.getProperty("metlx.configurationFile")
     MeTL2011ServerConfiguration.initialize
     MeTL2015ServerConfiguration.initialize
@@ -35,9 +71,10 @@ object Application extends Logger {
       }).getOrElse({
         throw new Exception("please specify the target server's baseUrl in the configuration file")
       })
-    info("servers: %s => %s".format(servers,targetServer))
+    maintainKeys ! AddKey(targetServer,cookieKey,cookieValue)
+    mark("servers: %s => %s".format(servers,targetServer))
     servers.filterNot(_ == EmptyBackendAdaptor).foreach(config => {
-      info("exporing server: %s".format(config))  
+      mark("exporting server: %s".format(config))  
       var exportSerializer = new MigratorXmlSerializer(config.name)
       def exportConversation(onBehalfOfUser:String,conversation:String):Box[NodeSeq] = {
         for (
@@ -73,14 +110,28 @@ object Application extends Logger {
         })
         histories
       }
-      config.searchForConversation("").par.foreach(conversation => {
+      val convs = config.searchForConversation("") // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
+      mark("fetched conversations: %s".format(convs.length))
+      val p = convs.par
+      p.tasksupport = new scala.collection.parallel.ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(2))
+      val completed = p.flatMap(conversation => {
+        val es = new java.util.Date().getTime  
         exportConversation(conversation.author,conversation.jid.toString).map(xml => {
-          info("exporting conversation: %s".format(xml.toString.take(80)))
+          val ee = new java.util.Date().getTime  
+          mark("exporting conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
+          val is = new java.util.Date().getTime  
           val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map("Cookie" -> "%s=%s".format(cookieKey,cookieValue))
-          info("pushed to server: %s".format(Http(svc OK as.xml.Elem).either))
+          val result = Http(svc OK as.xml.Elem).either
+          val res = result()
+          val ie = new java.util.Date().getTime
+          (conversation.jid,res,ee - es, ie - is, ie - es)
         })
-      }) // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
+      }).toList  
+      mark("completed pushing conversations: \r\n%s".format(completed.map(c => "CONV %s [%s (%s + %s)]: %s".format(c._1,c._5,c._3,c._4,c._2)).mkString("\r\n")))
+      maintainKeys ! RemoveKey(targetServer,cookieKey,cookieValue)
     })
+    LAScheduler.shutdown()
+    mark("finished reading.")
   }
 }
 

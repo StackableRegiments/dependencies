@@ -4,8 +4,8 @@
 			<type>sql</type>
 			<name>source</name>
 			<driver>org.h2.Driver</driver>
-			<url>jdbc:h2:./testdb.h2;AUTO_SERVER=TRUE;MVCC=TRUE</url>
+      <url>jdbc:h2:file:V:/metlData/training/2016-03-06/testdb.h2;AUTO_SERVER=TRUE;MVCC=TRUE</url>
     </server>
 	</servers>
-	<targetServer cookieKey="JSESSIONID" cookieValue="test">http://locahost:8080</targetServer>
+	<targetServer cookieKey="JSESSIONID" cookieValue="13zyrollwwgq3ju1vtkd2od41">http://localhost:8080</targetServer>
 </serverConfiguration>
