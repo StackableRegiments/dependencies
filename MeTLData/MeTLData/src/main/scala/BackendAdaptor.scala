@@ -5,31 +5,42 @@ import scala.xml._
 
 object ServerConfiguration{
   val empty = EmptyBackendAdaptor
-  private var serverConfigs:List[ServerConfiguration] = List(EmptyBackendAdaptor)
+  protected var serverConfigs:List[ServerConfiguration] = List(EmptyBackendAdaptor)
+  protected var defaultConfigFunc = () => serverConfigs(0)
+  protected var serverConfMutator:ServerConfiguration=>ServerConfiguration = (sc) => sc
+  def setServerConfMutator(scm:ServerConfiguration=>ServerConfiguration) = serverConfMutator = scm
+  def getServerConfMutator:ServerConfiguration=>ServerConfiguration = serverConfMutator
   def setServerConfigurations(sc:List[ServerConfiguration]) = serverConfigs = sc
   def getServerConfigurations = serverConfigs
   def setDefaultServerConfiguration(f:() => ServerConfiguration) = defaultConfigFunc = f
-  def addServerConfiguration(sc:ServerConfiguration) = serverConfigs = serverConfigs ::: List(sc)
+  def addServerConfiguration(sc:ServerConfiguration) = serverConfigs = serverConfigs ::: List(serverConfMutator(sc))
   def configForName(name:String) = serverConfigs.find(c => c.name == name).getOrElse(default)
   def configForHost(host:String) = serverConfigs.find(c => c.host == host).getOrElse(default)
-  private var defaultConfigFunc = () => serverConfigs(0)
   def default = {
     defaultConfigFunc()
   }
-  protected var serverConfigurators:List[ServerConfigurator] = List(
+  val parser = new ServerConfigurationParser
+  def addServerConfigurator(sc:ServerConfigurator) = parser.addServerConfigurator(sc)
+  List(
     EmptyBackendAdaptorConfigurator,
     FrontendSerializationAdaptorConfigurator
-  )
-  def addServerConfigurator(sc:ServerConfigurator) = serverConfigurators = serverConfigurators ::: List(sc)
+  ).foreach(addServerConfigurator _)
+
   def loadServerConfigsFromFile(path:String,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     val xml = XML.load(path)
-      (xml \\ "server").foreach(sc => interpret(sc,onConversationDetailsUpdated,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]))
-      (xml \\ "defaultServerConfiguration").text match {
-        case s:String if (s.length > 0) => defaultConfigFunc = () => configForName(s)
-        case _ => {}
-      }
+    (xml \\ "server").foreach(sc => interpret(sc,onConversationDetailsUpdated,messageBusCredentailsFunc,conversationListenerCredentialsFunc,httpCredentialsFunc))
+    (xml \\ "defaultServerConfiguration").text match {
+      case s:String if (s.length > 0) => setDefaultServerConfiguration(() => configForName(s))
+      case _ => {}
+    }
   }
-  protected def interpret(n:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = serverConfigurators.filter(sc => sc.matchFunction(n)).map(sc => sc.interpret(n,onConversationDetailsUpdated,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]).map(s => addServerConfiguration(s)))
+  protected def interpret(n:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = parser.interpret(n,onConversationDetailsUpdated,messageBusCredentailsFunc,conversationListenerCredentialsFunc,httpCredentialsFunc).map(s => addServerConfiguration(s))
+}
+
+class ServerConfigurationParser {
+  protected var serverConfigurators:List[ServerConfigurator] = Nil
+  def addServerConfigurator(sc:ServerConfigurator) = serverConfigurators = serverConfigurators ::: List(sc)
+  def interpret(n:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]):List[ServerConfiguration] = serverConfigurators.filter(sc => sc.matchFunction(n)).flatMap(sc => sc.interpret(n,onConversationDetailsUpdated,messageBusCredentailsFunc,conversationListenerCredentialsFunc,httpCredentialsFunc))
 }
 
 class ServerConfigurator{
@@ -37,10 +48,11 @@ class ServerConfigurator{
   def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]):Option[ServerConfiguration] = None
 }
 
-abstract class ServerConfiguration(incomingName:String,incomingHost:String,onConversationDetailsUpdated:Conversation=>Unit) {
+abstract class ServerConfiguration(incomingName:String,incomingHost:String,onConversationDetailsUpdatedFunc:Conversation=>Unit) {
   val commonLocation = "commonBucket"
   val name = incomingName
   val host = incomingHost
+  val onConversationDetailsUpdated:Conversation=>Unit = onConversationDetailsUpdatedFunc
   def getMessageBus(d:MessageBusDefinition):MessageBus
   def getHistory(jid:String):History
   def getConversationForSlide(slideJid:String):String
@@ -129,4 +141,31 @@ object FrontendSerializationAdaptor extends ServerConfiguration("frontend","fron
 object FrontendSerializationAdaptorConfigurator extends ServerConfigurator{
   override def matchFunction(e:Node) = (e \\ "type").text == "frontend"
   override def interpret(e:Node,o:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = Some(FrontendSerializationAdaptor)
+}
+
+class PassThroughAdaptor(sc:ServerConfiguration) extends ServerConfiguration(sc.name,sc.host,sc.onConversationDetailsUpdated){
+  override def getMessageBus(d:MessageBusDefinition) = sc.getMessageBus(d)
+  override def getHistory(jid:String) = sc.getHistory(jid)
+  override def getConversationForSlide(slideJid:String):String = sc.getConversationForSlide(slideJid)
+  override def searchForConversation(query:String) = sc.searchForConversation(query)
+  override def detailsOfConversation(jid:String) = sc.detailsOfConversation(jid)
+  override def createConversation(title:String,author:String) = sc.createConversation(title,author)
+  override def deleteConversation(jid:String):Conversation = sc.deleteConversation(jid)
+  override def renameConversation(jid:String,newTitle:String):Conversation = sc.renameConversation(jid,newTitle)
+  override def changePermissions(jid:String,newPermissions:Permissions):Conversation = sc.changePermissions(jid,newPermissions)
+  override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = sc.updateSubjectOfConversation(jid,newSubject)
+  override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = sc.addSlideAtIndexOfConversation(jid,index)
+  override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = sc.reorderSlidesOfConversation(jid,newSlides)
+  override def updateConversation(jid:String,newConversation:Conversation):Conversation = sc.updateConversation(jid,newConversation)
+  override def getImage(jid:String,identity:String) = sc.getImage(jid,identity)
+  override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = sc.postResource(jid,userProposedId,data)
+  override def getResource(jid:String,identifier:String):Array[Byte] = sc.getResource(jid,identifier)
+  override def insertResource(jid:String,data:Array[Byte]):String = sc.insertResource(jid,data)
+  override def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = sc.upsertResource(jid,identifier,data)
+  override def getImage(identity:String) = sc.getImage(identity)
+  override def getResource(identifier:String):Array[Byte] = sc.getResource(identifier)
+  override def insertResource(data:Array[Byte]):String = sc.insertResource(data)
+  override def upsertResource(identifier:String,data:Array[Byte]):String = sc.upsertResource(identifier,data)
+  override def shutdown:Unit = sc.shutdown
+  override def isReady:Boolean = sc.isReady
 }
