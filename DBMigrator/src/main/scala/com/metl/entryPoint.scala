@@ -60,7 +60,13 @@ object Application extends Logger {
       httpCredentialsFunc = () => ("","")
     )
     val servers = ServerConfiguration.getServerConfigurations
-    val (targetServer,cookieKey,cookieValue) = (XML.load(configurationFileLocation) \\ "targetServer").headOption.map(cn => {
+    val configFile = XML.load(configurationFileLocation)
+    val parallelism = try {
+      Some((configFile \\ "parallelism").headOption.map(_.text.toInt))
+    } catch {
+      case e:Exception => None
+    }
+    val (targetServer,cookieKey,cookieValue) = (configFile \\ "targetServer").headOption.map(cn => {
         (
           cn.text,
           (cn \\ "@cookieKey").headOption.map(_.text).getOrElse("JSESSIONID"),
@@ -113,7 +119,9 @@ object Application extends Logger {
       val convs = config.searchForConversation("") // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
       mark("fetched conversations: %s".format(convs.length))
       val p = convs.par
-      p.tasksupport = new scala.collection.parallel.ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(2))
+      parallelism.map(paraCount => {
+        p.tasksupport = new scala.collection.parallel.ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(paraCount.getOrElse(1)))
+      })
       val completed = p.flatMap(conversation => {
         val es = new java.util.Date().getTime  
         exportConversation(conversation.author,conversation.jid.toString).map(xml => {
