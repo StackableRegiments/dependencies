@@ -269,7 +269,7 @@ class SqlInterface(configName:String,vendor:StandardDBVendor,onConversationDetai
 	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = Stopwatch.time("H2Interface.postResource",{
 		val now = new Date().getTime.toString
 		val possibleNewIdentity = "%s:%s:%s".format(jid,userProposedId,now)
-		H2Resource.find(By(H2Resource.identity,possibleNewIdentity.take(H2Constants.identity)),By(H2Resource.identity,possibleNewIdentity)) match {
+		H2Resource.find(By(H2Resource.partialIdentity,possibleNewIdentity.take(H2Constants.identity)),By(H2Resource.identity,possibleNewIdentity)) match {
 			case Full(r) => {
 				warn("postResource: identityAlready exists for %s".format(userProposedId))
 				val newUserProposedIdentity = "%s_%s".format(userProposedId,now) 
