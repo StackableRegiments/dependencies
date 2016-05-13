@@ -76,8 +76,13 @@ timingFormat := {
 
 testOptions in Test += Tests.Argument("-eI")
 
+fork in (run) := true
+
 // add a JVM option to use when forking a JVM for 'run'
-javaOptions += "-Xmx2G"
+//javaOptions += "-Xmx2G"
+javaOptions += "-Xmx3072m"
+javaOptions += "-Dmetlx.configurationFile=./config/configuration.local.xml"
+javaOptions += "-Dlogback.configurationFile=config/logback.xml"
 
 // don't aggregate clean (See FullConfiguration for aggregation details)
 aggregate in clean := false

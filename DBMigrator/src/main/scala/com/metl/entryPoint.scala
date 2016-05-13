@@ -66,6 +66,16 @@ object Application extends Logger {
     } catch {
       case e:Exception => None
     }
+    val sortConversations:List[Conversation]=>List[Conversation] = {
+      val priorityElems = (configFile \\ "priority")
+      val jidPriorities = priorityElems.flatMap(elem => (elem \ "@jid").headOption.map(_.text.toInt))
+      val authorPriorities = priorityElems.flatMap(elem => (elem \ "@author").headOption.map(_.text))
+      (in:List[Conversation]) => {
+        val (jidMatches,nonJid) = in.sortBy(_.lastAccessed).partition(c => jidPriorities.contains(c.jid))
+        val (authorMatches,nonAuthor) = nonJid.partition(c => authorPriorities.contains(c.author))
+        jidMatches ::: authorMatches ::: nonAuthor
+      }
+    }
     val (targetServer,cookieKey,cookieValue) = (configFile \\ "targetServer").headOption.map(cn => {
         (
           cn.text,
@@ -97,8 +107,14 @@ object Application extends Logger {
           xml  
         }
       }
+      def time[A](label:String,action: => A):A = {
+        val s = new java.util.Date().getTime
+        val res = action
+        info(label + "(%s ms)".format(new java.util.Date().getTime - s))
+        res
+      }
       def exportHistories(conversation:Conversation,restrictToPrivateUsers:Option[List[String]]):List[History] = {
-        val convHistory = config.getHistory(conversation.jid.toString).filter(m => {
+        val convHistory = time("getHistory(%s)".format(conversation.jid),config.getHistory(conversation.jid.toString).filter(m => {
           restrictToPrivateUsers.map(users => {
             m match {
               case q:MeTLQuiz => true
@@ -106,17 +122,18 @@ object Application extends Logger {
               case ms:MeTLStanza => users.contains(ms.author)
             }
           }).getOrElse(true)
-        })
+        }))
         val participants = (convHistory.getAttendances.map(_.author) ::: restrictToPrivateUsers.getOrElse(List.empty[String])).distinct.filter(u => restrictToPrivateUsers.map(_.contains(u)).getOrElse(true))
         val histories = convHistory :: conversation.slides.flatMap(slide => {
           val slideJid = slide.id.toString
-          val publicHistory = config.getHistory(slideJid)
-          val privateHistories = participants.map(p => config.getHistory(slideJid + p))
+          val publicHistory = /*time("getPublicSlideHistory(%s)".format(slideJid),*/config.getHistory(slideJid)/*)*/
+          val privateHistories = participants.map(p => /*time("getPrivateSlideHistory(%s)".format(slideJid + p),*/config.getHistory(slideJid + p)/*)*/)
           publicHistory :: privateHistories
         })
         histories
       }
-      val convs = config.searchForConversation("") // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
+      val rawConvs = config.searchForConversation("")//.take(25) // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
+      val convs = sortConversations(rawConvs)
       mark("fetched conversations: %s".format(convs.length))
       val p = convs.par
       parallelism.map(paraCount => {
@@ -124,14 +141,16 @@ object Application extends Logger {
       })
       val completed = p.flatMap(conversation => {
         val es = new java.util.Date().getTime  
-        exportConversation(conversation.author,conversation.jid.toString).map(xml => {
+        time("exporting conversation",exportConversation(conversation.author,conversation.jid.toString)).map(xml => {
           val ee = new java.util.Date().getTime  
-          mark("exporting conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
+          mark("exported conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
           val is = new java.util.Date().getTime  
           val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map("Cookie" -> "%s=%s".format(cookieKey,cookieValue))
           val result = Http(svc OK as.xml.Elem).either
           val res = result()
+          //val res = Right(xml \\ "conversation" \\ "jid") // skipping the upload while I work on optimizing the import speed
           val ie = new java.util.Date().getTime
+          mark("pushed conversation: %s (%s) %s => %s (%sB)".format(conversation.author,conversation.slides.length,conversation.title,res.isRight,xml.toString.length))
           (conversation.jid,res,ee - es, ie - is, ie - es)
         })
       }).toList  
@@ -140,6 +159,7 @@ object Application extends Logger {
     })
     LAScheduler.shutdown()
     mark("finished reading.")
+    System.exit(0)
   }
 }
 
