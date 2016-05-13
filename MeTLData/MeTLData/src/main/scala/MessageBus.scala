@@ -42,21 +42,25 @@ object EmptyMessageBusProvider extends MessageBusProvider{
 abstract class MessageBus(definition:MessageBusDefinition, creator:MessageBusProvider) {
 	def getDefinition:MessageBusDefinition = definition
 	def getCreator:MessageBusProvider = creator
-  def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean
+  def sendStanzaToRoom[A <: MeTLStanza](stanza:A,updateTimestamp:Boolean = true):Boolean
   def recieveStanzaFromRoom[A <: MeTLStanza](stanza:A) = definition.onReceive(stanza)
   def notifyConnectionLost = definition.onConnectionLost()
   def notifyConnectionResumed = definition.onConnectionRegained()
   def release = creator.releaseMessageBus(definition)
 }
 class LoopbackBus(definition:MessageBusDefinition,creator:MessageBusProvider) extends MessageBus(definition,creator) with Logger {
-  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean = {
-    val newMessage = stanza.adjustTimestamp(new java.util.Date().getTime)
+  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A,updateStanza:Boolean = true):Boolean = {
+    val newMessage = if (updateStanza) {
+      stanza.adjustTimestamp(new java.util.Date().getTime)
+    } else {
+      stanza
+    }
     debug("LoopbackBus: %s returning: %s -> %s".format(definition,stanza,newMessage))
     recieveStanzaFromRoom(newMessage)
     true
   }
 }
 object EmptyMessageBus extends MessageBus(new MessageBusDefinition("empty","throwaway"),EmptyMessageBusProvider){
-  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A):Boolean = false
+  override def sendStanzaToRoom[A <: MeTLStanza](stanza:A,updateStanza:Boolean = true):Boolean = false
   override def recieveStanzaFromRoom[A <: MeTLStanza](stanza:A) = {}
 }
