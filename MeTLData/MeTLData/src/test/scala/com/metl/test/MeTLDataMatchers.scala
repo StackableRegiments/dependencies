@@ -711,10 +711,10 @@ trait MeTLCommandMatchers extends MeTLStanzaMatchers {
 	  new HavePropertyMatcher[MeTLCommand, String] {
 		def apply(stanza: MeTLCommand) =
 		  HavePropertyMatchResult(
-			stanza.command == expectedValue,
-			"command",
-			expectedValue,
-			stanza.command
+        stanza.command == expectedValue,
+        "command",
+        expectedValue,
+        stanza.command
 		  )
 	  }
 

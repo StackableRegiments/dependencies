@@ -182,7 +182,7 @@ trait MeTLDataGenerators {
         command <- Gen.alphaStr
         commandParams <- Gen.containerOfN[List, String](1,Gen.alphaStr)
         audiences <- genAudiences
-    } yield MeTLCommand(ServerConfiguration.empty, author, timestamp, command, commandParams,audiences)
+    } yield MeTLCommand(ServerConfiguration.empty, author, timestamp, command, commandParams, audiences)
 
     val genSubmission = for {
         author <- Gen.alphaStr

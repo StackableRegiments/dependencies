@@ -24,13 +24,13 @@ class MeTLCommandSuite extends FunSuite with GeneratorDrivenPropertyChecks with 
 	test("extract command from xml") {
 
 		val content = <message>
-						<body>
+            <command>
 							<author>eecrole</author>
-							<command>GO_TO_SLIDE</command>
+							<name>GO_TO_SLIDE</name>
 							<parameters>
 								<parameter>2234234</parameter>
 							</parameters>
-						</body>
+						</command>
 					  </message>
 
 		val result = xmlSerializer.toMeTLData(content).asInstanceOf[MeTLCommand]
@@ -45,13 +45,13 @@ class MeTLCommandSuite extends FunSuite with GeneratorDrivenPropertyChecks with 
 	}
 
     test("serialize MeTLCommand to xml") {
-        forAll (genCommand) { (genCommand: MeTLCommand) =>
+        forAll (genCommand) { (genComm: MeTLCommand) =>
 
-            implicit val xml = xmlSerializer.fromMeTLCommand(genCommand)
+            implicit val xml = xmlSerializer.fromMeTLCommand(genComm)
 
-            genCommand should have (
+            genComm should have (
                author (queryXml[String]("author")),
-               command ((xml \ "command" \ "command").text),
+               command (queryXml[String]("name")),
                commandParameters (xmlSerializer.getListOfStringsByNameWithin(xml, "parameter", "parameters"))
             )
         }

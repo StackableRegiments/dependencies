@@ -10,19 +10,46 @@ object PointConverter {
   def fromText(t:String):List[Point] = parsePoints(t.split(" ").toList)
   def toText(points:List[Point]):String = points.map(p => toText(p)).mkString(" ")
   def toText(point:Point):String = "%s %s %s".format(point.x,point.y,point.thickness)
-  private def constructPoint(pointElements:List[String]):Point = {
-    if (pointElements.length == 3){
+  protected val pointCount = 3
+  def constructPoint(pointElements:List[String]):Option[Point] = {
+    if (pointElements.length == pointCount){
+      try {
+        val x = pointElements(0).toDouble
+        val y = pointElements(1).toDouble
+        val thickness = pointElements(2).toDouble
+        Some(Point(x,y,thickness))
+      } catch {
+        case e:Exception => {
+          None
+        }
+      }
+      /*
       val x = tryo(pointElements(0).toDouble).openOr(0.0)
       val y = tryo(pointElements(1).toDouble).openOr(0.0)
       val thickness = tryo(pointElements(2).toDouble).openOr(0.0)
-      Point(x,y,thickness)
+      Some(Point(x,y,thickness))
+      */
     }
-    else Point.empty
+    else None
   }
-  private def parsePoints(incomingPoints:List[String]):List[Point] = {
-    incomingPoints.splitAt(3) match {
-      case (currentPoint,remainingPoints) if (currentPoint.length == 3) => constructPoint(currentPoint) :: parsePoints(remainingPoints)
-      case (lastPoint,List()) if (lastPoint.length == 3) => List(constructPoint(lastPoint))
+  def deprecatedConstructPoint(pointElements:List[String]):Option[Point] = {
+    if (pointElements.length == pointCount){
+      val x = tryo(pointElements(0).toDouble).openOr(0.0)
+      val y = tryo(pointElements(1).toDouble).openOr(0.0)
+      val thickness = tryo(pointElements(2).toDouble).openOr(0.0)
+      Some(Point(x,y,thickness))
+    }
+    else None
+  }
+
+  protected def parsePoints(incomingPoints:List[String]):List[Point] = {
+    incomingPoints.grouped(3).flatMap(constructPoint _).toList
+  }
+  def deprecatedFromText(t:String):List[Point] = deprecatedParsePoints(t.split(" ").toList)
+  protected def deprecatedParsePoints(incomingPoints:List[String]):List[Point] = {
+    incomingPoints.splitAt(pointCount) match {
+      case (currentPoint,remainingPoints) if (currentPoint.length == pointCount) => constructPoint(currentPoint).toList ::: parsePoints(remainingPoints)
+//      case (lastPoint,List()) if (lastPoint.length == pointCount) => List(constructPoint(lastPoint))
       case _ => List.empty[Point]
     }
   }
