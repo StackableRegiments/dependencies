@@ -71,7 +71,7 @@ object Application extends Logger {
       val jidPriorities = priorityElems.flatMap(elem => (elem \ "@jid").headOption.map(_.text.toInt))
       val authorPriorities = priorityElems.flatMap(elem => (elem \ "@author").headOption.map(_.text))
       (in:List[Conversation]) => {
-        val (jidMatches,nonJid) = in.sortBy(_.lastAccessed).partition(c => jidPriorities.contains(c.jid))
+        val (jidMatches,nonJid) = in.sortWith((a,b) => a.lastAccessed > b.lastAccessed).partition(c => jidPriorities.contains(c.jid))
         val (authorMatches,nonAuthor) = nonJid.partition(c => authorPriorities.contains(c.author))
         jidMatches ::: authorMatches ::: nonAuthor
       }
