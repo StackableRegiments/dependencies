@@ -68,12 +68,13 @@ object Application extends Logger {
     }
     val sortConversations:List[Conversation]=>List[Conversation] = {
       val priorityElems = (configFile \\ "priority")
+      val doAllAfter = (configFile \\ "priorities" \ "@completeLoadAfterPriorities").headOption.map(_.text.toBoolean).getOrElse(true)
       val jidPriorities = priorityElems.flatMap(elem => (elem \ "@jid").headOption.map(_.text.toInt))
       val authorPriorities = priorityElems.flatMap(elem => (elem \ "@author").headOption.map(_.text))
       (in:List[Conversation]) => {
         val (jidMatches,nonJid) = in.sortWith((a,b) => a.lastAccessed > b.lastAccessed).partition(c => jidPriorities.contains(c.jid))
         val (authorMatches,nonAuthor) = nonJid.partition(c => authorPriorities.contains(c.author))
-        jidMatches ::: authorMatches ::: nonAuthor
+        jidMatches ::: authorMatches ::: nonAuthor.filter(_i => doAllAfter)
       }
     }
     val (targetServer,cookieKey,cookieValue) = (configFile \\ "targetServer").headOption.map(cn => {
@@ -145,13 +146,22 @@ object Application extends Logger {
           val ee = new java.util.Date().getTime  
           mark("exported conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
           val is = new java.util.Date().getTime  
+          /*
           val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map("Cookie" -> "%s=%s".format(cookieKey,cookieValue))
           val result = Http(svc OK as.xml.Elem).either
           val res = result()
-          //val res = Right(xml \\ "conversation" \\ "jid") // skipping the upload while I work on optimizing the import speed
+          */
+          val res = Left(new Exception("deliberately failing"))
           val ie = new java.util.Date().getTime
-          mark("pushed conversation: %s (%s) %s => %s (%sB)".format(conversation.author,conversation.slides.length,conversation.title,res.isRight,xml.toString.length))
-          (conversation.jid,res,ee - es, ie - is, ie - es)
+          val exportTime = ee - es 
+          val importTime = ie - is
+          val total =  ie - es
+          res.right.map(crx => {
+            mark("successful import: %s (%s) %s => (%sB)".format(conversation.author,conversation.slides.length,conversation.title,crx.toString.length))
+          }).left.map(e => {
+            error("exception while pushing conversation: %s (%s) %s: %s".format(conversation.author,conversation.slides.length,conversation.title,e.getMessage),e)
+          })
+          (conversation.jid,res.isRight,exportTime, importTime,total)
         })
       }).toList  
       mark("completed pushing conversations: \r\n%s".format(completed.map(c => "CONV %s [%s (%s + %s)]: %s".format(c._1,c._5,c._3,c._4,c._2)).mkString("\r\n")))
