@@ -1,5 +1,5 @@
 name := "persisted-metl"
-version := "3.5.0"
+version := "3.6.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"
@@ -27,7 +27,7 @@ libraryDependencies ++= {
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
     "io.github.stackableregiments" %% "common-utils" % "0.3.+",
-    "io.github.stackableregiments" %% "metldata" % "3.6.+"
+    "io.github.stackableregiments" %% "metldata" % "3.8.+"
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
 

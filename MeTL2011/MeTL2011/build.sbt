@@ -1,5 +1,5 @@
 name := "metl2011"
-version := "3.10.0"
+version := "3.11.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"
@@ -28,7 +28,7 @@ libraryDependencies ++= {
     "commons-io" % "commons-io" % "1.4",
     "io.github.stackableregiments" %% "common-utils" % "0.3.+",
     "org.apache.commons" % "commons-compress" % "1.1",
-    "io.github.stackableregiments" %% "metldata" % "3.6.+",
+    "io.github.stackableregiments" %% "metldata" % "3.8.+",
     "io.github.stackableregiments" %% "xmpp" % "3.5.+" 
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
