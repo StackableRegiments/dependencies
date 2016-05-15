@@ -34,9 +34,9 @@ libraryDependencies ++= {
     "net.liftweb" %% "lift-mongodb-record" % liftVersion,
     "org.seleniumhq.selenium" % "selenium-java" % "2.8.0",
     "io.github.stackableregiments" %% "common-utils" % "0.3.+",
-    "io.github.stackableregiments" %% "metldata" % "3.6.2",
-    "io.github.stackableregiments" %% "metl2011" % "3.10.+",
-    "io.github.stackableregiments" %% "metl-h2" % "3.18.+",
+    "io.github.stackableregiments" %% "metldata" % "3.8.+",
+    "io.github.stackableregiments" %% "metl2011" % "3.11.+",
+    "io.github.stackableregiments" %% "metl-h2" % "3.21.+",
     "mysql" % "mysql-connector-java" % "5.1.38",
     "io.github.stackableregiments" %% "lift-extensions" % "0.2.+"
   )
@@ -80,7 +80,8 @@ fork in (run) := true
 
 // add a JVM option to use when forking a JVM for 'run'
 //javaOptions += "-Xmx2G"
-javaOptions += "-Xmx3072m"
+//javaOptions += "-Xmx3072m"
+javaOptions += "-Xmx6172m"
 javaOptions += "-Dmetlx.configurationFile=./config/configuration.local.xml"
 javaOptions += "-Dlogback.configurationFile=config/logback.xml"
 
