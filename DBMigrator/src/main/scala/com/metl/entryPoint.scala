@@ -167,12 +167,10 @@ object Application extends Logger {
           val ee = new java.util.Date().getTime  
           mark("exported conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
           val is = new java.util.Date().getTime  
-          /*
           val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map("Cookie" -> "%s=%s".format(cookieKey,cookieValue))
           val result = Http(svc OK as.xml.Elem).either
           val res = result()
-          */
-          val res = Left(new Exception("deliberately failing"))
+          //val res = Left(new Exception("deliberately failing"))
           val ie = new java.util.Date().getTime
           val exportTime = ee - es 
           val importTime = ie - is
