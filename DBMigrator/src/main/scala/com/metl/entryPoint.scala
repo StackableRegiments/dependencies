@@ -42,6 +42,13 @@ object Application extends Logger {
     }
   }
 
+  def generatePrivateListFunc(config:ServerConfiguration):Conversation=>Option[List[String]] = {
+    config match {
+      case cm2011:MeTL2011BackendAdaptor => (conv:Conversation) => None // this is where the parse through the content will occur, so that we can determine who's made private or public actions in these conversations, so that we don't lose their content.
+      case _ => (conv:Conversation) => None
+    }
+  }
+
   def main(args:Array[String]):Unit = {
     val start = new java.util.Date().getTime
     val maintainKeys = new MaintainKeys(start)
@@ -91,13 +98,14 @@ object Application extends Logger {
     maintainKeys ! AddKey(targetServer,cookieKey,cookieValue)
     mark("servers: %s => %s".format(servers,targetServer))
     servers.filterNot(_ == EmptyBackendAdaptor).foreach(config => {
-      mark("exporting server: %s".format(config))  
+      mark("exporting server: %s".format(config))
       var exportSerializer = new MigratorXmlSerializer(config.name)
+      val privateFunc = generatePrivateListFunc(config)
       def exportConversation(onBehalfOfUser:String,conversation:String):Box[NodeSeq] = {
         for (
           conv <- Some(config.detailsOfConversation(conversation));
           if (onBehalfOfUser == conv.author);
-          histories = exportHistories(conv,None);
+          histories = exportHistories(conv,privateFunc(conv));
           xml = {
             <export>
             {exportSerializer.fromConversation(conv)}
@@ -115,7 +123,7 @@ object Application extends Logger {
         res
       }
       def exportHistories(conversation:Conversation,restrictToPrivateUsers:Option[List[String]]):List[History] = {
-        val convHistory = time("getHistory(%s)".format(conversation.jid),config.getHistory(conversation.jid.toString).filter(m => {
+        var convHistory = time("getHistory(%s)".format(conversation.jid),config.getHistory(conversation.jid.toString).filter(m => {
           restrictToPrivateUsers.map(users => {
             m match {
               case q:MeTLQuiz => true
@@ -124,14 +132,27 @@ object Application extends Logger {
             }
           }).getOrElse(true)
         }))
-        val participants = (convHistory.getAttendances.map(_.author) ::: restrictToPrivateUsers.getOrElse(List.empty[String])).distinct.filter(u => restrictToPrivateUsers.map(_.contains(u)).getOrElse(true))
-        val histories = convHistory :: conversation.slides.flatMap(slide => {
+        val attendees = convHistory.getAttendances.map(_.author).distinct
+        val participants = (attendees ::: restrictToPrivateUsers.getOrElse(List.empty[String])).distinct.filter(u => restrictToPrivateUsers.map(_.contains(u)).getOrElse(true))
+        val histories = conversation.slides.flatMap(slide => {
           val slideJid = slide.id.toString
-          val publicHistory = /*time("getPublicSlideHistory(%s)".format(slideJid),*/config.getHistory(slideJid)/*)*/
-          val privateHistories = participants.map(p => /*time("getPrivateSlideHistory(%s)".format(slideJid + p),*/config.getHistory(slideJid + p)/*)*/)
-          publicHistory :: privateHistories
+          val publicHistory = config.getHistory(slideJid)
+          val privateHistories = participants.map(p => {
+            config.getHistory(slideJid + p)
+          })
+          val allHistories = publicHistory :: privateHistories
+          allHistories.flatMap(_.getAll).groupBy(_.author).foreach(authorStanzas => {
+            if (!attendees.contains(authorStanzas._1)){
+              val times = authorStanzas._2.map(_.timestamp)
+              val entering = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.min,slideJid,true,Nil)            
+              val leaving = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.max,slideJid,true,Nil)            
+              convHistory.addAttendance(entering)
+              convHistory.addAttendance(leaving)
+            }
+          })
+          allHistories
         })
-        histories
+        convHistory :: histories
       }
       val rawConvs = config.searchForConversation("")//.take(25) // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
       val convs = sortConversations(rawConvs)

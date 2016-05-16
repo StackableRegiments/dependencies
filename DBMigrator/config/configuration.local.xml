@@ -1,10 +1,10 @@
 <serverConfiguration>
 	<!--<parallelism>16</parallelism>-->
 	<parallelism>16</parallelism>
-	<priorities>
+	<priorities completeLoadAfterPriorities="false">
 		<priority jid="20000" />
-		<priority author="dave"/>
-		<priority author="c"/>
+		<priority author="david.hagen"/>
+		<priority author="christopher.hagen"/>
 		<priority jid="1000"/>
 	</priorities>
 	<servers>
