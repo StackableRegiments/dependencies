@@ -190,7 +190,7 @@ class H2Serializer(configName:String) extends Serializer with LiftLogger {
 		val url = i.url.get
 		val bytes = config.getResource(url)
     val blacklist = blacklistFromString(i.blacklist.get)
-		MeTLSubmission(config,c.author,c.timestamp,i.title.get,i.slideJid.get,url,Full(bytes),List.empty[SubmissionBlacklistedPerson],c.target,c.privacy,c.identity)	
+		MeTLSubmission(config,c.author,c.timestamp,i.title.get,i.slideJid.get,url,Full(bytes),blacklist,c.target,c.privacy,c.identity)	
 	}
   override def fromSubmission(i:MeTLSubmission):H2Submission = incCanvasContent(H2Submission.create,i,"submission").title(i.title).slideJid(i.slideJid).url(i.url).blacklist(blacklistToString(i.blacklist))
   def toMeTLQuiz(i:H2Quiz):MeTLQuiz = {
