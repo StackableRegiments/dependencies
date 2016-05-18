@@ -189,9 +189,10 @@ class H2Serializer(configName:String) extends Serializer with LiftLogger {
 		val c = decCanvasContent(i)
 		val url = i.url.get
 		val bytes = config.getResource(url)
+    val blacklist = blacklistFromString(i.blacklist.get)
 		MeTLSubmission(config,c.author,c.timestamp,i.title.get,i.slideJid.get,url,Full(bytes),List.empty[SubmissionBlacklistedPerson],c.target,c.privacy,c.identity)	
 	}
-  override def fromSubmission(i:MeTLSubmission):H2Submission = incCanvasContent(H2Submission.create,i,"submission").title(i.title).slideJid(i.slideJid).url(i.url)
+  override def fromSubmission(i:MeTLSubmission):H2Submission = incCanvasContent(H2Submission.create,i,"submission").title(i.title).slideJid(i.slideJid).url(i.url).blacklist(blacklistToString(i.blacklist))
   def toMeTLQuiz(i:H2Quiz):MeTLQuiz = {
 		val url = i.url.get match {
 			case s:String if (s.length > 0) => Full(s)
@@ -226,6 +227,34 @@ class H2Serializer(configName:String) extends Serializer with LiftLogger {
 	def optionsFromString(s:String):List[QuizOption] = {
 		(scala.xml.XML.loadString(s) \\ "quizOption").map(o => xmlSerializer.toQuizOption(o)).toList
 	}
+  def blacklistToString(bl:List[SubmissionBlacklistedPerson]):String = {
+    try {
+      (
+        <blacklist>{bl.map(b => {
+          <blacklistedPerson>
+            <name>{b.username}</name>
+            <highlight>{fromColor(b.highlight)}</highlight>
+          </blacklistedPerson>
+        })}</blacklist>
+      ).toString
+    } catch {
+      case e:Exception => ""
+    }
+  }
+  def blacklistFromString(s:String):List[SubmissionBlacklistedPerson] = {
+    try {
+      (scala.xml.XML.loadString(s) \\ "blacklistedPerson").flatMap(blp => {
+        for (
+          u <- (blp \\ "name").map(_.text);
+          h <- (blp \\ "highlight").map(hl => toColor(hl.text))
+        ) yield {
+          SubmissionBlacklistedPerson(u,h)
+        }
+      }).toList
+    } catch {
+      case e:Exception => Nil
+    }
+  }
 	def slidesToString(ls:List[Slide]):String = {
 		"<slides>%s</slides>".format(ls.map(s => xmlSerializer.fromSlide(s).toString).mkString(""))
 	}

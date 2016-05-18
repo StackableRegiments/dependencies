@@ -183,6 +183,7 @@ class H2Submission extends H2MeTLCanvasContent[H2Submission]{
 	object title extends MappedMeTLString(this,512)
 	object slideJid extends MappedInt(this)
 	object url extends MappedMeTLString(this,H2Constants.url)
+  object blacklist extends MappedText(this)
 }
 object H2Submission extends H2Submission with LongKeyedMetaMapper[H2Submission]{
 }
