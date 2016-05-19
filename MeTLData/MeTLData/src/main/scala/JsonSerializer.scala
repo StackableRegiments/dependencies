@@ -560,11 +560,12 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val title = getStringByName(input,"title")
         val created = getStringByName(input,"created")
         val permissions = toPermissions(getObjectByName(input,"permissions"))
+        val blacklist = getListOfStringsByName(input,"blacklist")
 				val thisConfig = getStringByName(input,"configName") match {
 					case "" => config
 					case other => ServerConfiguration.configForName(other)
 				}
-        Conversation(thisConfig,author,lastAccessed,slides,subject,tag,jid,title,created,permissions)
+        Conversation(thisConfig,author,lastAccessed,slides,subject,tag,jid,title,created,permissions,blacklist)
       }
       case _ => Conversation.empty
     }
@@ -581,6 +582,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("title",JString(input.title)),
       JField("created",JString(input.created)),
       JField("permissions",fromPermissions(input.permissions)),
+      JField("blacklist",JArray(input.blackList.map(bli => JString(bli)).toList)),
 			JField("configName",JString(input.server.name))
     ))
   })
