@@ -24,15 +24,15 @@ libraryDependencies ++= {
     "org.scala-lang" % "scala-library" % scalaVersionString,
     "org.scalatest" %% "scalatest" % "2.2.5" % "test",
     "org.scalaz.stream" %% "scalaz-stream" % "0.7.+",
-		"org.specs2" %% "specs2" % "3.3.1" % "test",
-		"org.mockito" % "mockito-core" % "1.9.0" % "test",
+    "org.specs2" %% "specs2" % "3.3.1" % "test",
+    "org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
-//    "com.h2database" % "h2" % "1.2.138",
+    //    "com.h2database" % "h2" % "1.2.138",
     "com.h2database" % "h2" % "1.4.189",
     "net.liftweb" %% "lift-mapper" % liftVersion,
     "net.liftweb" %% "lift-webkit" % liftVersion,
     "io.github.stackableregiments" %% "common-utils" % "0.4.+",
-    "io.github.stackableregiments" %% "persisted-metl" % "3.7.+"
+    "io.github.stackableregiments" %% "persisted-metl" % "3.8.+"
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
 
@@ -68,8 +68,8 @@ showSuccess := true
 
 // change the format used for printing task completion time
 timingFormat := {
-    import java.text.DateFormat
-    DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
+  import java.text.DateFormat
+  DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT)
 }
 
 testOptions in Test += Tests.Argument("-eI")

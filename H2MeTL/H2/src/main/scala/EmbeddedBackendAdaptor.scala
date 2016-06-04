@@ -7,29 +7,29 @@ import scala.xml._
 import net.liftweb.mapper.StandardDBVendor
 
 object LocalH2ServerConfiguration{
-	def initialize = {
-    ServerConfiguration.addServerConfigurator(LocalH2ServerConfigurator) 
-    ServerConfiguration.addServerConfigurator(SqlServerConfigurator) 
+  def initialize = {
+    ServerConfiguration.addServerConfigurator(LocalH2ServerConfigurator)
+    ServerConfiguration.addServerConfigurator(SqlServerConfigurator)
   }
 }
 
 class LocalH2BackendAdaptor(name:String,filename:Option[String],onConversationDetailsUpdated:Conversation=>Unit) extends PersistedAdaptor(name,"localhost",onConversationDetailsUpdated){
-	override lazy val dbInterface = new H2Interface(name,filename,onConversationDetailsUpdated)
-	override def shutdown = dbInterface.shutdown
+  override lazy val dbInterface = new H2Interface(name,filename,onConversationDetailsUpdated)
+  override def shutdown = dbInterface.shutdown
 }
 object LocalH2ServerConfigurator extends ServerConfigurator{
-	override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "localH2")
+  override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "localH2")
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     Some(new LocalH2BackendAdaptor((e \ "name").headOption.map(_.text).getOrElse("localH2"),(e \ "filename").headOption.map(_.text),onConversationDetailsUpdated))
   }
 }
 
 class SqlBackendAdaptor(name:String,vendor:StandardDBVendor,onConversationDetailsUpdated:Conversation=>Unit) extends PersistedAdaptor(name,"localhost",onConversationDetailsUpdated){
-	override lazy val dbInterface = new SqlInterface(name,vendor,onConversationDetailsUpdated)
-	override def shutdown = dbInterface.shutdown
+  override lazy val dbInterface = new SqlInterface(name,vendor,onConversationDetailsUpdated)
+  override def shutdown = dbInterface.shutdown
 }
 object SqlServerConfigurator extends ServerConfigurator{
-	override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "sql")
+  override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "sql")
   override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     for (
       driver <- (e \\ "driver").headOption.map(_.text);

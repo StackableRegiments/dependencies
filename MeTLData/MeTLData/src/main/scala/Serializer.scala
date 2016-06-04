@@ -20,6 +20,10 @@ abstract class Serializer {
   def fromMeTLImage(input:MeTLImage):T = throw new SerializationNotImplementedException
   def toMeTLText(input:T):MeTLText = throw new SerializationNotImplementedException
   def fromMeTLText(input:MeTLText):T = throw new SerializationNotImplementedException
+  def toMeTLWord(input:T) = throw new SerializationNotImplementedException
+  def fromMeTLWord(input:MeTLTextWord):T = throw new SerializationNotImplementedException
+  def toMeTLMultiWordText(input:T) = throw new SerializationNotImplementedException
+  def fromMeTLMultiWordText(input:MeTLMultiWordText):T = throw new SerializationNotImplementedException
   def toMeTLDirtyInk(input:T):MeTLDirtyInk = throw new SerializationNotImplementedException
   def fromMeTLDirtyInk(input:MeTLDirtyInk):T = throw new SerializationNotImplementedException
   def toMeTLDirtyImage(input:T):MeTLDirtyImage = throw new SerializationNotImplementedException
@@ -94,8 +98,8 @@ class PassthroughSerializer extends Serializer {
   override def fromMeTLImage(input:MeTLImage):Object = input.asInstanceOf[Object]
   override def toMeTLText(input:Object):MeTLText = input.asInstanceOf[MeTLText]
   override def fromMeTLText(input:MeTLText):Object = input.asInstanceOf[Object]
-	override def toMeTLMoveDelta(input:Object):MeTLMoveDelta = input.asInstanceOf[MeTLMoveDelta]
-	override def fromMeTLMoveDelta(input:MeTLMoveDelta):Object = input.asInstanceOf[Object]
+  override def toMeTLMoveDelta(input:Object):MeTLMoveDelta = input.asInstanceOf[MeTLMoveDelta]
+  override def fromMeTLMoveDelta(input:MeTLMoveDelta):Object = input.asInstanceOf[Object]
   override def toMeTLDirtyInk(input:Object):MeTLDirtyInk = input.asInstanceOf[MeTLDirtyInk]
   override def fromMeTLDirtyInk(input:MeTLDirtyInk):Object = input.asInstanceOf[Object]
   override def toMeTLDirtyImage(input:Object):MeTLDirtyImage = input.asInstanceOf[MeTLDirtyImage]
@@ -124,7 +128,7 @@ class PassthroughSerializer extends Serializer {
   override def fromGroupingStrategy(input:GroupingStrategy):T = input.asInstanceOf[Object]
   override def toPermissions(input:Object):Permissions = input.asInstanceOf[Permissions]
   override def fromPermissions(input:Permissions):Object = input.asInstanceOf[Object]
-	override def toPoint(input:AnyRef):Point = input.asInstanceOf[Point]
+  override def toPoint(input:AnyRef):Point = input.asInstanceOf[Point]
   override def fromPoint(input:Point):AnyRef = input.asInstanceOf[AnyRef]
   override def toPointList(input:AnyRef):List[Point] = input.asInstanceOf[List[Point]]
   override def fromPointList(input:List[Point]):AnyRef = input.asInstanceOf[AnyRef]
