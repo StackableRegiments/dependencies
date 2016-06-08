@@ -179,7 +179,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     input match {
       case jo:JObject if (isOfType(jo,"ink")) => toMeTLInk(jo)
       case jo:JObject if (isOfType(jo,"text")) => toMeTLText(jo)
-      case jo:JObject if (isOfType(jo,"richText")) => toMeTLMultiWordText(jo)
+      case jo:JObject if (isOfType(jo,"multiWordText")) => toMeTLMultiWordText(jo)
       case jo:JObject if (isOfType(jo,"image")) => toMeTLImage(jo)
       case jo:JObject if (isOfType(jo,"dirtyInk")) => toMeTLDirtyInk(jo)
       case jo:JObject if (isOfType(jo,"dirtyText")) => toMeTLDirtyText(jo)
