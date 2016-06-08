@@ -23,7 +23,7 @@ trait XmlUtils {
     val target = getStringByName(i,"target")
     val privacy = getPrivacyByName(i,"privacy")
     val slide = getStringByName(i,"slide")
-    val identity = getStringByName(i,"identity") 
+    val identity = getStringByName(i,"identity")
     ParsedCanvasContent(target,privacy,slide,identity)
   }
 
@@ -35,35 +35,35 @@ trait XmlUtils {
   }
   def parseMeTLContent(i:NodeSeq,config:ServerConfiguration = ServerConfiguration.empty):ParsedMeTLContent = {
     val author = getStringByName(i,"author")
-		val timestamp = {
-			val failed = -1L
-			tryo(getAttributeOfNode(i,"message","time").toLong).openOr({
-				getLongByName(getXmlByName(i,"metlMetaData"),"timestamp") match {
-					case l:Long if l == failed => tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(failed)
-					case l:Long => l
-					//case _ => failed
-				}
-			})
-		}
-    val audiences = tryo(((i \\ "audiences") \\ "audience").flatMap(an => {
-        for (
-          domain <- (an \ "@domain").headOption;
-          name <- (an \ "@name").headOption;
-          audienceType <- (an \ "@type").headOption;
-          action <- (an \ "@action").headOption
-        ) yield {
-          Audience(config,domain.text,name.text,audienceType.text,action.text)
+    val timestamp = {
+      val failed = -1L
+      tryo(getAttributeOfNode(i,"message","time").toLong).openOr({
+        getLongByName(getXmlByName(i,"metlMetaData"),"timestamp") match {
+          case l:Long if l == failed => tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(failed)
+          case l:Long => l
+            //case _ => failed
         }
-      })).openOr(List.empty[Audience]) //this is where I've got to parse it out.
-    //val timestamp = tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(-1L)
-    //val timestamp = getLongByName(getXmlByName(i,"metlMetaData"),"timestamp")
-    ParsedMeTLContent(author,timestamp,audiences.toList)
+      })
+    }
+    val audiences = tryo(((i \\ "audiences") \\ "audience").flatMap(an => {
+      for (
+        domain <- (an \ "@domain").headOption;
+        name <- (an \ "@name").headOption;
+        audienceType <- (an \ "@type").headOption;
+        action <- (an \ "@action").headOption
+      ) yield {
+        Audience(config,domain.text,name.text,audienceType.text,action.text)
+      }
+    })).openOr(List.empty[Audience]) //this is where I've got to parse it out.
+                                     //val timestamp = tryo(getAttributeOfNode(i,"message","timestamp").toLong).openOr(-1L)
+                                     //val timestamp = getLongByName(getXmlByName(i,"metlMetaData"),"timestamp")
+      ParsedMeTLContent(author,timestamp,audiences.toList)
   }
   def parsedMeTLContentToXml(p:ParsedMeTLContent):Seq[Node] = {
-    <author>{p.author}</author>  
+    <author>{p.author}</author>
     <audiences>{p.audiences.map(a => {
-        <audience domain={a.domain} name={a.name} type={a.audienceType} action={a.action}/>
-      })}</audiences>
+      <audience domain={a.domain} name={a.name} type={a.audienceType} action={a.action}/>
+    })}</audiences>
   }
   def hasChild(in:NodeSeq,tagName:String):Boolean = (in \ tagName).length > 0
   def hasSubChild(in:NodeSeq,tagName:String):Boolean = (in \\ tagName).length > 0
@@ -88,7 +88,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       case i:NodeSeq if hasChild(i,"quizResponse") => toMeTLQuizResponse(i)
       case i:NodeSeq if hasChild(i,"screenshotSubmission") => toSubmission(i)
       case i:NodeSeq if hasChild(i,"attendance") => toMeTLAttendance(i)
-//      case i:NodeSeq if hasChild(i,"body") => toMeTLCommand(i)
+      //      case i:NodeSeq if hasChild(i,"body") => toMeTLCommand(i)
       case i:NodeSeq if hasChild(i,"command") => toMeTLCommand(i)
       case i:NodeSeq if hasChild(i,"fileResource") => toMeTLFile(i)
       case i:NodeSeq if hasSubChild(i,"target") && hasSubChild(i,"privacy") && hasSubChild(i,"slide") && hasSubChild(i,"identity") => toMeTLUnhandledCanvasContent(i)
@@ -168,8 +168,8 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val yScale = getDoubleByName(input,"yScale")
     val newPrivacy = getPrivacyByName(input,"newPrivacy")
     val isDeleted = getBooleanByName(input,"isDeleted")
-		val xOrigin = getDoubleByName(input,"xOrigin")
-		val yOrigin = getDoubleByName(input,"yOrigin")
+    val xOrigin = getDoubleByName(input,"xOrigin")
+    val yOrigin = getDoubleByName(input,"yOrigin")
     MeTLMoveDelta(config,m.author,m.timestamp,c.target,c.privacy,c.slide,c.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted,m.audiences)
   })
   override def fromMeTLMoveDelta(input:MeTLMoveDelta):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLMoveDelta", {
@@ -183,8 +183,8 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <yScale>{input.yScale}</yScale>,
       <newPrivacy>{input.newPrivacy}</newPrivacy>,
       <isDeleted>{input.isDeleted}</isDeleted>,
-			<xOrigin>{input.xOrigin}</xOrigin>,
-			<yOrigin>{input.yOrigin}</yOrigin>
+      <xOrigin>{input.xOrigin}</xOrigin>,
+      <yOrigin>{input.yOrigin}</yOrigin>
     ))
   })
   override def toMeTLAttendance(input:NodeSeq):Attendance = Stopwatch.time("GenericXmlSerializer.toMeTLAttendance",{
@@ -209,9 +209,9 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val thickness = getDoubleByName(input,"thickness")
     val isHighlighter = getBooleanByName(input,"highlight")
     val identity = c.identity match {
-			case "" => startingSum.toString
-			case other => other
-		}
+      case "" => startingSum.toString
+      case other => other
+    }
     MeTLInk(config,m.author,m.timestamp,checksum,startingSum,points,color,thickness,isHighlighter,c.target,c.privacy,c.slide,identity,m.audiences)
   })
   override def fromMeTLInk(input:MeTLInk):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLInk",{
@@ -250,6 +250,30 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <y>{input.y}</y>
     ))
   })
+  override def fromMeTLWord(input:MeTLTextWord) = <word>
+  <text>{input.text}</text>
+  <bold>{input.bold}</bold>
+  <underline>{input.underline}</underline>
+  <italic>{input.italic}</italic>
+  <justify>{input.justify}</justify>
+  <font>{input.font}</font>
+  <size>{input.size}</size>
+  <color>
+  <alpha>{input.color.alpha}</alpha>
+  <red>{input.color.red}</red>
+  <green>{input.color.green}</green>
+  <blue>{input.color.blue}</blue>
+  </color>
+  </word>
+  override def fromMeTLMultiWordText(input:MeTLMultiWordText) = Stopwatch.time("GenericXmlSerializer.fromMeTLMultiWordText", canvasContentToXml("multiWordText",input,List(
+    <x>{input.x}</x>,
+    <y>{input.y}</y>,
+    <width>{input.width}</width>,
+    <height>{input.height}</height>,
+    <tag>{input.tag}</tag>,
+    <requestedWidth>{input.requestedWidth}</requestedWidth>,
+    <words>{input.words.map(fromMeTLWord _)}</words>
+  )))
   override def toMeTLText(input:NodeSeq):MeTLText = Stopwatch.time("GenericXmlSerializer.toMeTLText",{
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
@@ -379,7 +403,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     metlContentToXml("fileResource",input,List(
       <name>{input.name}</name>,
       <identity>{input.id}</identity>
-      ) ::: 
+    ) :::
       input.url.map(u => List(<url>{u}</url>)).getOrElse(List.empty[Node]))
   })
   def toQuizOption(input:NodeSeq):QuizOption = Stopwatch.time("GenericXmlSerializer.toMeTLQuizOption",{
@@ -423,11 +447,11 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     val created = getStringByName(input,"created")
     val permissions = getXmlByName(input,"permissions").map(p => toPermissions(p)).headOption.getOrElse(Permissions.default(config))
     val blacklist = getXmlByName(input,"blacklist").flatMap(bl => getXmlByName(bl,"user")).map(_.text)
-		val thisConfig = getStringByName(input,"configName") match {
-			case "unknown configName" => config
-			case "" => config
-			case other => ServerConfiguration.configForName(other)
-		}
+    val thisConfig = getStringByName(input,"configName") match {
+      case "unknown configName" => config
+      case "" => config
+      case other => ServerConfiguration.configForName(other)
+    }
     Conversation(thisConfig,author,lastAccessed,slides,subject,tag,jid,title,created,permissions,blacklist.toList,m.audiences)
   })
   override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversation",{
@@ -443,7 +467,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
       <blacklist>{
         input.blackList.map(bu => <user>{bu}</user> )
       }</blacklist>,
-//			<configName>{input.server.name}</configName>,
+      //                        <configName>{input.server.name}</configName>,
       fromPermissions(input.permissions)
     ))
   })
@@ -451,7 +475,7 @@ class GenericXmlSerializer(configName:String) extends Serializer with XmlUtils{
     <conversations>{input.map(c => fromConversation(c))}</conversations>
   })
   override def toSlide(input:NodeSeq):Slide = Stopwatch.time("GenericXmlSerializer.toSlide",{
-    val m = parseMeTLContent(input,config)  
+    val m = parseMeTLContent(input,config)
     val author = getStringByName(input,"author")
     val id = getIntByName(input,"id")
     val index = getIntByName(input,"index")

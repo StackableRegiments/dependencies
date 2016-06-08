@@ -8,11 +8,11 @@ import net.liftweb.common.{Logger => LiftLogger,_}
 import net.liftweb.mapper._
 import net.liftweb.util.Helpers._
 
-import net.liftweb.json._
-import DefaultFormats._
 import Privacy._
 
+
 class H2Serializer(configName:String) extends Serializer with LiftLogger {
+  implicit val formats = net.liftweb.json.DefaultFormats
   override type T = Object
     //type A = _ <: Object
     //override type T = A <: H2MeTLContent[A]
@@ -137,11 +137,13 @@ class H2Serializer(configName:String) extends Serializer with LiftLogger {
     MeTLImage(config,cc.author,cc.timestamp,i.tag.get,url,imageBytes,Empty,i.width.get,i.height.get,i.x.get,i.y.get,cc.target,cc.privacy,cc.slide,cc.identity)
   }
   override def fromMeTLImage(i:MeTLImage):H2Image = incCanvasContent(H2Image.create,i,"image").tag(i.tag).source(i.source.openOr("")).width(i.width).height(i.height).x(i.x).y(i.y)
-  def decodeMultiWords(wordString:String) = wordString.extract[Seq[MeTLTextWord]]
+  def decodeMultiWords(wordString:String) = net.liftweb.json.parse(wordString).extract[List[MeTLTextWord]]
   def toMeTLMultiWordText(i:H2MultiWordText):MeTLMultiWordText = {
     val cc = decCanvasContent(i)
-    MeTLMultiWordText(config,cc.author,cc.timestamp,cc.height,cc.width,i.requestedWidth.get,i.x.get,i.y.get,i.tag.get,cc.identity,cc.itarget,cc.privacy,decodeMultiWords(i.words.get))
+    MeTLMultiWordText(config,cc.author,cc.timestamp,i.height,i.width,i.requestedWidth.get,i.x.get,i.y.get,i.tag.get,cc.identity,cc.target,cc.privacy,cc.slide,decodeMultiWords(i.words.get))
   }
+  def encodeMultiWords(words:Seq[MeTLTextWord]):String = net.liftweb.json.Serialization.write(words)
+  override def fromMeTLMultiWordText(t:MeTLMultiWordText):H2MultiWordText = incCanvasContent(H2MultiWordText.create,t,"multiWordText").x(t.x).y(t.y).width(t.width).height(t.height).requestedWidth(t.requestedWidth).tag(t.tag).words(encodeMultiWords(t.words))
   def toMeTLText(i:H2Text):MeTLText = {
     val cc = decCanvasContent(i)
     MeTLText(config,cc.author,cc.timestamp,i.text.get,i.height.get,i.width.get,i.caret.get,i.x.get,i.y.get,i.tag.get,i.style.get,i.family.get,i.weight.get,i.size.get,i.decoration.get,cc.identity,cc.target,cc.privacy,cc.slide,toColor(i.color.get))

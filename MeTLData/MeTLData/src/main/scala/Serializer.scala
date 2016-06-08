@@ -20,9 +20,9 @@ abstract class Serializer {
   def fromMeTLImage(input:MeTLImage):T = throw new SerializationNotImplementedException
   def toMeTLText(input:T):MeTLText = throw new SerializationNotImplementedException
   def fromMeTLText(input:MeTLText):T = throw new SerializationNotImplementedException
-  def toMeTLWord(input:T) = throw new SerializationNotImplementedException
+  def toMeTLWord(input:T):MeTLTextWord = throw new SerializationNotImplementedException
   def fromMeTLWord(input:MeTLTextWord):T = throw new SerializationNotImplementedException
-  def toMeTLMultiWordText(input:T) = throw new SerializationNotImplementedException
+  def toMeTLMultiWordText(input:T):MeTLMultiWordText = throw new SerializationNotImplementedException
   def fromMeTLMultiWordText(input:MeTLMultiWordText):T = throw new SerializationNotImplementedException
   def toMeTLDirtyInk(input:T):MeTLDirtyInk = throw new SerializationNotImplementedException
   def fromMeTLDirtyInk(input:MeTLDirtyInk):T = throw new SerializationNotImplementedException
@@ -68,6 +68,7 @@ abstract class Serializer {
   def fromMeTLData(input:MeTLData):T = input match {
     case i:MeTLInk => fromMeTLInk(i)
     case t:MeTLText => fromMeTLText(t)
+    case t:MeTLMultiWordText => fromMeTLMultiWordText(t)
     case i:MeTLImage => fromMeTLImage(i)
     case d:MeTLDirtyInk => fromMeTLDirtyInk(d)
     case d:MeTLDirtyText => fromMeTLDirtyText(d)

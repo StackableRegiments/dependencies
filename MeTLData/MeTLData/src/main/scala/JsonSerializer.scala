@@ -179,6 +179,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     input match {
       case jo:JObject if (isOfType(jo,"ink")) => toMeTLInk(jo)
       case jo:JObject if (isOfType(jo,"text")) => toMeTLText(jo)
+      case jo:JObject if (isOfType(jo,"richText")) => toMeTLMultiWordText(jo)
       case jo:JObject if (isOfType(jo,"image")) => toMeTLImage(jo)
       case jo:JObject if (isOfType(jo,"dirtyInk")) => toMeTLDirtyInk(jo)
       case jo:JObject if (isOfType(jo,"dirtyText")) => toMeTLDirtyText(jo)
@@ -385,6 +386,31 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLText.empty
     }
   })
+  override def toMeTLMultiWordText(j:JValue):MeTLMultiWordText = Stopwatch.time("JsonSerializer.toMeTLMultiWordText",{
+    j match {
+      case input:JObject => {
+        try{
+        val mc = parseJObjForMeTLContent(input,config)
+        val cc = parseJObjForCanvasContent(input)
+        val requestedWidth = getDoubleByName(input,"requestedWidth")
+        val tag = getStringByName(input,"tag")
+        val words:Seq[MeTLTextWord] = (input \ "words").extract[List[MeTLTextWord]]
+        val x = getDoubleByName(input,"x")
+        val y = getDoubleByName(input,"y")
+        val width = getDoubleByName(input,"width")
+        val height = getDoubleByName(input,"height")
+        MeTLMultiWordText(config,mc.author,mc.timestamp,height,width,requestedWidth,x,y,tag,cc.identity,cc.target,cc.privacy,cc.slide,words)
+        }
+        catch {
+          case e => {
+            e.printStackTrace
+            throw e
+          }
+        }
+      }
+      case _ => MeTLMultiWordText.empty
+    }
+  })
   override def fromMeTLWord(input:MeTLTextWord):JValue = toJsObj("word",List(
     JField("text",JString(input.text)),
     JField("bold",JBool(input.bold)),
@@ -397,6 +423,11 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   ))
   override def fromMeTLMultiWordText(input:MeTLMultiWordText) = Stopwatch.time("JsonSerializer.fromMeTLMultiWordText",{
     toJsObj("multiWordText",List(
+      JField("x",JDouble(input.x)),
+      JField("y",JDouble(input.y)),
+      JField("width",JDouble(input.width)),
+      JField("height",JDouble(input.height)),
+      JField("tag",JString(input.tag)),
       JField("requestedWidth",JDouble(input.requestedWidth)),
       JField("words",JArray(input.words.map(fromMeTLWord _).toList))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
@@ -484,8 +515,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val url = getStringByName(input,"url")
         val title = getStringByName(input,"title")
         val blacklist = getListOfObjectsByName(input,"blacklist").map(blo => {
-          val username = getStringByName(input,"username")
-          val highlight = toColor(getColorByName(input,"highlight"))
+          val username = getStringByName(blo,"username")
+          val highlight = toColor(getColorByName(blo,"highlight"))
           SubmissionBlacklistedPerson(username,highlight)
         }).toList
         MeTLSubmission(config,mc.author,mc.timestamp,title,slide,url,Empty,blacklist,cc.target,cc.privacy,cc.identity,mc.audiences)

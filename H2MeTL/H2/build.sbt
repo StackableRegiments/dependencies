@@ -1,5 +1,5 @@
 name := "metl-h2"
-version := "3.22.0"
+version := "3.26.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"
@@ -32,7 +32,7 @@ libraryDependencies ++= {
     "net.liftweb" %% "lift-mapper" % liftVersion,
     "net.liftweb" %% "lift-webkit" % liftVersion,
     "io.github.stackableregiments" %% "common-utils" % "0.4.+",
-    "io.github.stackableregiments" %% "persisted-metl" % "3.8.+"
+    "io.github.stackableregiments" %% "persisted-metl" % "3.9.+"
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
 

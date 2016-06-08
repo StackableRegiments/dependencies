@@ -92,6 +92,19 @@ class H2Ink extends H2MeTLCanvasContent[H2Ink] {
 }
 object H2Ink extends H2Ink with LongKeyedMetaMapper[H2Ink] {
 }
+class H2MultiWordText extends H2MeTLCanvasContent[H2MultiWordText]{
+  def getSingleton = H2MultiWordText
+  object words extends MappedText(this)
+  object x extends MappedDouble(this)
+  object y extends MappedDouble(this)
+  object width extends MappedDouble(this)
+  object height extends MappedDouble(this)
+  object requestedWidth extends MappedDouble(this)
+  object tag extends MappedMeTLString(this,H2Constants.tag)
+}
+object H2MultiWordText extends H2MultiWordText with LongKeyedMetaMapper[H2MultiWordText]{
+}
+
 class H2Text extends H2MeTLCanvasContent[H2Text] {
   def getSingleton = H2Text
   object text extends MappedText(this)
