@@ -53,6 +53,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   protected var images:List[MeTLImage] = List.empty[MeTLImage]
   protected var dirtyImages:List[MeTLDirtyImage] = List.empty[MeTLDirtyImage]
   protected var texts:List[MeTLText] = List.empty[MeTLText]
+  protected var multiWordTexts:List[MeTLMultiWordText] = List.empty[MeTLMultiWordText]
   protected var dirtyTexts:List[MeTLDirtyText] = List.empty[MeTLDirtyText]
   protected var metlMoveDeltas:List[MeTLMoveDelta] = List.empty[MeTLMoveDelta]
   protected var quizzes:List[MeTLQuiz] = List.empty[MeTLQuiz]
@@ -73,6 +74,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   def getInks = inks
   def getImages = images
   def getTexts = texts
+  def getMultiWordTexts = texts
   def getQuizzes = quizzes
   def getQuizResponses = quizResponses
   def getSubmissions = submissions
@@ -84,19 +86,20 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
   //def getUnhandledData = unhandledData
 
   def getRenderable = Stopwatch.time("History.getRenderable",getCanvasContents.map(scaleItemToSuitHistory(_)))
-  def getRenderableGrouped:Tuple4[List[MeTLText],List[MeTLInk],List[MeTLInk],List[MeTLImage]] = Stopwatch.time("History.getRenderableGrouped",{
-    getRenderable.foldLeft((List.empty[MeTLText],List.empty[MeTLInk],List.empty[MeTLInk],List.empty[MeTLImage]))((acc,item) => item match {
-      case t:MeTLText => (acc._1 ::: List(t),acc._2,acc._3,acc._4)
-      case h:MeTLInk if h.isHighlighter => (acc._1,acc._2 ::: List(h),acc._3,acc._4)
-      case s:MeTLInk => (acc._1,acc._2,acc._3 ::: List(s),acc._4)
-      case i:MeTLImage => (acc._1,acc._2,acc._3,acc._4 ::: List(i))
+  def getRenderableGrouped:Tuple5[List[MeTLText],List[MeTLInk],List[MeTLInk],List[MeTLImage],List[MeTLMultiWordText]] = Stopwatch.time("History.getRenderableGrouped",{
+    getRenderable.foldLeft((List.empty[MeTLText],List.empty[MeTLInk],List.empty[MeTLInk],List.empty[MeTLImage],List.empty[MeTLMultiWordText]))((acc,item) => item match {
+      case t:MeTLText => (acc._1 ::: List(t),acc._2,acc._3,acc._4,acc._5)
+      case h:MeTLInk if h.isHighlighter => (acc._1,acc._2 ::: List(h),acc._3,acc._4,acc._5)
+      case s:MeTLInk => (acc._1,acc._2,acc._3 ::: List(s),acc._4,acc._5)
+      case i:MeTLImage => (acc._1,acc._2,acc._3,acc._4 ::: List(i),acc._5)
+      case i:MeTLMultiWordText => (acc._1,acc._2,acc._3,acc._4,acc._5 ::: List(i))
       case _ => acc
     })
   })
 
   def merge(other:History):History = Stopwatch.time("History.merge",{
     val newHistory = createHistory(jid,xScale,yScale,xOffset,yOffset)
-    (getAll ::: other.getAll).foreach(i => newHistory.addStanza(i))
+      (getAll ::: other.getAll).foreach(i => newHistory.addStanza(i))
     newHistory
   })
 
@@ -115,6 +118,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     case s:MeTLInk => addInk(s)
     case s:MeTLImage => addImage(s)
     case s:MeTLText => addText(s)
+    case s:MeTLMultiWordText => addMultiWordText(s)
     case s:MeTLQuiz => addQuiz(s)
     case s:MeTLQuizResponse => addQuizResponse(s)
     case s:MeTLSubmission => addSubmission(s)
@@ -146,6 +150,11 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
           addInk(s.adjustIndividualContent(i,true,left,top).asInstanceOf[MeTLInk],false)
         }
       }
+      case i:MeTLMultiWordText if matches(s.textIds,i) => {
+        removeText(i.generateDirty(s.timestamp),false)
+        if(!s.isDeleted)
+          addMultiWordText(s.adjustIndividualContent(i,true,left,top).asInstanceOf[MeTLMultiWordText],false)
+      }
       case i:MeTLText if matches(s.textIds,i) => {
         removeText(i.generateDirty(s.timestamp),false)
         if (!s.isDeleted)
@@ -160,29 +169,31 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
   })
   protected def moveContent(s:MeTLMoveDelta) = Stopwatch.time("History.moveContent",{
-		def matches(cc:MeTLCanvasContent):Boolean = cc match {
-			case i:MeTLInk => s.inkIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
-			case i:MeTLText => s.textIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
-			case i:MeTLImage => s.imageIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
-		}
+    def matches(cc:MeTLCanvasContent):Boolean = cc match {
+      case i:MeTLInk => s.inkIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
+      case i:MeTLText => s.textIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
+      case i:MeTLMultiWordText => s.textIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
+      case i:MeTLImage => s.imageIds.contains(i.identity) && i.timestamp < s.timestamp && i.privacy == s.privacy
+    }
     val relevantContents = getCanvasContents.filter(cc => matches(cc))
-		val (boundsLeft,boundsTop) = {
-			if (Double.NaN.equals(s.xOrigin) || Double.NaN.equals(s.yOrigin)){
-				var first = true;
-				relevantContents.foldLeft((0.0,0.0))((acc,item) => {
-					if (first)
-						(item.left,item.top)
-					else 
-						(Math.min(item.left,acc._1),Math.min(item.top,acc._2))
-				});	
-			} else (s.xOrigin,s.yOrigin)
-		}
-		relevantContents.foreach(cc => moveIndividualContent(s,cc,boundsLeft,boundsTop))
+    val (boundsLeft,boundsTop) = {
+      if (Double.NaN.equals(s.xOrigin) || Double.NaN.equals(s.yOrigin)){
+        var first = true;
+        relevantContents.foldLeft((0.0,0.0))((acc,item) => {
+          if (first)
+            (item.left,item.top)
+          else
+            (Math.min(item.left,acc._1),Math.min(item.top,acc._2))
+        });
+      } else (s.xOrigin,s.yOrigin)
+    }
+    relevantContents.foreach(cc => moveIndividualContent(s,cc,boundsLeft,boundsTop))
   })
   protected def shouldAdd(cc:MeTLCanvasContent):Boolean = {
     val dirtyTest = cc match {
       case ink:MeTLInk => dirtyInks.exists(dInk => dInk.isDirtierFor(ink))
       case text:MeTLText => dirtyTexts.exists(dText => dText.isDirtierFor(text))
+      case text:MeTLMultiWordText => dirtyTexts.exists(dText => dText.isDirtierFor(text))
       case image:MeTLImage => dirtyImages.exists(dImage => dImage.isDirtierFor(image))
       case _ => false
     }
@@ -205,14 +216,14 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     this
   })
   /*
-  def addMeTLUnhandledData(s:MeTLUnhandledData,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledData", {
-    if (store){
-      outputHook(s)
-      metlUnhandledData = metlUnhandledData ::: List(s)
-    }
-    this
-  })
-  */
+   def addMeTLUnhandledData(s:MeTLUnhandledData,store:Boolean = true) = Stopwatch.time("History.addMeTLUnhandledData", {
+   if (store){
+   outputHook(s)
+   metlUnhandledData = metlUnhandledData ::: List(s)
+   }
+   this
+   })
+   */
   def addMeTLMoveDelta(s:MeTLMoveDelta,store:Boolean = true) = Stopwatch.time("History.addMeTLMoveDelta",{
     if (!metlMoveDeltas.exists(mmd => mmd.matches(s))){
       moveContent(s)
@@ -291,6 +302,40 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     }
     if (store)
       images = images ::: List(s)
+    this
+  })
+  def addMultiWordText(s:MeTLMultiWordText,store:Boolean = true) = Stopwatch.time("History.addMultiWordText",{
+    if(shouldAdd(s)){
+      val (suspectTexts,remainingContent) = canvasContents.partition(cc => cc match {
+        case t:MeTLMultiWordText => t.matches(s)
+        case _ => false
+      })
+      val identifiedTexts = (suspectTexts ::: List(s)).sortBy(q => q.timestamp).reverse
+      canvasContents = identifiedTexts.headOption.map(ho => ho match {
+        case hot:MeTLMultiWordText => {
+          val adjustedText = metlMoveDeltas.filter(md => !md.isDeleted && md.isDirtierFor(hot)).sortBy(_.timestamp).foldLeft(hot)((acc,item) => {
+            item.adjustIndividualContent(acc).asInstanceOf[MeTLMultiWordText]
+          })
+          val newCanvasContents = remainingContent ::: List(adjustedText)
+          if (adjustedText.left < getLeft || adjustedText.right > getRight || getBottom < adjustedText.bottom || adjustedText.top < getTop)
+            growBounds(adjustedText.left,adjustedText.right,adjustedText.top,adjustedText.bottom)
+          else if (identifiedTexts.length > 1){
+            identifiedTexts(1) match {
+              case st:MeTLMultiWordText if ((st.right == getRight && adjustedText.right < getRight) || (st.bottom == getBottom && adjustedText.bottom < getBottom) || (st.top == getTop && adjustedText.top > getTop) || (st.left == getLeft && adjustedText.left > getLeft)) =>
+                calculateBoundsWithout(adjustedText.left,adjustedText.right,adjustedText.top,adjustedText.bottom)
+              case _ => {}
+            }
+          }
+          if (store)
+            outputHook(adjustedText)
+          newCanvasContents
+        }
+        case _ => remainingContent
+      }).getOrElse(remainingContent)
+      update(true)
+    }
+    if (store)
+      multiWordTexts = multiWordTexts ::: List(s)
     this
   })
   def addText(s:MeTLText,store:Boolean = true) = Stopwatch.time("History.addText",{
@@ -389,7 +434,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       case i:MeTLImage => dirtyImage.isDirtierFor(i)
       case _ => false
     }
-                                                     )
+    )
     canvasContents = remaining
     item.map(s => s match {
       case i:MeTLImage => {
@@ -404,14 +449,22 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
       dirtyImages = dirtyImages ::: List(dirtyImage)
     this
   })
+
   def removeText(dirtyText:MeTLDirtyText,store:Boolean = true) = Stopwatch.time("History.removeText",{
     val (item,remaining) = getCanvasContents.partition(s => s match {
       case t:MeTLText => dirtyText.isDirtierFor(t)
+      case t:MeTLMultiWordText => dirtyText.isDirtierFor(t)
       case _ => false
     })
     canvasContents = remaining
     item.map(s => s match {
       case t:MeTLText => {
+        calculateBoundsWithout(t.left,t.right,t.top,t.bottom)
+        if (store)
+          outputHook(dirtyText)
+        update(true)
+      }
+      case t:MeTLMultiWordText => {
         calculateBoundsWithout(t.left,t.right,t.top,t.bottom)
         if (store)
           outputHook(dirtyText)
@@ -462,21 +515,21 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     })
   })
 
-	def until(before:Long):History = Stopwatch.time("History.until",{
-		filter(i => i.timestamp < before)
-	})
-	def filter(filterFunc:(MeTLStanza) => Boolean):History = Stopwatch.time("History.filter",{
+  def until(before:Long):History = Stopwatch.time("History.until",{
+    filter(i => i.timestamp < before)
+  })
+  def filter(filterFunc:(MeTLStanza) => Boolean):History = Stopwatch.time("History.filter",{
     val newHistory = createHistory(jid,xScale,yScale,xOffset,yOffset)
-		getAll.filter(filterFunc).foreach(i => newHistory.addStanza(i))
-//		printComparison(newHistory)
-		newHistory
-	})
-	def filterCanvasContents(filterFunc:(MeTLCanvasContent) => Boolean, includeNonCanvasContents:Boolean = true):History = Stopwatch.time("History.filterCanvasContents",{
-		filter(i => i match {
-			case cc:MeTLCanvasContent => filterFunc(cc)
-			case _ => includeNonCanvasContents
-		})
-	})
+    getAll.filter(filterFunc).foreach(i => newHistory.addStanza(i))
+    //          printComparison(newHistory)
+    newHistory
+  })
+  def filterCanvasContents(filterFunc:(MeTLCanvasContent) => Boolean, includeNonCanvasContents:Boolean = true):History = Stopwatch.time("History.filterCanvasContents",{
+    filter(i => i match {
+      case cc:MeTLCanvasContent => filterFunc(cc)
+      case _ => includeNonCanvasContents
+    })
+  })
 
   def filterCanvasContentsForMoveDelta(md:MeTLMoveDelta):History = Stopwatch.time("History.filterCanvasContentForMoveDelta",{
     filter(i => i match {
@@ -495,11 +548,11 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     newHistory
   })
   def resetToOriginalVisual = Stopwatch.time("History.resetToOriginalVisual",{
-		val newHistory = createHistory(jid, defaultXOffset, defaultYOffset, defaultXScale, defaultYScale)
-		getAll.foreach(i => newHistory.addStanza(i))
-		newHistory
-		//adjustToVisual(xOffset * -1, yOffset * -1, 1 / xScale, 1 / yScale)
-	})
+    val newHistory = createHistory(jid, defaultXOffset, defaultYOffset, defaultXScale, defaultYScale)
+    getAll.foreach(i => newHistory.addStanza(i))
+    newHistory
+    //adjustToVisual(xOffset * -1, yOffset * -1, 1 / xScale, 1 / yScale)
+  })
   def adjustToVisual(xT:Double,yT:Double,xS:Double,yS:Double) = Stopwatch.time("History.adjustVisual",{
     val newHistory = createHistory(jid,xS * xScale,yS * yScale,xT + xOffset,yT + yOffset)
     getAll.foreach(i => newHistory.addStanza(i))
@@ -519,7 +572,7 @@ case class History(jid:String,xScale:Double = 1.0, yScale:Double = 1.0,xOffset:D
     newHistory
   })
   protected def shouldAdjust:Boolean = (xScale != 1.0 || yScale != 1.0 || xOffset != 0 || yOffset != 0)
-    def shouldRender:Boolean = ((getLeft < 0 || getRight > 0 || getTop < 0 || getBottom > 0) && getCanvasContents.length > 0)
+  def shouldRender:Boolean = ((getLeft < 0 || getRight > 0 || getTop < 0 || getBottom > 0) && getCanvasContents.length > 0)
 }
 
 object History {
@@ -537,4 +590,3 @@ abstract class HistoryRetriever(serverName:String) {
 object EmptyHistory extends HistoryRetriever("empty") {
   def getMeTLHistory(jid:String) = History.empty
 }
-

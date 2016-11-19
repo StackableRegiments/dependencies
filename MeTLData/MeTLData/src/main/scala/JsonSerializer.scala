@@ -21,18 +21,18 @@ object ConversionHelper extends Logger {
 }
 
 class PrivacySerializer extends net.liftweb.json.Serializer[Privacy] {
-    private val PrivacyClass = classOf[Privacy]
+  private val PrivacyClass = classOf[Privacy]
 
-    def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), Privacy] = {
-      case (TypeInfo(PrivacyClass, _), json) => json match {
-        case JString(p) => Privacy.parse(p)
-        case x => throw new MappingException("Can't convert " + x + " to Privacy")
-      }
+  def deserialize(implicit format: Formats): PartialFunction[(TypeInfo, JValue), Privacy] = {
+    case (TypeInfo(PrivacyClass, _), json) => json match {
+      case JString(p) => Privacy.parse(p)
+      case x => throw new MappingException("Can't convert " + x + " to Privacy")
     }
+  }
 
-    def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {
-      case x: Privacy => JField("privacy", JString(x.toString.toLowerCase))
-    }
+  def serialize(implicit format: Formats): PartialFunction[Any, JValue] = {
+    case x: Privacy => JField("privacy", JString(x.toString.toLowerCase))
+  }
 }
 
 trait JsonSerializerHelper {
@@ -113,13 +113,14 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     ParsedCanvasContent(target,privacy,slide,identity)
   }
   override def fromHistory(input:History):JValue = Stopwatch.time("JsonSerializer.fromHistory",{
-		val (texts,highlighters,inks,images) = input.getRenderableGrouped
+    val (texts,highlighters,inks,images,multiWordTexts) = input.getRenderableGrouped
     toJsObj("history",List(
       JField("jid",JString(input.jid)),
       JField("inks",JObject(inks.map(i => JField(i.identity,fromMeTLInk(i))))),
       JField("highlighters",JObject(highlighters.map(i => JField(i.identity,fromMeTLInk(i))))),
       JField("images",JObject(images.map(i => JField(i.identity,fromMeTLImage(i))))),
       JField("texts",JObject(texts.map(i => JField(i.identity,fromMeTLText(i))))),
+      JField("multiWordTexts",JObject(multiWordTexts.map(i => JField(i.identity,fromMeTLMultiWordText(i))))),
       JField("quizzes",JArray(input.getQuizzes.map(i => fromMeTLQuiz(i)))),
       JField("quizResponses",JArray(input.getQuizResponses.map(i => fromMeTLQuizResponse(i)))),
       JField("submissions",JArray(input.getSubmissions.map(i => fromSubmission(i)))),
@@ -128,7 +129,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("files",JArray(input.getFiles.map(i => fromMeTLFile(i)))),
       JField("unhandledCanvasContents",JArray(input.getUnhandledCanvasContents.map(i => fromMeTLUnhandledCanvasContent(i)))),
       JField("unhandledStanzas",JArray(input.getUnhandledStanzas.map(i => fromMeTLUnhandledStanza(i))))
-//      JField("unhandledData",JArray(input.getUnhandledData.map(i => fromMeTLUnhandledData(i))))
+        //      JField("unhandledData",JArray(input.getUnhandledData.map(i => fromMeTLUnhandledData(i))))
     ))
   })
   protected def getFields(i:JValue,parentName:String):List[JField] = {
@@ -158,7 +159,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     getFields(i,"files").foreach(jf => history.addStanza(toMeTLFile(jf.value)))
     getFields(i,"unhandledCanvasContents").foreach(jf => history.addStanza(toMeTLUnhandledCanvasContent(jf.value)))
     getFields(i,"unhandledStanzas").foreach(jf => history.addStanza(toMeTLUnhandledStanza(jf.value)))
-//    getFields(i,"unhandledData").foreach(jf => history.addStanza(toMeTLUnhandledData(jf.value)))
+    //    getFields(i,"unhandledData").foreach(jf => history.addStanza(toMeTLUnhandledData(jf.value)))
     history
   })
   protected def hasField(input:JObject,fieldName:String) = Stopwatch.time("JsonSerializer.has",{
@@ -178,6 +179,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     input match {
       case jo:JObject if (isOfType(jo,"ink")) => toMeTLInk(jo)
       case jo:JObject if (isOfType(jo,"text")) => toMeTLText(jo)
+      case jo:JObject if (isOfType(jo,"multiWordText")) => toMeTLMultiWordText(jo)
       case jo:JObject if (isOfType(jo,"image")) => toMeTLImage(jo)
       case jo:JObject if (isOfType(jo,"dirtyInk")) => toMeTLDirtyInk(jo)
       case jo:JObject if (isOfType(jo,"dirtyText")) => toMeTLDirtyText(jo)
@@ -233,10 +235,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     toJsObj("file",List(
       JField("name",JString(input.name)),
       JField("id",JString(input.id))
-      ) ::: 
-      parseMeTLContent(input) ::: 
+    ) :::
+      parseMeTLContent(input) :::
       input.url.map(u => JField("url",JString(u))).toList /* :::
-      input.bytes.map(b => JField("bytes",JString(base64Encode(b)))).toList */
+                                                           input.bytes.map(b => JField("bytes",JString(base64Encode(b)))).toList */
     )
   })
 
@@ -246,7 +248,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val mc = parseJObjForMeTLContent(input,config)
         val name = getStringByName(input,"name")
         val id = getStringByName(input,"id")
-//        val bytes = (input \ "bytes").extractOpt[String].map(bs => base64Decode(bs))
+        //        val bytes = (input \ "bytes").extractOpt[String].map(bs => base64Decode(bs))
         val url = (input \ "url").extractOpt[String]
         val bytes = url.map(u => config.getResource(u))
         MeTLFile(config,mc.author,mc.timestamp,name,id,url,bytes)
@@ -265,8 +267,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("yScale",JDouble(input.yScale)),
       JField("newPrivacy",JString(input.newPrivacy.toString.toLowerCase)),
       JField("isDeleted",JBool(input.isDeleted)),
-			JField("xOrigin", JDouble(input.xOrigin)),
-			JField("yOrigin", JDouble(input.yOrigin))
+      JField("xOrigin", JDouble(input.xOrigin)),
+      JField("yOrigin", JDouble(input.yOrigin))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
   override def toMeTLMoveDelta(i:JValue):MeTLMoveDelta = Stopwatch.time("JsonSerializer.toMeTLMoveDelta",{
@@ -283,8 +285,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val yScale = getDoubleByName(input,"yScale")
         val newPrivacy = getPrivacyByName(input,"newPrivacy")
         val isDeleted = getBooleanByName(input,"isDeleted")
-				val xOrigin = getDoubleByName(input,"xOrigin")
-				val yOrigin = getDoubleByName(input,"yOrigin")
+        val xOrigin = getDoubleByName(input,"xOrigin")
+        val yOrigin = getDoubleByName(input,"yOrigin")
         MeTLMoveDelta(config,mc.author,mc.timestamp,cc.target,cc.privacy,cc.slide,cc.identity,xOrigin,yOrigin,inkIds,textIds,imageIds,xTranslate,yTranslate,xScale,yScale,newPrivacy,isDeleted,mc.audiences)
       }
       case _ => MeTLMoveDelta.empty
@@ -305,7 +307,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     toJsObj("attendance",List(
       JField("location",JString(i.location)),
       JField("present",JBool(i.present))
-      ) ::: parseMeTLContent(i))
+    ) ::: parseMeTLContent(i))
   })
   override def toMeTLInk(i:JValue):MeTLInk = Stopwatch.time("JsonSerializer.toMeTLInk", {
     i match {
@@ -384,6 +386,52 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       case _ => MeTLText.empty
     }
   })
+  override def toMeTLMultiWordText(j:JValue):MeTLMultiWordText = Stopwatch.time("JsonSerializer.toMeTLMultiWordText",{
+    j match {
+      case input:JObject => {
+        try{
+        val mc = parseJObjForMeTLContent(input,config)
+        val cc = parseJObjForCanvasContent(input)
+        val requestedWidth = getDoubleByName(input,"requestedWidth")
+        val tag = getStringByName(input,"tag")
+        val words:Seq[MeTLTextWord] = (input \ "words").extract[List[MeTLTextWord]]
+        val x = getDoubleByName(input,"x")
+        val y = getDoubleByName(input,"y")
+        val width = getDoubleByName(input,"width")
+        val height = getDoubleByName(input,"height")
+        MeTLMultiWordText(config,mc.author,mc.timestamp,height,width,requestedWidth,x,y,tag,cc.identity,cc.target,cc.privacy,cc.slide,words)
+        }
+        catch {
+          case e => {
+            e.printStackTrace
+            throw e
+          }
+        }
+      }
+      case _ => MeTLMultiWordText.empty
+    }
+  })
+  override def fromMeTLWord(input:MeTLTextWord):JValue = toJsObj("word",List(
+    JField("text",JString(input.text)),
+    JField("bold",JBool(input.bold)),
+    JField("underline",JBool(input.underline)),
+    JField("italic",JBool(input.italic)),
+    JField("justify",JString(input.justify)),
+    JField("color",fromColor(input.color).asInstanceOf[JValue]),
+    JField("font",JString(input.font)),
+    JField("size",JDouble(input.size))
+  ))
+  override def fromMeTLMultiWordText(input:MeTLMultiWordText) = Stopwatch.time("JsonSerializer.fromMeTLMultiWordText",{
+    toJsObj("multiWordText",List(
+      JField("x",JDouble(input.x)),
+      JField("y",JDouble(input.y)),
+      JField("width",JDouble(input.width)),
+      JField("height",JDouble(input.height)),
+      JField("tag",JString(input.tag)),
+      JField("requestedWidth",JDouble(input.requestedWidth)),
+      JField("words",JArray(input.words.map(fromMeTLWord _).toList))
+    ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
+  });
   override def fromMeTLText(input:MeTLText):JValue = Stopwatch.time("JsonSerializer.fromMeTLText",{
     toJsObj("text",List(
       JField("text",JString(input.text)),
@@ -462,15 +510,15 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     i match {
       case input:JObject => {
         val mc = parseJObjForMeTLContent(input,config)
-				val cc = parseJObjForCanvasContent(input)
+        val cc = parseJObjForCanvasContent(input)
         val slide = getIntByName(input,"slide")
         val url = getStringByName(input,"url")
-				val title = getStringByName(input,"title")
-				val blacklist = getListOfObjectsByName(input,"blacklist").map(blo => {
-					val username = getStringByName(input,"username")
-					val highlight = toColor(getColorByName(input,"highlight"))
-					SubmissionBlacklistedPerson(username,highlight)
-				}).toList
+        val title = getStringByName(input,"title")
+        val blacklist = getListOfObjectsByName(input,"blacklist").map(blo => {
+          val username = getStringByName(blo,"username")
+          val highlight = toColor(getColorByName(blo,"highlight"))
+          SubmissionBlacklistedPerson(username,highlight)
+        }).toList
         MeTLSubmission(config,mc.author,mc.timestamp,title,slide,url,Empty,blacklist,cc.target,cc.privacy,cc.identity,mc.audiences)
       }
       case _ => MeTLSubmission.empty
@@ -479,8 +527,8 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
   override def fromSubmission(input:MeTLSubmission):JValue = Stopwatch.time("JsonSerializer.fromSubmission",{
     toJsObj("submission",List(
       JField("url",JString(input.url)),
-			JField("title",JString(input.title)),
-			JField("blacklist",JArray(input.blacklist.map(bl => JObject(List(JField("username",JString(bl.username)),JField("highlight",fromColor(bl.highlight).asInstanceOf[JValue]))))))
+      JField("title",JString(input.title)),
+      JField("blacklist",JArray(input.blacklist.map(bl => JObject(List(JField("username",JString(bl.username)),JField("highlight",fromColor(bl.highlight).asInstanceOf[JValue]))))))
     ) ::: parseMeTLContent(input) ::: parseCanvasContent(input))
   })
   override def toMeTLQuiz(i:JValue):MeTLQuiz = Stopwatch.time("JsonSerializer.toMeTLQuiz",{
@@ -561,10 +609,10 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
         val created = getStringByName(input,"created")
         val permissions = toPermissions(getObjectByName(input,"permissions"))
         val blacklist = getListOfStringsByName(input,"blacklist")
-				val thisConfig = getStringByName(input,"configName") match {
-					case "" => config
-					case other => ServerConfiguration.configForName(other)
-				}
+        val thisConfig = getStringByName(input,"configName") match {
+          case "" => config
+          case other => ServerConfiguration.configForName(other)
+        }
         Conversation(thisConfig,author,lastAccessed,slides,subject,tag,jid,title,created,permissions,blacklist)
       }
       case _ => Conversation.empty
@@ -583,7 +631,7 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("created",JString(input.created)),
       JField("permissions",fromPermissions(input.permissions)),
       JField("blacklist",JArray(input.blackList.map(bli => JString(bli)).toList)),
-			JField("configName",JString(input.server.name))
+      JField("configName",JString(input.server.name))
     ))
   })
   override def toSlide(i:JValue):Slide = Stopwatch.time("JsonSerializer.toSlide",{
@@ -613,18 +661,18 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
       JField("slideType",JString(input.slideType))
     ) ::: List(input.groupSet.map(gs => JField("groupSet",fromGroupSet(gs)))).flatten)
   })
- override def toGroupSet(i:JValue):GroupSet = Stopwatch.time("JsonSerializer.toGroupSet",{
-   i match {
-     case input:JObject => {
+  override def toGroupSet(i:JValue):GroupSet = Stopwatch.time("JsonSerializer.toGroupSet",{
+    i match {
+      case input:JObject => {
         val audiences = parseJObjForAudiences(input)
         val id = getStringByName(input,"id")
         val location = getStringByName(input,"location")
         val groupingStrategy = toGroupingStrategy((input \ "groupingStrategy").extract[JObject])
         val groups = getListOfObjectsByName(input,"groups").map(gn => toGroup(gn))
         GroupSet(config,id,location,groupingStrategy,groups,audiences)
-     }
-     case _ => GroupSet.empty
-   }
+      }
+      case _ => GroupSet.empty
+    }
   })
   override def fromGroupSet(input:GroupSet):JValue = Stopwatch.time("JsonSerializer.fromGroupSet",{
     toJsObj("groupSet",List(
@@ -748,4 +796,3 @@ class JsonSerializer(configName:String) extends Serializer with JsonSerializerHe
     )
   })
 }
-

@@ -4,12 +4,12 @@ import com.metl.data._
 import com.metl.utils._
 
 class PersistedResourceProvider(configName:String,dbInterface:PersistenceInterface,commonBucket:String = "commonBucket"){
-	def getResource(identity:String):Array[Byte] = {
-		dbInterface.getResource(identity)
-	}
-	def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = {
-		dbInterface.postResource(jid,userProposedId,data)
-	}
+  def getResource(identity:String):Array[Byte] = {
+    dbInterface.getResource(identity)
+  }
+  def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = {
+    dbInterface.postResource(jid,userProposedId,data)
+  }
   def getResource(jid:String,identity:String):Array[Byte] = {
     dbInterface.getResource(jid,identity)
   }
