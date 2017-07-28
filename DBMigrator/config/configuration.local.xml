@@ -1,7 +1,7 @@
 <serverConfiguration>
 	<!--<parallelism>16</parallelism>-->
 	<parallelism>16</parallelism>
-	<priorities completeLoadAfterPriorities="false">
+	<priorities completeLoadAfterPriorities="true">
 		<priority jid="20000" />
 		<priority author="david.hagen"/>
 		<priority author="christopher.hagen"/>
@@ -9,15 +9,15 @@
 	</priorities>
 	<servers>
     <server>
-			<type>sql</type>
+			<type>MeTL2011Zip</type>
 			<name>source</name>
-			<driver>org.h2.Driver</driver>
+			<historyZipPath>data/history.zip</historyZipPath>
+			<resourceZipPath>data/resource.zip</resourceZipPath>
+			<structureZipPath>data/structure.zip</structureZipPath>
 			<!--<url>jdbc:h2:file:C:/stackable/metlData/training/2016-03-06/testdb.h2;AUTO_SERVER=TRUE;MVCC=TRUE</url>-->
 			<!--<url>jdbc:h2:file:C:/stackable/metlData/training/2016-03-06/testdb.h2;ACCESS_MODE_DATA=r;MULTI_THREADED=1</url>-->
-			<!--<url>jdbc:h2:file:C:/stackable/metlData/training/2016-03-06/testdb.h2;ACCESS_MODE_DATA=r;MVCC=TRUE;CACHE_SIZE=1048576</url>-->
-			<!--<url>jdbc:h2:file:C:/stackable/metlData/training/2016-03-06/testdb.h2;ACCESS_MODE_DATA=r;MVCC=TRUE;CACHE_SIZE=3145728</url>-->
-			<url>jdbc:h2:file:C:/stackable/metlData/sluBeta/2016-03-11/testdb.h2;ACCESS_MODE_DATA=r;MVCC=TRUE;CACHE_SIZE=3145728</url>
-    </server>
+			<!--<url>jdbc:h2:file:C:/stackable/metlData/sluBeta/2016-03-11/testdb.h2;ACCESS_MODE_DATA=r;MVCC=TRUE;CACHE_SIZE=3145728</url>-->
+		</server>
 	</servers>
 	<targetServer cookieKey="JSESSIONID" cookieValue="13zyrollwwgq3ju1vtkd2od41">http://localhost:8080</targetServer>
 </serverConfiguration>

@@ -83,7 +83,7 @@ object Application extends Logger {
       case e:Exception => None
     }
     val sortConversations:List[Conversation]=>List[Conversation] = {
-      val priorityElems = (configFile \\ "priority")
+      val priorityElems = (configFile \\ "priorities" \  "priority")
       val doAllAfter = (configFile \\ "priorities" \ "@completeLoadAfterPriorities").headOption.map(_.text.toBoolean).getOrElse(true)
       val jidPriorities = priorityElems.flatMap(elem => (elem \ "@jid").headOption.map(_.text.toInt))
       val authorPriorities = priorityElems.flatMap(elem => (elem \ "@author").headOption.map(_.text))
@@ -108,6 +108,7 @@ object Application extends Logger {
     mark("servers: %s => %s".format(servers,targetServer))
     servers.filterNot(_ == EmptyBackendAdaptor).foreach(config => {
       mark("exporting server: %s".format(config))
+      config.isReady
       var exportSerializer = new MigratorXmlSerializer(config.name)
       val privateFunc = generatePrivateListFunc(config)
       def exportConversation(onBehalfOfUser:String,conversation:String):Box[NodeSeq] = {
@@ -165,7 +166,7 @@ object Application extends Logger {
       }
       val rawConvs = config.searchForConversation("")//.take(25) // hopefully every conversation will be returned by this query?  Will probably have to write an explicit "getAllConversations" call into the backends.
       val convs = sortConversations(rawConvs)
-      mark("fetched conversations: %s".format(convs.length))
+      mark("fetched conversations: %s => %s".format(rawConvs.length, convs.length))
       val p = convs.par
       parallelism.map(paraCount => {
         p.tasksupport = new scala.collection.parallel.ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(paraCount.getOrElse(1)))
@@ -295,7 +296,7 @@ object ReadOnlyMeTL2011ZipAdaptorConfigurator extends ServerConfigurator{
       resourceZipPath <- (e \\ "resourceZipPath").headOption.map(_.text)
       structureZipPath <- (e \\ "structureZipPath").headOption.map(_.text)
     } yield {
-      new ReadOnlyMeTL2011ZipAdaptor(name,historyZipPath,resourceZipPath,structureZipPath)
+      new ReadOnlyMeTL2011ZipAdaptor(name,historyZipPath,structureZipPath,resourceZipPath)
     }
   }
 }
@@ -323,11 +324,11 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
   override def shutdown:Unit = {}
   override def isReady:Boolean = {
     loadStructure
-    //println("found conversations: %s".format(conversationCache.keys.toList))
+    println("found conversations: %s".format(conversationCache.keys.toList))
     loadResources
-    //println("found resources: %s".format(resourceCache.keys.toList))
+    println("found resources: %s".format(resourceCache.keys.toList))
     loadHistories
-    //println("found histories: %s".format(historyCache.keys.toList))
+    println("found histories: %s".format(historyCache.keys.toList))
     true
   }
 
@@ -434,17 +435,21 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
   var attendancesInPrivateRooms:Map[String,List[String]] = Map.empty[String,List[String]]
 
   def getPrivateAuthorsForConversation(conversationJid:String):List[String] = attendancesInPrivateRooms.get(conversationJid).getOrElse(Nil)
+  protected def isStem(source:String,stem:String):Boolean = {
+    "00000%s".format(source).reverse.drop(3).take(2).reverse.mkString("") == stem
+  }
   protected def inStemmedJid(prefix:Option[String],ze:ZipEntry,func:Tuple3[String,String,ZipEntry] => Unit):Unit = {
     val rawName = ze.getName
     rawName.split('/').toList match {
-      case List(p,stem,jid,filename) if prefix.contains(p) => func(jid,filename,ze)
-      case List(stem,jid,filename) => func(jid,filename,ze)
-      case List(p,stem,user,jid,filename) if prefix.contains(p) => {
-        attendancesInPrivateRooms = attendancesInPrivateRooms.updated(jid,user :: attendancesInPrivateRooms.get(jid).getOrElse(Nil))
+      case _ if ze.isDirectory() => {} // do nothing, it's a directory
+      case List(p,stem,jid,filename) if isStem(jid,stem) && prefix.contains(p) => func(jid,filename,ze)
+      case List(stem,jid,filename) if isStem(jid,stem) => func(jid,filename,ze)
+      case List(p,stem,user,jid,filename) if isStem(user,stem) && prefix.contains(p) => {
+        attendancesInPrivateRooms = attendancesInPrivateRooms.updated(jid,(user :: attendancesInPrivateRooms.get(jid).getOrElse(Nil)).distinct)
         func("%s%s".format(jid,user),filename,ze)
       }
-      case List(stem,user,jid,filename) => {
-        attendancesInPrivateRooms = attendancesInPrivateRooms.updated(jid,user :: attendancesInPrivateRooms.get(jid).getOrElse(Nil))
+      case List(stem,user,jid,filename) if isStem(user,stem) => {
+        attendancesInPrivateRooms = attendancesInPrivateRooms.updated(jid,(user :: attendancesInPrivateRooms.get(jid).getOrElse(Nil)).distinct)
         func("%s%s".format(jid,user),filename,ze)
       }
       case other => {
@@ -481,6 +486,7 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
       }
       case _ => {}
     })
+    println("resource cache: %s".format(resourceCache))
   }
   protected def loadHistories:Unit = {
     inZipFile(historyZipPath,{
@@ -521,6 +527,7 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
       var ze:ZipEntry = zipStream.getNextEntry
       while (ze != null){
         perFile(zipStream,ze)
+        //println("parsing: %s".format(ze.getName()))
         ze = zipStream.getNextEntry
       }
       zipStream.close
