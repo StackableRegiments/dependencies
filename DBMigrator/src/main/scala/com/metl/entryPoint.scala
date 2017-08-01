@@ -430,6 +430,19 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
         }
       }
     })
+    override def toSlide(input:NodeSeq):Slide = Stopwatch.time("MeTL2011XmlSerializer.toSlide",{
+      val m = parseMeTLContent(input,config)
+      val author = getStringByName(input,"author")
+      val id = getIntByName(input,"id")
+      val index = getIntByName(input,"index")
+      val defHeight = getIntByName(input,"defaultHeight")
+      val defWidth = getIntByName(input,"defaultWidth")
+      // Always treat imported slides as "exposed".
+      val exposed = true
+      val slideType = getStringByName(input,"type")
+      val groupSets = (input \ "groupSet").map(gs => toGroupSet(gs)).toList
+      Slide(config,author,id,index,defHeight,defWidth,exposed,slideType,groupSets,m.audiences)
+    })
   }
 
   var attendancesInPrivateRooms:Map[String,List[String]] = Map.empty[String,List[String]]
