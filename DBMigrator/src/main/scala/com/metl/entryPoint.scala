@@ -85,6 +85,11 @@ object Application extends Logger {
     } catch {
       case e:Exception => None
     }
+    val importDescription = for {
+      idNode <- configFile \\ "importDescription"
+    } yield {
+      idNode.text
+    }
     val sortConversations:List[Conversation]=>List[Conversation] = {
       val priorityElems = (configFile \\ "priorities" \  "priority")
       val doAllAfter = (configFile \\ "priorities" \ "@completeLoadAfterPriorities").headOption.map(_.text.toBoolean).getOrElse(true)
@@ -180,7 +185,8 @@ object Application extends Logger {
           val ee = new java.util.Date().getTime  
           mark("exported conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
           val is = new java.util.Date().getTime  
-          val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map("Cookie" -> "%s=%s".format(cookieKey,cookieValue))
+          val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map ("Cookie" -> "%s=%s".format(cookieKey, cookieValue)) <<? Map (importDescription.map(id => ("importDescription",id)).toList :_*)
+
           val result = Http(svc OK as.xml.Elem).either
           val res = result()
           //val res = Left(new Exception("deliberately failing"))
