@@ -339,11 +339,11 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
   override def shutdown:Unit = {}
   override def isReady:Boolean = {
     loadStructure
-    println("found conversations: %s".format(conversationCache.keys.toList))
+    trace("found conversations: %s".format(conversationCache.keys.toList))
     loadResources
-    println("found resources: %s".format(resourceCache.keys.toList))
+    trace("found resources: %s".format(resourceCache.keys.toList))
     loadHistories
-    println("found histories: %s".format(historyCache.keys.toList))
+    trace("found histories: %s".format(historyCache.keys.toList))
     true
   }
 
@@ -433,17 +433,18 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
       }
     })
     override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("MeTL2011XmlSerializer.toMeTLFile",{
-      trace("quiz attempted: %s".format(input))
+      trace("file attempted: %s".format(input))
       val m = parseMeTLContent(input)
       try {
         val name = getStringByName(input,"name")
-        val id = getStringByName(input,"id")
+        // If ID is blank (eg MeTL2011 from C#) then use time instead.
+        val id = Some(getStringByName(input,"id")).filter(_.length > 0).getOrElse(getStringByName(input,"time"))
         val url = safetyPath(getStringByName(input,"url"))
         val bytes = url.map(u => thisConfig.getResource(u))
-        MeTLFile(config,m.author,m.timestamp,name,id,url,bytes,m.audiences)
+        MeTLFile(config, m.author, m.timestamp, name, id, url, bytes, m.audiences)
       } catch {
         case e:Throwable => {
-          error("failed to construct MeTLQuiz",e)
+          error("failed to construct MeTLFile",e)
           MeTLFile.empty
         }
       }
