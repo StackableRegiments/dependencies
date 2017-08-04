@@ -1,12 +1,14 @@
 package com.metl.datamigrator
+import java.util.{Date, GregorianCalendar}
+
 import com.metl.data._
 import com.metl.metl2011._
-import com.metl.utils.{Http => MeTLHttp,_}
 import com.metl.h2._
 import net.liftweb.common._
 import net.liftweb.actor._
 import net.liftweb.util._
 import net.liftweb.util.Helpers._
+
 import scala.xml._
 import dispatch._
 import Defaults._
@@ -301,6 +303,18 @@ object ReadOnlyMeTL2011ZipAdaptorConfigurator extends ServerConfigurator{
   }
 }
 
+object MeTL2011Util {
+  /** Convert MeTL2011 timestamp (nanos since 1/1/0000) to Java timestamp (millis since 1/1/1970). */
+  def fromTicks(ticks: String):Long = {
+    val ticksPerMilli = 10000
+    val ticksInMilli = BigInt(ticks) / ticksPerMilli
+    val calendar = new GregorianCalendar()
+    // Set to C# start time: 1 January 0000
+    calendar.set(1,0,0)
+    val epochInMilli = calendar.getTimeInMillis * -1
+    new Date((ticksInMilli - epochInMilli).toLong).getTime
+  }
+}
 class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipPath:String,resourcesZipPath:String) extends ServerConfiguration(name,"_unused",(c:Conversation) => {}) with Logger {
   import java.io._
   import java.util.zip.{ZipInputStream,ZipEntry}
@@ -310,7 +324,7 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
   override def getMessageBus(d:MessageBusDefinition):MessageBus = EmptyMessageBus
   override def createConversation(title:String,author:String):Conversation = Conversation.empty
   override def deleteConversation(jid:String):Conversation = Conversation.empty
-  override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty 
+  override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty
   override def changePermissions(jid:String,newPermissions:Permissions):Conversation = Conversation.empty
   override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
   override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
@@ -396,7 +410,10 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
       trace("quiz attempted: %s".format(input))
       val m = parseMeTLContent(input)
       try {
-        val created = getLongByName(input,"created")
+        val created = getStringByName(input,"created") match {
+          case c:String if c.length >= 17 => MeTL2011Util.fromTicks(c)
+          case _ => getLongByName(input,"created")
+        }
         val question = getStringByName(input,"question") match {
           case q if (q.length > 0) => q
           case _ => getStringByName(input,"title")
