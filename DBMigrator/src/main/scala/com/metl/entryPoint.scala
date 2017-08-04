@@ -12,6 +12,7 @@ import net.liftweb.util.Helpers._
 import scala.xml._
 import dispatch._
 import Defaults._
+import com.metl.utils.Stopwatch
 
 object Application extends Logger {
   case class AddKey(h:String,k:String,v:String)
