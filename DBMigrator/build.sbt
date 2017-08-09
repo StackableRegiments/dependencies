@@ -6,12 +6,16 @@ val scalaVersionString = "2.11.5"
 
 scalaVersion := scalaVersionString
 
+ivyScala := ivyScala.value map { _.copy(overrideScalaVersion = true) }
+
 resolvers ++= Seq(
   "snapshots"     at "https://oss.sonatype.org/content/repositories/snapshots",
   "releases"        at "https://oss.sonatype.org/content/repositories/releases"
 )
 
-mainClass := Some("com.metl.datamigrator.Application")
+mainClass := Some("com.metl.datamigrator.Main")
+
+//fork in run := true
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
@@ -42,13 +46,10 @@ libraryDependencies ++= {
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
 
-javacOptions ++= Seq("-source", "1.5", "-target", "1.5")
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
 // append -deprecation to the options passed to the Scala compiler
 scalacOptions += "-deprecation"
-
-// define the repository to publish to
-publishTo := Some("sonatype" at "https://oss.sonatype.org/service/local/staging/deploy/maven2")
 
 // set Ivy logging to be at the highest level
 ivyLoggingLevel := UpdateLogging.Full
@@ -76,8 +77,6 @@ timingFormat := {
 
 testOptions in Test += Tests.Argument("-eI")
 
-fork in (run) := true
-
 // add a JVM option to use when forking a JVM for 'run'
 //javaOptions += "-Xmx2G"
 //javaOptions += "-Xmx3072m"
@@ -102,8 +101,3 @@ logLevel := Level.Warn
 
 // only show 10 lines of stack traces
 traceLevel := 10
-
-// only show stack traces up to the first sbt stack frame
-traceLevel := 0
-
-credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
