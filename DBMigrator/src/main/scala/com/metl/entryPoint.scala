@@ -1,4 +1,5 @@
 package com.metl.datamigrator
+import java.time.ZoneId
 import java.util.{Date, GregorianCalendar}
 
 import com.metl.data._
@@ -13,30 +14,35 @@ import scala.xml._
 import dispatch._
 import Defaults._
 import com.metl.utils.Stopwatch
+import com.metl.MultiFormatDateFormatter
 
-object Application extends Logger {
-  case class AddKey(h:String,k:String,v:String)
-  case class RemoveKey(h:String,k:String,v:String)
-  class MaintainKeys(start:Long) extends LiftActor {
-    case object Ping
-    var keys:List[Tuple3[String,String,String]] = Nil
-    def repeat = {
-      if (keys.length > 0){
-        Schedule.schedule(this,Ping,10 seconds) 
-      }
+case class AddKey(h:String,k:String,v:String)
+case class RemoveKey(h:String,k:String,v:String)
+class MaintainKeys(start:Long) extends LiftActor with Logger {
+  def shutdown = {
+    shouldCheck = false
+  }
+  protected var shouldCheck = true
+  case object Ping
+  var keys:List[Tuple3[String,String,String]] = Nil
+  def repeat = {
+    if (shouldCheck){
+      Schedule.schedule(this,Ping,10 seconds)
     }
-    def messageHandler = {
-      case AddKey(host,key,value) => {
-        keys = (host,key,value) :: keys
-        repeat
-      }
-      case RemoveKey(host,key,value) => {
-        keys = keys.filterNot(k => k._1 == host && k._2 == key && k._3 == value)
-        repeat
-      }
-      case Ping => {
+  }
+  def messageHandler = {
+    case AddKey(host,key,value) => {
+      keys = (host,key,value) :: keys
+      repeat
+    }
+    case RemoveKey(host,key,value) => {
+      keys = keys.filterNot(k => k._1 == host && k._2 == key && k._3 == value)
+      repeat
+    }
+    case Ping => {
+      if (shouldCheck) {
         keys.foreach(k => {
-          val svc = url("%s/authenticationState".format(k._1)).GET <:< Map("Cookie" -> "%s=%s".format(k._2,k._3))
+          val svc = url("%s/authenticationState".format(k._1)).GET <:< Map("Cookie" -> "%s=%s".format(k._2, k._3))
           val result = Http(svc OK as.String).either.right.map(r => (XML.loadString(r) \\ "@id").exists(_.text.toString == "authData"))
           info("[%sms] maintainingKey: %s".format(new java.util.Date().getTime - start, result()))
         })
@@ -44,23 +50,29 @@ object Application extends Logger {
       }
     }
   }
+}
 
+object Main extends App with Logger {
   def generatePrivateListFunc(config:ServerConfiguration):Conversation=>Option[List[String]] = {
-    config match {
-      /*
-      case cm2011:MeTL2011BackendAdaptor => (conv:Conversation) => {
-        None // this is where the parse through the content will occur, so that we can determine who's made private or public actions in these conversations, so that we don't lose their content.
-        val rootHost = cm2011.host
+      config match {
+        /*
+        case cm2011:MeTL2011BackendAdaptor => (conv:Conversation) => {
+          None // this is where the parse through the content will occur, so that we can determine who's made private or public actions in these conversations, so that we don't lose their content.
+          val rootHost = cm2011.host
+        }
+        */
+        case sa:ReadOnlyMeTL2011ZipAdaptor => {
+          (conv:Conversation) => Some((sa.getPrivateAuthorsForConversation(conv.jid.toString) ::: sa.getHistory(conv.jid.toString).getAll.map(_.author)).distinct)
+        }
+        case _ => (conv:Conversation) => None
       }
-      */
-      case sa:ReadOnlyMeTL2011ZipAdaptor => {
-        (conv:Conversation) => Some((sa.getPrivateAuthorsForConversation(conv.jid.toString) ::: sa.getHistory(conv.jid.toString).getAll.map(_.author)).distinct)
-      }
-      case _ => (conv:Conversation) => None
     }
-  }
-
-  def main(args:Array[String]):Unit = {
+    /*
+    val runningFromConsole:Boolean = args.toList.exists(_.split("=") match {
+      case Array("runningFromConsole", value) => value.toLowerCase.trim.toBoolean == true
+      case _ => false
+    })
+    */
     val start = new java.util.Date().getTime
     val maintainKeys = new MaintainKeys(start)
     def mark(msg:String) = {
@@ -117,10 +129,20 @@ object Application extends Logger {
     servers.filterNot(_ == EmptyBackendAdaptor).foreach(config => {
       mark("exporting server: %s".format(config))
       config.isReady
-      var exportSerializer = new MigratorXmlSerializer(config.name)
+      val timezoneOverrides = (for {
+        dtf <- configFile \\ "dateTimeFormat"
+        format <- (dtf \ "@format").headOption.map(_.text).filterNot(_ == "")
+        zoneId = (dtf \ "@zoneId").headOption.map(_.text).filterNot(_ == "")
+      } yield {
+        zoneId match {
+          case Some(z) => Right((format,z))
+          case None => Left(format)
+        }
+      }).toList
+      val exportSerializer = new MigratorXmlSerializer(config.name,timezoneOverrides)
       val privateFunc = generatePrivateListFunc(config)
       def exportConversation(onBehalfOfUser:String,conversation:String):Box[NodeSeq] = {
-        for (
+        tryo((for (
           conv <- Some(config.detailsOfConversation(conversation));
           if (onBehalfOfUser == conv.author);
           histories = exportHistories(conv,privateFunc(conv));
@@ -131,8 +153,8 @@ object Application extends Logger {
             </export>
           }
         ) yield {
-          xml  
-        }
+          xml
+        }).head)
       }
       def time[A](label:String,action: => A):A = {
         val s = new java.util.Date().getTime
@@ -162,8 +184,8 @@ object Application extends Logger {
           allHistories.flatMap(_.getAll).groupBy(_.author).foreach(authorStanzas => {
             if (!attendees.contains(authorStanzas._1)){
               val times = authorStanzas._2.map(_.timestamp)
-              val entering = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.min,slideJid,true,Nil)            
-              val leaving = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.max,slideJid,true,Nil)            
+              val entering = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.min,slideJid,true,Nil)
+              val leaving = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.max,slideJid,true,Nil)
               convHistory.addAttendance(entering)
               convHistory.addAttendance(leaving)
             }
@@ -179,19 +201,19 @@ object Application extends Logger {
       parallelism.map(paraCount => {
         p.tasksupport = new scala.collection.parallel.ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(paraCount.getOrElse(1)))
       })
-      val completed = p.flatMap(conversation => {
-        val es = new java.util.Date().getTime  
+      val completed = p.map(conversation => {
+        val es = new java.util.Date().getTime
         time("exporting conversation",exportConversation(conversation.author,conversation.jid.toString)).map(xml => {
-          val ee = new java.util.Date().getTime  
+          val ee = new java.util.Date().getTime
           mark("exported conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
-          val is = new java.util.Date().getTime  
+          val is = new java.util.Date().getTime
           val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map ("Cookie" -> "%s=%s".format(cookieKey, cookieValue)) <<? Map (importDescription.map(id => ("importDescription",id)).toList :_*)
 
           val result = Http(svc OK as.xml.Elem).either
           val res = result()
           //val res = Left(new Exception("deliberately failing"))
           val ie = new java.util.Date().getTime
-          val exportTime = ee - es 
+          val exportTime = ee - es
           val importTime = ie - is
           val total =  ie - es
           res.right.map(crx => {
@@ -199,19 +221,50 @@ object Application extends Logger {
           }).left.map(e => {
             error("exception while pushing conversation: %s (%s) %s: %s".format(conversation.author,conversation.slides.length,conversation.title,e.getMessage),e)
           })
-          (conversation.jid,res.isRight,exportTime, importTime,total)
-        })
-      }).toList  
-      mark("completed pushing conversations: \r\n%s".format(completed.map(c => "CONV %s [%s (%s + %s)]: %s".format(c._1,c._5,c._3,c._4,c._2)).mkString("\r\n")))
+          (conversation.jid,conversation.created,res.isRight,exportTime,importTime,total)
+        }) match {
+          case Full(r) => r
+          case Empty => {
+            val now = new java.util.Date().getTime
+            error("exception %s while generating export xml, resulting in empty".format(conversation.jid))
+            (conversation.jid,conversation.created,false,es,now,now - es)
+          }
+          case ParamFailure(msg,exception,chain,param) => {
+            val now = new java.util.Date().getTime
+            error("exception %s while generating export xml: %s (%s)\r\n%s => %s".format(
+              conversation.jid,
+              msg,
+              param,
+              exception.map(_.getMessage),
+              exception.map(_.getStackTraceString)
+            ))
+            (conversation.jid,conversation.created,false,es,now,now - es)
+          }
+          case Failure(msg,exception,chain) => {
+              val now = new java.util.Date().getTime
+              error("exception %s while generating export xml: %s\r\n%s => %s".format(
+                conversation.jid,
+                msg,
+                exception.map(_.getMessage),
+                exception.map(_.getStackTraceString)
+              ))
+              (conversation.jid,conversation.created,false,es,now,now - es)
+          }
+        }
+      }).toList
+      mark("completed pushing conversations: \r\n%s".format(completed.map(c => "CONV %s @ '%s' [%s (%s + %s)]: %s".format(c._1,c._2,c._6,c._4,c._5,c._3)).mkString("\r\n")))
       maintainKeys ! RemoveKey(targetServer,cookieKey,cookieValue)
+      config.shutdown
     })
+    maintainKeys.shutdown
+    Schedule.shutdown()
     LAScheduler.shutdown()
     mark("finished reading.")
     System.exit(0)
-  }
 }
 
-class MigratorXmlSerializer(configName:String) extends GenericXmlSerializer(configName) with Logger {
+class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[String,Tuple2[String,String]]] = List(Left("EEE MMM dd kk:mm:ss z yyyy"))) extends GenericXmlSerializer(configName) with Logger {
+
   override def toMeTLImage(input:NodeSeq):MeTLImage = {
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
@@ -226,6 +279,25 @@ class MigratorXmlSerializer(configName:String) extends GenericXmlSerializer(conf
     val y = getDoubleByName(input,"y")
     MeTLImage(config,m.author,m.timestamp,tag,source,Full(imageBytes),pngBytes,width,height,x,y,c.target,c.privacy,c.slide,c.identity,m.audiences)
   }
+  val dateTimeFormatter = new com.metl.MultiFormatDateFormatter(timezoneConverters.map(_.right.map(lt => (lt._1,ZoneId.of(lt._2)))):_*)
+    override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversation",{
+      val created:Long = dateTimeFormatter.parse(input.created)
+      metlXmlToXml("conversation",List(
+        <author>{input.author}</author>,
+        <lastAccessed>{input.lastAccessed}</lastAccessed>,
+        <slides>{input.slides.map(s => fromSlide(s))}</slides>,
+        <subject>{input.subject}</subject>,
+        <tag>{input.tag}</tag>,
+        <jid>{input.jid}</jid>,
+        <title>{input.title}</title>,
+        <created>{new java.util.Date(created).toString()}</created>,
+        <creation>{created}</creation>,
+        <blacklist>{
+          input.blackList.map(bu => <user>{bu}</user> )
+          }</blacklist>,
+        fromPermissions(input.permissions)
+      ))
+    })
   override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLImage",{
     canvasContentToXml("image",input,List(
       <tag>{input.tag}</tag>,
@@ -345,11 +417,11 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
   override def shutdown:Unit = {}
   override def isReady:Boolean = {
     loadStructure
-    trace("found conversations: %s".format(conversationCache.keys.toList))
+    debug("found conversations: %s".format(conversationCache.keys.toList))
     loadResources
-    trace("found resources: %s".format(resourceCache.keys.toList))
+    debug("found resources: %s".format(resourceCache.keys.toList))
     loadHistories
-    trace("found histories: %s".format(historyCache.keys.toList))
+    debug("found histories: %s".format(historyCache.keys.toList))
     true
   }
 
@@ -524,7 +596,7 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
       }
       case _ => {}
     })
-    println("resource cache: %s".format(resourceCache))
+    trace("resource cache: %s".format(resourceCache))
   }
   protected def loadHistories:Unit = {
     inZipFile(historyZipPath,{
@@ -565,7 +637,7 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
       var ze:ZipEntry = zipStream.getNextEntry
       while (ze != null){
         perFile(zipStream,ze)
-        //println("parsing: %s".format(ze.getName()))
+        //trace("parsing: %s".format(ze.getName()))
         ze = zipStream.getNextEntry
       }
       zipStream.close
