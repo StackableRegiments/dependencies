@@ -1,6 +1,5 @@
 package com.metl
 
-import net.liftweb.common._
 import net.liftweb.util.Helpers._
 
 object TimeSpanParser {
