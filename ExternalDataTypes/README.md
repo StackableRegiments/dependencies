@@ -1,0 +1,1 @@
+This project contains intermediary data types used to translate from MeTL to third-party services that are loaded by MeTL as runtime libs as per configuration.
