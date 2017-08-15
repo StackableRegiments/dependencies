@@ -1,5 +1,5 @@
 name := "external-data-types"
-version := "0.0.1"
+version := "0.0.4"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.8"
@@ -22,7 +22,9 @@ libraryDependencies ++= {
   Seq(
     "org.scala-lang" % "scala-library" % scalaVersionString,
     "org.scalatest" %% "scalatest" % "2.2.5" % "test",
-    "net.liftweb" %% "lift-webkit" % liftVersion
+    "net.liftweb" %% "lift-webkit" % liftVersion,
+    "org.apache.httpcomponents" % "httpmime" % "4.5.2",
+    "org.imsglobal" % "basiclti-util" % "1.1.1"
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
 
