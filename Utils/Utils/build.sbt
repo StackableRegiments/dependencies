@@ -1,5 +1,5 @@
 name := "common-utils"
-version := "0.4.0"
+version := "1.0.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"
@@ -16,7 +16,7 @@ unmanagedResourceDirectories in Test <+= (baseDirectory) { _ / "src/main/webapp"
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
-libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.13"
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.+"
 
 libraryDependencies ++= {
   val liftVersion = "2.6.2"
@@ -31,6 +31,7 @@ libraryDependencies ++= {
     "commons-io" % "commons-io" % "1.4",
     "net.liftweb" %% "lift-webkit" % liftVersion,
     "org.apache.httpcomponents" % "httpclient" % "4.1",
+    "org.apache.httpcomponents" % "httpmime" % "4.5.2",
     "net.sourceforge.htmlcleaner" % "htmlcleaner" % "2.2"
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
