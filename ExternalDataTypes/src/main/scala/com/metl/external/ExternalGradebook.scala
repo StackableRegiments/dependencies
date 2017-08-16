@@ -2,11 +2,7 @@ package com.metl.external
 
 import net.liftweb.common.Logger
 
-import scala.xml.NodeSeq
-
-abstract class ExternalGradebookConfigurator extends Logger {
-  def configureFromXml(in:NodeSeq):Either[Exception,List[ExternalGradebook]]
-}
+abstract class ExternalGradebookConfigurator extends ExternalConfigurator[ExternalGradebook]
 
 abstract class ExternalGradebook(val id:String,val name:String) extends TryE with Logger {
   def getGradeContexts(username:String):Either[Exception,List[OrgUnit]] = Left(notImplemented)

@@ -1,5 +1,5 @@
 name := "external-data-types"
-version := "0.0.5"
+version := "0.0.6"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.8"

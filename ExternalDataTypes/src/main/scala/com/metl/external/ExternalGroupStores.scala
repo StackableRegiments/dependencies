@@ -2,11 +2,7 @@ package com.metl.external
 
 import net.liftweb.common.Logger
 
-import scala.xml.NodeSeq
-
-abstract class GroupStoreProviderConfigurator {
-  def configureFromXml(in:NodeSeq):Either[Exception,List[GroupStoreProvider]]
-}
+abstract class ExternalGroupStoreProviderConfigurator extends ExternalConfigurator[GroupStoreProvider]
 
 trait GroupStoreProvider extends Logger {
   val canQuery:Boolean = false
