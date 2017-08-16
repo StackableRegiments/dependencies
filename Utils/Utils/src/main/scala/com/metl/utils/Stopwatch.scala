@@ -1,5 +1,8 @@
 package com.metl.utils
 
+import net.liftweb.actor.LiftActor
+import net.liftweb.common.Logger
+
 case class TimerResult(label:String,startTime:Long,duration:Long)
 
 object StopwatchActor extends LiftActor with Logger {

@@ -3,6 +3,11 @@ package com.metl.utils
 import java.text.SimpleDateFormat
 import java.util.{Date, Locale}
 
+import net.liftweb.common.{Empty, Full}
+import net.liftweb.http.{InMemoryResponse, S}
+import org.apache.commons.codec.digest.DigestUtils
+import net.liftweb.util.Helpers._
+
 case class CachedBinary(data:Array[Byte],createTime:Long) {
   lazy val checksum = DigestUtils.shaHex(data)
 }

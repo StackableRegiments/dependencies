@@ -98,8 +98,10 @@ traceLevel := 10
 // only show stack traces up to the first sbt stack frame
 traceLevel := 0
 
-credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
+//credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
 
-pgpSecretRing := file("/dev/.ivy2/.sbt/gpg/secring.asc")
+credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
 
-pgpPublicRing := file("/dev/.ivy2/.sbt/gpg/pubring.asc")
+pgpSecretRing := file(Path.userHome.toPath + "/dev/.ivy2/.sbt/gpg/secring.asc")
+
+pgpPublicRing := file(Path.userHome.toPath + "/dev/.ivy2/.sbt/gpg/pubring.asc")
