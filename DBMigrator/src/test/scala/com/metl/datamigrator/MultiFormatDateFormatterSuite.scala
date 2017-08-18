@@ -1,9 +1,9 @@
-package com.metl
+package com.metl.datamigrator
 
 import java.time.ZoneId
 import java.util.Date
 
-import org.scalatest._
+import org.scalatest.FunSuite
 
 class MultiFormatDateFormatterSuite extends FunSuite {
 

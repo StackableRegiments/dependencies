@@ -1,4 +1,4 @@
-package com.metl
+package com.metl.datamigrator
 
 import java.text.SimpleDateFormat
 import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
