@@ -1,11 +1,15 @@
 <serverConfiguration>
 	<!--<parallelism>16</parallelism>-->
-	<parallelism>16</parallelism>
-	<priorities completeLoadAfterPriorities="true">
-		<priority jid="20000" />
+	<parallelism>2</parallelism>
+<!--	<priorities completeLoadAfterPriorities="true">
+&lt;!&ndash;		<priority jid="20000" />
 		<priority author="david.hagen"/>
-		<priority author="christopher.hagen"/>
-		<priority jid="1000"/>
+		&ndash;&gt;
+	</priorities>	-->
+	<importDescription>Test import by Doug</importDescription>
+	<priorities completeLoadAfterPriorities="false">
+		<priority jid="2000"/>
+		<priority jid="3000"/>
 	</priorities>
 	<servers>
     <server>
@@ -19,5 +23,24 @@
 			<!--<url>jdbc:h2:file:C:/stackable/metlData/sluBeta/2016-03-11/testdb.h2;ACCESS_MODE_DATA=r;MVCC=TRUE;CACHE_SIZE=3145728</url>-->
 		</server>
 	</servers>
-	<targetServer cookieKey="JSESSIONID" cookieValue="13zyrollwwgq3ju1vtkd2od41">http://localhost:8080</targetServer>
+	<dateTimeFormatters>
+		<dateTimeFormat format="EEE MMM dd kk:mm:ss z yyyy"/>
+		<dateTimeFormat format="MM/dd/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="MM/d/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="M/dd/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="M/d/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="MM/dd/yyyy HH:mm:ss" zoneId="America/New_York"/>
+		<dateTimeFormat format="MM/d/yyyy HH:mm:ss" zoneId="America/New_York"/>
+		<dateTimeFormat format="M/dd/yyyy HH:mm:ss" zoneId="America/New_York"/>
+		<dateTimeFormat format="M/d/yyyy HH:mm:ss" zoneId="America/New_York"/>
+		<dateTimeFormat format="dd/MM/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="d/MM/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="dd/M/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="d/M/yyyy h:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="dd/MM/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="d/MM/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="dd/M/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+		<dateTimeFormat format="d/M/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+	</dateTimeFormatters>
+	<targetServer cookieKey="JSESSIONID" cookieValue="1sqpz5wpyyjad1rz7kmpj6j22n">http://localhost:8080</targetServer>
 </serverConfiguration>
