@@ -23,6 +23,7 @@
 			<!--<url>jdbc:h2:file:C:/stackable/metlData/sluBeta/2016-03-11/testdb.h2;ACCESS_MODE_DATA=r;MVCC=TRUE;CACHE_SIZE=3145728</url>-->
 		</server>
 	</servers>
+	<exportXml enabled="true" location="exported"/>
 	<dateTimeFormatters>
 		<dateTimeFormat format="EEE MMM dd kk:mm:ss z yyyy"/>
 		<dateTimeFormat format="MM/dd/yyyy h:mm:ss a" zoneId="America/New_York"/>

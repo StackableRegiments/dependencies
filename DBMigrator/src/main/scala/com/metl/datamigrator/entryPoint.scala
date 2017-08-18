@@ -12,42 +12,6 @@ import net.liftweb.util._
 
 import scala.xml._
 
-case class AddKey(h:String,k:String,v:String)
-case class RemoveKey(h:String,k:String,v:String)
-class MaintainKeys(start:Long) extends LiftActor with Logger {
-  def shutdown = {
-    shouldCheck = false
-  }
-  protected var shouldCheck = true
-  case object Ping
-  var keys:List[Tuple3[String,String,String]] = Nil
-  def repeat = {
-    if (shouldCheck){
-      Schedule.schedule(this,Ping,10 seconds)
-    }
-  }
-  def messageHandler = {
-    case AddKey(host,key,value) => {
-      keys = (host,key,value) :: keys
-      repeat
-    }
-    case RemoveKey(host,key,value) => {
-      keys = keys.filterNot(k => k._1 == host && k._2 == key && k._3 == value)
-      repeat
-    }
-    case Ping => {
-      if (shouldCheck) {
-        keys.foreach(k => {
-          val svc = url("%s/authenticationState".format(k._1)).GET <:< Map("Cookie" -> "%s=%s".format(k._2, k._3))
-          val result = Http(svc OK as.String).either.right.map(r => (XML.loadString(r) \\ "@id").exists(_.text.toString == "authData"))
-          info("[%sms] maintainingKey: %s".format(new java.util.Date().getTime - start, result()))
-        })
-        repeat
-      }
-    }
-  }
-}
-
 object Main extends App with Logger {
   def generatePrivateListFunc(config:ServerConfiguration):Conversation=>Option[List[String]] = {
       config match {
@@ -88,7 +52,7 @@ object Main extends App with Logger {
     )
     val servers = ServerConfiguration.getServerConfigurations
     val configFile = XML.load(configurationFileLocation)
-    val parallelism = try {
+    val parallelism: Option[Option[Int]] = try {
       Some((configFile \\ "parallelism").headOption.map(_.text.toInt))
     } catch {
       case e:Exception => None
@@ -98,8 +62,15 @@ object Main extends App with Logger {
     } yield {
       idNode.text
     }
+    val (exportXmlEnabled,exportXmlLocation) = {
+      val exportXmlNode = configFile \\ "exportXml"
+      (exportXmlNode \@ "enabled" match {
+        case s:String if s == "true" => true
+        case _ => false
+      },exportXmlNode \@ "location")
+    }
     val sortConversations:List[Conversation]=>List[Conversation] = {
-      val priorityElems = (configFile \\ "priorities" \  "priority")
+      val priorityElems = configFile \\ "priorities" \ "priority"
       val doAllAfter = (configFile \\ "priorities" \ "@completeLoadAfterPriorities").headOption.map(_.text.toBoolean).getOrElse(true)
       val jidPriorities = priorityElems.flatMap(elem => (elem \ "@jid").headOption.map(_.text.toInt))
       val authorPriorities = priorityElems.flatMap(elem => (elem \ "@author").headOption.map(_.text))
@@ -149,6 +120,8 @@ object Main extends App with Logger {
             </export>
           }
         ) yield {
+          if( exportXmlEnabled )
+            XML.save(exportXmlLocation + "/" + conv.jid.toString,xml)
           xml
         }).head)
       }
@@ -257,4 +230,40 @@ object Main extends App with Logger {
     LAScheduler.shutdown()
     mark("finished reading.")
     System.exit(0)
+}
+
+case class AddKey(h:String,k:String,v:String)
+case class RemoveKey(h:String,k:String,v:String)
+class MaintainKeys(start:Long) extends LiftActor with Logger {
+  def shutdown = {
+    shouldCheck = false
+  }
+  protected var shouldCheck = true
+  case object Ping
+  var keys:List[Tuple3[String,String,String]] = Nil
+  def repeat = {
+    if (shouldCheck){
+      Schedule.schedule(this,Ping,10 seconds)
+    }
+  }
+  def messageHandler = {
+    case AddKey(host,key,value) => {
+      keys = (host,key,value) :: keys
+      repeat
+    }
+    case RemoveKey(host,key,value) => {
+      keys = keys.filterNot(k => k._1 == host && k._2 == key && k._3 == value)
+      repeat
+    }
+    case Ping => {
+      if (shouldCheck) {
+        keys.foreach(k => {
+          val svc = url("%s/authenticationState".format(k._1)).GET <:< Map("Cookie" -> "%s=%s".format(k._2, k._3))
+          val result = Http(svc OK as.String).either.right.map(r => (XML.loadString(r) \\ "@id").exists(_.text.toString == "authData"))
+          info("[%sms] maintainingKey: %s".format(new java.util.Date().getTime - start, result()))
+        })
+        repeat
+      }
+    }
+  }
 }
