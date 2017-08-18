@@ -10,6 +10,7 @@ import net.liftweb.common._
 import net.liftweb.util.Helpers._
 import net.liftweb.util._
 
+import scala.Option
 import scala.xml._
 
 object Main extends App with Logger {
@@ -35,7 +36,7 @@ object Main extends App with Logger {
     */
     val start = new java.util.Date().getTime
     val maintainKeys = new MaintainKeys(start)
-    def mark(msg:String) = {
+    protected def mark(msg:String): Unit = {
       info("[%sms] %s".format(new java.util.Date().getTime - start,msg))
     }
     val configurationFileLocation = System.getProperty("metlx.configurationFile")
@@ -80,18 +81,22 @@ object Main extends App with Logger {
         jidMatches ::: authorMatches ::: nonAuthor.filter(_i => doAllAfter)
       }
     }
-    val (targetServer,cookieKey,cookieValue) = (configFile \\ "targetServer").headOption.map(cn => {
-        (
-          cn.text,
-          (cn \\ "@cookieKey").headOption.map(_.text).getOrElse("JSESSIONID"),
-          (cn \\ "@cookieValue").headOption.map(_.text).getOrElse({
-            throw new Exception("please specify the target server's cookie in the configuration file")
-          })
-        )
-      }).getOrElse({
-        throw new Exception("please specify the target server's baseUrl in the configuration file")
-      })
-    maintainKeys ! AddKey(targetServer,cookieKey,cookieValue)
+    val (targetServer,cookieKey,cookieValue):(Option[String],String,String) = {
+      configFile \\ "targetServer" match {
+        case cn: NodeSeq if cn.text != "" =>
+          (
+            Some(cn.text),
+            (cn \\ "@cookieKey").headOption.map(_.text).getOrElse("JSESSIONID"),
+            (cn \\ "@cookieValue").headOption.map(_.text).getOrElse({
+              throw new Exception("please specify the target server's cookie in the configuration file")
+            })
+          )
+        case _ => (None, "", "")
+      }
+    }
+    if(targetServer.isDefined){
+      maintainKeys ! AddKey(targetServer.get,cookieKey,cookieValue)
+    }
     mark("servers: %s => %s".format(servers,targetServer))
     servers.filterNot(_ == EmptyBackendAdaptor).foreach(config => {
       mark("exporting server: %s".format(config))
@@ -121,7 +126,7 @@ object Main extends App with Logger {
           }
         ) yield {
           if( exportXmlEnabled )
-            XML.save(exportXmlLocation + "/" + conv.jid.toString,xml)
+            XML.save(exportXmlLocation + "/" + conv.jid.toString + ".xml",xml,"UTF-8")
           xml
         }).head)
       }
@@ -153,8 +158,8 @@ object Main extends App with Logger {
           allHistories.flatMap(_.getAll).groupBy(_.author).foreach(authorStanzas => {
             if (!attendees.contains(authorStanzas._1)){
               val times = authorStanzas._2.map(_.timestamp)
-              val entering = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.min,slideJid,true,Nil)
-              val leaving = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.max,slideJid,true,Nil)
+              val entering = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.min,slideJid,present = true,Nil)
+              val leaving = Attendance(EmptyBackendAdaptor,authorStanzas._1,times.max,slideJid,present = true,Nil)
               convHistory.addAttendance(entering)
               convHistory.addAttendance(leaving)
             }
@@ -176,19 +181,26 @@ object Main extends App with Logger {
           val ee = new java.util.Date().getTime
           mark("exported conversation: %s (%s) %s".format(conversation.author, conversation.slides.length, conversation.title))
           val is = new java.util.Date().getTime
-          val svc = url("%s/conversationImport".format(targetServer)).POST << xml.toString <:< Map ("Cookie" -> "%s=%s".format(cookieKey, cookieValue)) <<? Map (importDescription.map(id => ("importDescription",id)).toList :_*)
 
-          val result = Http(svc OK as.xml.Elem).either
-          val res = result()
-          //val res = Left(new Exception("deliberately failing"))
+          var res:Either[Throwable,Elem] = Left(new Exception("initialiser"))
+          if( targetServer.isDefined) {
+            val svc = url("%s/conversationImport".format(targetServer.get)).POST << xml.toString <:< Map("Cookie" -> "%s=%s".format(cookieKey, cookieValue)) <<? Map(importDescription.map(id => ("importDescription", id)).toList: _*)
+
+            val result = Http(svc OK as.xml.Elem).either
+            res = result()
+            //res = Left(new Exception("deliberately failing"))
+          }
+          else {
+            res = Right(<exportOnly/>)
+          }
           val ie = new java.util.Date().getTime
           val exportTime = ee - es
           val importTime = ie - is
-          val total =  ie - es
+          val total = ie - es
           res.right.map(crx => {
-            mark("successful import: %s (%s) %s => (%sB)".format(conversation.author,conversation.slides.length,conversation.title,crx.toString.length))
+            mark("successful conversation push: %s (%s) %s => (%sB)".format(conversation.author, conversation.slides.length, conversation.title, crx.toString.length))
           }).left.map(e => {
-            error("exception while pushing conversation: %s (%s) %s: %s".format(conversation.author,conversation.slides.length,conversation.title,e.getMessage),e)
+            error("exception while pushing conversation: %s (%s) %s: %s".format(conversation.author, conversation.slides.length, conversation.title, e.getMessage), e)
           })
           (conversation.jid,conversation.created,res.isRight,exportTime,importTime,total)
         }) match {
@@ -222,7 +234,9 @@ object Main extends App with Logger {
         }
       }).toList
       mark("completed pushing conversations: \r\n%s".format(completed.map(c => "CONV %s @ '%s' [%s (%s + %s)]: %s".format(c._1,c._2,c._6,c._4,c._5,c._3)).mkString("\r\n")))
-      maintainKeys ! RemoveKey(targetServer,cookieKey,cookieValue)
+      if(targetServer.isDefined) {
+        maintainKeys ! RemoveKey(targetServer.get, cookieKey, cookieValue)
+      }
       config.shutdown
     })
     maintainKeys.shutdown
