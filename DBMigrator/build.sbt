@@ -37,14 +37,14 @@ libraryDependencies ++= {
     "net.liftweb" %% "lift-mongodb" % liftVersion,
     "net.liftweb" %% "lift-mongodb-record" % liftVersion,
     "org.seleniumhq.selenium" % "selenium-java" % "2.8.0",
-    "io.github.stackableregiments" %% "common-utils" % "0.3.+",
-    "io.github.stackableregiments" %% "metldata" % "3.8.+",
+    "io.github.stackableregiments" %% "common-utils" % "0.4.+",
     "io.github.stackableregiments" %% "metl2011" % "3.11.+",
-    "io.github.stackableregiments" %% "metl-h2" % "3.21.+",
+        "io.github.stackableregiments" %% "metldata" % "3.20.+",
+    //    "io.github.stackableregiments" %% "metl-h2" % "3.21.+",
     "mysql" % "mysql-connector-java" % "5.1.38",
     "io.github.stackableregiments" %% "lift-extensions" % "0.2.+"
   )
-}.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
+}.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri").excludeAll(ExclusionRule(organization = "com.metl.data")))
 
 javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 

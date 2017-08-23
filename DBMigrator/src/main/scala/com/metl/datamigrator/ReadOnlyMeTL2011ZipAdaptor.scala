@@ -9,7 +9,7 @@ import scala.xml.{Elem, Node, NodeSeq, Text}
 
 object ReadOnlyMeTL2011ZipAdaptorConfigurator extends ServerConfigurator{
   override def matchFunction(e:Node) = (e \\ "type").headOption.exists(_.text == "MeTL2011Zip")
-  override def interpret(e:Node,onConversationDetailsUpdated:Conversation=>Unit,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
+  override def interpret(e:Node,messageBusCredentailsFunc:()=>Tuple2[String,String],conversationListenerCredentialsFunc:()=>Tuple2[String,String],httpCredentialsFunc:()=>Tuple2[String,String]) = {
     for {
       name <- (e \\ "name").headOption.map(_.text)
       historyZipPath <- (e \\ "historyZipPath").headOption.map(_.text)
@@ -22,25 +22,12 @@ object ReadOnlyMeTL2011ZipAdaptorConfigurator extends ServerConfigurator{
 }
 
 class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipPath:String,resourcesZipPath:String)
-  extends ServerConfiguration(name,"_unused",(c:Conversation) => {}) with Logger {
+  extends ServerConfiguration(name,"_unused") with Logger {
   import java.io._
   import java.util.zip.{ZipEntry, ZipInputStream}
 
   import org.apache.commons.io.IOUtils
   protected val thisConfig:ServerConfiguration = this
-  // these are all irrelevant
-  override def getMessageBus(d:MessageBusDefinition):MessageBus = EmptyMessageBus
-  override def createConversation(title:String,author:String):Conversation = Conversation.empty
-  override def deleteConversation(jid:String):Conversation = Conversation.empty
-  override def renameConversation(jid:String,newTitle:String):Conversation = Conversation.empty
-  override def changePermissions(jid:String,newPermissions:Permissions):Conversation = Conversation.empty
-  override def updateSubjectOfConversation(jid:String,newSubject:String):Conversation = Conversation.empty
-  override def addSlideAtIndexOfConversation(jid:String,index:Int):Conversation = Conversation.empty
-  override def reorderSlidesOfConversation(jid:String,newSlides:List[Slide]):Conversation = Conversation.empty
-  override def updateConversation(jid:String,newConversation:Conversation):Conversation = Conversation.empty
-  override def postResource(jid:String,userProposedId:String,data:Array[Byte]):String = ""
-  override def insertResource(jid:String,data:Array[Byte]):String = ""
-  override def upsertResource(jid:String,identifier:String,data:Array[Byte]):String = ""
 
   //shutdown is a function to be called when the serverConfiguration is to be disposed
   override def shutdown:Unit = {}
@@ -148,7 +135,7 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
         val id = Some(getStringByName(input,"id")).filter(_.length > 0).getOrElse(getStringByName(input,"time"))
         val url = safetyPath(getStringByName(input,"url"))
         val bytes = url.map(u => thisConfig.getResource(u))
-        MeTLFile(config, m.author, m.timestamp, name, id, url, bytes, m.audiences)
+        MeTLFile(config, m.author, m.timestamp, name, id, url, bytes, false, m.audiences)
       } catch {
         case e:Throwable => {
           error("failed to construct MeTLFile",e)
