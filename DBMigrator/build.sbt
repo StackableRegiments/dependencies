@@ -38,7 +38,6 @@ libraryDependencies ++= {
     "net.liftweb" %% "lift-mongodb-record" % liftVersion,
     "org.seleniumhq.selenium" % "selenium-java" % "2.8.0",
     "io.github.stackableregiments" %% "common-utils" % "1.1.+",
-    "io.github.stackableregiments" %% "metl2011" % "3.11.+",
     "io.github.stackableregiments" %% "metldata" % "3.20.+",
     "io.github.stackableregiments" %% "persisted-metl" % "3.10.+",
     "io.github.stackableregiments" %% "metl-h2" % "3.27.+",

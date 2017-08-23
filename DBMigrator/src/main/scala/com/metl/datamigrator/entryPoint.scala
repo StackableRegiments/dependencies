@@ -15,15 +15,6 @@ import scala.xml._
 object Main extends App with Logger {
   def generatePrivateListFunc(config:ServerConfiguration):Conversation=>Option[List[String]] = {
       config match {
-        /*
-        case cm2011:MeTL2011BackendAdaptor => (conv:Conversation) => {
-          None // this is where the parse through the content will occur, so that we can determine who's made private or public actions in these conversations, so that we don't lose their content.
-          val rootHost = cm2011.host
-        }
-        */
-        case sa:ReadOnlyMeTL2011ZipAdaptor => {
-          (conv:Conversation) => Some((sa.getPrivateAuthorsForConversation(conv.jid.toString) ::: sa.getHistory(conv.jid.toString).getAll.map(_.author)).distinct)
-        }
         case _ => (conv:Conversation) => None
       }
     }
@@ -42,7 +33,6 @@ object Main extends App with Logger {
     MeTL2011ServerConfiguration.initialize
     MeTL2015ServerConfiguration.initialize
     LocalH2ServerConfiguration.initialize
-    ServerConfiguration.addServerConfigurator(ReadOnlyMeTL2011ZipAdaptorConfigurator)
     ServerConfiguration.loadServerConfigsFromFile(
       path = configurationFileLocation,
       onConversationDetailsUpdated = (c:Conversation) => {},
