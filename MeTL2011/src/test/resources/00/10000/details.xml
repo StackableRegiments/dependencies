@@ -1,0 +1,25 @@
+<conversation>
+  <author>firstAuthor</author>
+  <lastAccessed>12345</lastAccessed>
+  <slides>
+    <slide>
+      <id>12345</id>
+      <author>firstAuthor</author>
+      <index>0</index>
+      <defaultHeight>600</defaultHeight>
+      <defaultWidth>800</defaultWidth>
+      <exposed>true</exposed>
+      <type>aType</type>
+    </slide>
+  </slides>
+  <subject>anySubject</subject>
+  <tag>aTag</tag>
+  <jid>12345</jid>
+  <title>aTitle</title>
+  <created>12345</created>
+  <permissions>
+    <studentCanOpenFriends>true</studentCanOpenFriends>
+    <studentCanPublish>true</studentCanPublish>
+    <usersAreCompulsorilySynced>true</usersAreCompulsorilySynced>
+  </permissions>
+</conversation>

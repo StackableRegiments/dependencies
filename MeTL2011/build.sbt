@@ -1,5 +1,5 @@
 name := "metl2011"
-version := "3.12.0"
+version := "3.13.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"
@@ -27,7 +27,7 @@ libraryDependencies ++= {
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
     "commons-io" % "commons-io" % "1.4",
     "org.apache.commons" % "commons-compress" % "1.1",
-    "io.github.stackableregiments" %% "common-utils" % "0.4.+",
+    "io.github.stackableregiments" %% "common-utils" % "1.2.+",
     "io.github.stackableregiments" %% "metldata" % "3.10.+",
     "io.github.stackableregiments" %% "xmpp" % "3.5.+" 
   )
@@ -95,10 +95,10 @@ traceLevel := 10
 // only show stack traces up to the first sbt stack frame
 traceLevel := 0
 
-//credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
+//credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
 
-credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
+credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
 
-pgpSecretRing := file("/dev/.ivy2/.sbt/gpg/secring.asc")
+pgpSecretRing := file(Path.userHome.toPath + "/dev/.ivy2/.sbt/gpg/secring.asc")
 
-pgpPublicRing := file("/dev/.ivy2/.sbt/gpg/pubring.asc")
+pgpPublicRing := file(Path.userHome.toPath + "/dev/.ivy2/.sbt/gpg/pubring.asc")
