@@ -2,7 +2,6 @@ package com.metl.datamigrator
 
 import com.metl.data._
 import com.metl.h2._
-import com.metl.metl2011._
 import dispatch.Defaults._
 import dispatch._
 import net.liftweb.actor._
@@ -30,8 +29,6 @@ object Main extends App with Logger {
       info("[%sms] %s".format(new java.util.Date().getTime - start,msg))
     }
     val configurationFileLocation = System.getProperty("metlx.configurationFile")
-    MeTL2011ServerConfiguration.initialize
-    MeTL2015ServerConfiguration.initialize
     LocalH2ServerConfiguration.initialize
     ServerConfiguration.loadServerConfigsFromFile(
       path = configurationFileLocation,
