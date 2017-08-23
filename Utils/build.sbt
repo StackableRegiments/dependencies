@@ -1,8 +1,8 @@
 name := "common-utils"
-version := "1.0.0"
+version := "1.2.0"
 organization := "io.github.stackableregiments"
 
-val scalaVersionString = "2.11.5"
+val scalaVersionString = "2.11.8"
 
 scalaVersion := scalaVersionString
 
@@ -24,7 +24,7 @@ libraryDependencies ++= {
   Seq(
     "org.scala-lang" % "scala-library" % scalaVersionString,
 		"org.scalatest" %% "scalatest" % "2.2.5" % "test",
-    "org.scalaz.stream" %% "scalaz-stream" % "0.7.+",
+    "org.scalaz.stream" %% "scalaz-stream" % "0.8.+",
 		"org.specs2" %% "specs2" % "3.3.1" % "test",
 		"org.specs2" %% "specs2-matcher-extra" % "3.3.1" % "test",
 		"org.mockito" % "mockito-core" % "1.9.0" % "test",
