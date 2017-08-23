@@ -1,5 +1,5 @@
 name := "metl-h2"
-version := "3.26.0"
+version := "3.27.0"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.5"
@@ -31,8 +31,8 @@ libraryDependencies ++= {
     "com.h2database" % "h2" % "1.4.189",
     "net.liftweb" %% "lift-mapper" % liftVersion,
     "net.liftweb" %% "lift-webkit" % liftVersion,
-    "io.github.stackableregiments" %% "common-utils" % "0.4.+",
-    "io.github.stackableregiments" %% "persisted-metl" % "3.9.+"
+    "io.github.stackableregiments" %% "common-utils" % "1.2.+",
+    "io.github.stackableregiments" %% "persisted-metl" % "3.10.+"
   )
 }.map(_.excludeAll(ExclusionRule(organization = "org.slf4j")).exclude("com.sun.jdmk","jmxtools").exclude("javax.jms","jms").exclude("com.sun.jmx","jmxri"))
 
@@ -98,10 +98,10 @@ traceLevel := 10
 // only show stack traces up to the first sbt stack frame
 traceLevel := 0
 
-//credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
+//credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
 
-credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
+credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
 
-pgpSecretRing := file("/dev/.ivy2/.sbt/gpg/secring.asc")
+pgpSecretRing := file(Path.userHome.toPath + "/dev/.ivy2/.sbt/gpg/secring.asc")
 
-pgpPublicRing := file("/dev/.ivy2/.sbt/gpg/pubring.asc")
+pgpPublicRing := file(Path.userHome.toPath + "/dev/.ivy2/.sbt/gpg/pubring.asc")
