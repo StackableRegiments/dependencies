@@ -7,9 +7,9 @@
 		&ndash;&gt;
 	</priorities>	-->
 	<importDescription>Test import by Doug</importDescription>
-	<priorities completeLoadAfterPriorities="true">
+	<priorities completeLoadAfterPriorities="false">
 		<priority jid="2000"/>
-		<priority jid="3000"/>
+		<!--<priority jid="3000"/>-->
 	</priorities>
 	<servers>
     <server>

@@ -9,7 +9,7 @@ import net.liftweb.util.Helpers.{base64Decode, base64Encode, nextFuncName}
 
 import scala.xml.{Node, NodeSeq}
 
-class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[String,Tuple2[String,String]]] = List(Left("EEE MMM dd kk:mm:ss z yyyy"))) extends GenericXmlSerializer(configName) with Logger {
+class MigratorXmlSerializer(config:ServerConfiguration,timezoneConverters:List[Either[String,Tuple2[String,String]]] = List(Left("EEE MMM dd kk:mm:ss z yyyy"))) extends GenericXmlSerializer(config) with Logger {
 
 /*
   override def toMeTLImage(input:NodeSeq):MeTLImage = {

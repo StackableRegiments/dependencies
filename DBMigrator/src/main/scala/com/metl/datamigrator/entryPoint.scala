@@ -10,7 +10,6 @@ import net.liftweb.common._
 import net.liftweb.util.Helpers._
 import net.liftweb.util._
 
-import scala.Option
 import scala.xml._
 
 object Main extends App with Logger {
@@ -111,7 +110,7 @@ object Main extends App with Logger {
           case None => Left(format)
         }
       }).toList
-      val exportSerializer = new MigratorXmlSerializer(config.name,timezoneOverrides)
+      val exportSerializer = new MigratorXmlSerializer(config,timezoneOverrides)
       val privateFunc = generatePrivateListFunc(config)
       def exportConversation(onBehalfOfUser:String,conversation:String):Box[NodeSeq] = {
         tryo((for (
