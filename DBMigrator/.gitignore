@@ -7,3 +7,4 @@ testdb*
 node_modules
 .idea
 data
+/exported/
