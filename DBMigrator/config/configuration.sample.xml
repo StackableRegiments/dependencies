@@ -1,0 +1,37 @@
+<serverConfiguration>
+  <!--<parallelism>16</parallelism>-->
+  <parallelism>8</parallelism>
+  <priorities completeLoadAfterPriorities="true">
+    <priority jid="8000"/>
+    <priority jid="13000"/>
+    <priority jid="21000"/>
+  </priorities>
+  <servers>
+    <server>
+      <url>jdbc:h2:file:C:/stackable/metlData/testdb.h2;AUTO_SERVER=TRUE;MVCC=TRUE</url>
+    </server>
+  </servers>
+  <exportXml enabled="true" location="exported"/>
+  <dateTimeFormatters>
+    <dateTimeFormat format="EEE MMM dd kk:mm:ss z yyyy"/>
+    <dateTimeFormat format="MM/dd/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="MM/d/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="M/dd/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="M/d/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="MM/dd/yyyy HH:mm:ss" zoneId="America/New_York"/>
+    <dateTimeFormat format="MM/d/yyyy HH:mm:ss" zoneId="America/New_York"/>
+    <dateTimeFormat format="M/dd/yyyy HH:mm:ss" zoneId="America/New_York"/>
+    <dateTimeFormat format="M/d/yyyy HH:mm:ss" zoneId="America/New_York"/>
+    <dateTimeFormat format="dd/MM/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="d/MM/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="dd/M/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="d/M/yyyy h:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="dd/MM/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="d/MM/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="dd/M/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+    <dateTimeFormat format="d/M/yyyy HH:mm:ss a" zoneId="America/New_York"/>
+  </dateTimeFormatters>
+  <importDescription>Test import</importDescription>
+  <!-- Local -->
+  <targetServer cookieKey="JSESSIONID" cookieValue="fw4sias8o2v91pr5odsoyf2vb">http://localhost:8080</targetServer>
+</serverConfiguration>
