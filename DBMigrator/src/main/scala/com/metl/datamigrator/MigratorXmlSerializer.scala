@@ -9,7 +9,7 @@ import net.liftweb.util.Helpers.{base64Decode, base64Encode, nextFuncName}
 
 import scala.xml.{Node, NodeSeq}
 
-class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[String,Tuple2[String,String]]] = List(Left("EEE MMM dd kk:mm:ss z yyyy"))) extends GenericXmlSerializer(configName) with Logger {
+class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[String,Tuple2[String,String]]] = List(Left("EEE MMM dd kk:mm:ss z yyyy")),upperDateTime:Option[Long],lowerDateTime:Option[Long]) extends GenericXmlSerializer(configName) with Logger {
 
   override def toMeTLImage(input:NodeSeq):MeTLImage = {
     val m = parseMeTLContent(input,config)
@@ -26,17 +26,18 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
     MeTLImage(config,m.author,m.timestamp,tag,source,Full(imageBytes),pngBytes,width,height,x,y,c.target,c.privacy,c.slide,c.identity,m.audiences)
   }
   val dateTimeFormatter = new MultiFormatDateFormatter(timezoneConverters.map(_.right.map(lt => (lt._1,ZoneId.of(lt._2)))):_*)
-    override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromConversation",{
-      val created:Long = dateTimeFormatter.parse(input.created)
+    override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("MigratorXmlSerializer.fromConversation",{
+      val created:Long = DateTimeUtil.getBoundedDateTime(dateTimeFormatter.parse(input.created),upperDateTime,lowerDateTime)
+      val lastAccessed:Long = DateTimeUtil.getBoundedDateTime(input.lastAccessed,upperDateTime,lowerDateTime)
       metlXmlToXml("conversation",List(
         <author>{input.author}</author>,
-        <lastAccessed>{input.lastAccessed}</lastAccessed>,
+        <lastAccessed>{lastAccessed}</lastAccessed>,
         <slides>{input.slides.map(s => fromSlide(s))}</slides>,
         <subject>{input.subject}</subject>,
         <tag>{input.tag}</tag>,
         <jid>{input.jid}</jid>,
         <title>{input.title}</title>,
-        <created>{new java.util.Date(created).toString()}</created>,
+        <created>{new java.util.Date(created).toString}</created>,
         <creation>{created}</creation>,
         <blacklist>{
           input.blackList.map(bu => <user>{bu}</user> )
@@ -44,7 +45,7 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
         fromPermissions(input.permissions)
       ))
     })
-  override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLImage",{
+  override def fromMeTLImage(input:MeTLImage):NodeSeq = Stopwatch.time("MigratorXmlSerializer.fromMeTLImage",{
     canvasContentToXml("image",input,List(
       <tag>{input.tag}</tag>,
       <imageBytes>{base64Encode(input.imageBytes.getOrElse(Array.empty[Byte]))}</imageBytes>,
@@ -54,7 +55,7 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
       <y>{input.y}</y>
     ))
   })
-  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("GenericXmlSerializer.toMeTLQuiz", {
+  override def toMeTLQuiz(input:NodeSeq):MeTLQuiz = Stopwatch.time("MigratorXmlSerializer.toMeTLQuiz", {
     val m = parseMeTLContent(input,config)
     val created = getLongByName(input,"created")
     val question = getStringByName(input,"question") match {
@@ -68,7 +69,7 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
     val options = getXmlByName(input,"quizOption").map(qo => toQuizOption(qo)).toList
     MeTLQuiz(config,m.author,m.timestamp,created,question,id,newUrl,quizImage,isDeleted,options,m.audiences)
   })
-  override def fromMeTLQuiz(input:MeTLQuiz):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLQuiz", {
+  override def fromMeTLQuiz(input:MeTLQuiz):NodeSeq = Stopwatch.time("MigratorXmlSerializer.fromMeTLQuiz", {
     metlContentToXml("quiz",input,List(
       <created>{input.created}</created>,
       <question>{input.question}</question>,
@@ -77,7 +78,7 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
       <options>{input.options.map(o => fromQuizOption(o))}</options>
     ) ::: input.imageBytes.map(ib => List(<imageBytes>{base64Encode(ib)}</imageBytes>)).openOr(List.empty[Node]))
   })
-  override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("GenericXmlSerializer.toSubmission", {
+  override def toSubmission(input:NodeSeq):MeTLSubmission = Stopwatch.time("MigratorXmlSerializer.toSubmission", {
     val m = parseMeTLContent(input,config)
     val c = parseCanvasContent(input)
     val title = getStringByName(input,"title")
@@ -90,14 +91,14 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
     }).toList
     MeTLSubmission(config,m.author,m.timestamp,title,c.slide.toInt,url,imageBytes,blacklist,c.target,c.privacy,c.identity,m.audiences)
   })
-  override def fromSubmission(input:MeTLSubmission):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromSubmission", {
+  override def fromSubmission(input:MeTLSubmission):NodeSeq = Stopwatch.time("MigratorXmlSerializer.fromSubmission", {
     canvasContentToXml("screenshotSubmission",input,List(
       <imageBytes>{base64Encode(input.imageBytes.getOrElse(Array.empty[Byte]))}</imageBytes>,
       <title>{input.title}</title>,
       <time>{input.timestamp.toString}</time>
     ) ::: input.blacklist.map(bl => <blacklist><username>{bl.username}</username><highlight>{ColorConverter.toRGBAString(bl.highlight)}</highlight></blacklist> ).toList)
   })
-  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("GenericXmlSerializer.toMeTLFile",{
+  override def toMeTLFile(input:NodeSeq):MeTLFile = Stopwatch.time("MigratorXmlSerializer.toMeTLFile",{
     val m = parseMeTLContent(input,config)
     val name = getStringByName(input,"name")
     val id = getStringByName(input,"id")
@@ -105,7 +106,7 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
     val url = bytes.map(ib => config.postResource("files",nextFuncName,ib))
     MeTLFile(config,m.author,m.timestamp,name,id,url,bytes)
   })
-  override def fromMeTLFile(input:MeTLFile):NodeSeq = Stopwatch.time("GenericXmlSerializer.fromMeTLFile",{
+  override def fromMeTLFile(input:MeTLFile):NodeSeq = Stopwatch.time("MigratorXmlSerializer.fromMeTLFile",{
     metlContentToXml("file",input,List(
       <name>{input.name}</name>,
       <id>{input.id}</id>

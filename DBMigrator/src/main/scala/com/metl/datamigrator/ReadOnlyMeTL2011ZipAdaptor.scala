@@ -46,11 +46,14 @@ class ReadOnlyMeTL2011ZipAdaptor(name:String,historyZipPath:String,structureZipP
   override def shutdown:Unit = {}
   override def isReady:Boolean = {
     loadStructure
-    debug("found conversations: %s".format(conversationCache.keys.toList))
+    debug("found %d conversations".format(conversationCache.keys.size))
+//    debug("found conversations: %s".format(conversationCache.keys.toList))
     loadResources
-    debug("found resources: %s".format(resourceCache.keys.toList))
+    debug("found %d resources".format(resourceCache.keys.size))
+//    debug("found resources: %s".format(resourceCache.keys.toList))
     loadHistories
-    debug("found histories: %s".format(historyCache.keys.toList))
+    debug("found %d histories".format(historyCache.keys.size))
+    //    debug("found histories: %s".format(historyCache.keys.toList))
     true
   }
 

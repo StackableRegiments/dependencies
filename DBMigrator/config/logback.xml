@@ -26,9 +26,13 @@
   <logger name="com.metl.utils.StopwatchActor" level="ALL"/>
   -->
   <!--  <logger name="com.metl.comet.MeTLActor" level="TRACE"/> -->
-  <root level="INFO">
+<!--
+  <root level="ERROR">
     <appender-ref ref="STDOUT"/>
-    <appender-ref ref="FILE"/>
   </root>
-  <logger name="com.metl.datamigrator.ReadOnlyMeTL2011ZipAdaptor" level="DEBUG"/>
+-->
+  <logger name="com.metl" level="DEBUG">
+    <appender-ref ref="FILE"/>
+    <appender-ref ref="STDOUT"/>
+  </logger>
 </configuration>

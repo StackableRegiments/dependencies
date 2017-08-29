@@ -31,7 +31,7 @@ class MultiFormatDateFormatterSuite extends FunSuite {
       assert(false, "no exception thrown")
     } catch {
       case e: IllegalArgumentException => assert(true, "correct assertion, this is a pass")
-      case _ => assert(false, "wrong exception thrown")
+      case _:Throwable => assert(false, "wrong exception thrown")
     }
   }
   test("parser should return correct datetime") {

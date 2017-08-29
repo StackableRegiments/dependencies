@@ -7,9 +7,10 @@
 		&ndash;&gt;
 	</priorities>	-->
 	<importDescription>Test import by Doug</importDescription>
-	<priorities completeLoadAfterPriorities="true">
-		<priority jid="2000"/>
-		<priority jid="3000"/>
+	<priorities completeLoadAfterPriorities="false">
+		<priority jid="20000"/>
+		<priority jid="70000"/>
+		<priority jid="255000"/>
 	</priorities>
 	<servers>
     <server>
@@ -43,5 +44,7 @@
 		<dateTimeFormat format="dd/M/yyyy HH:mm:ss a" zoneId="America/New_York"/>
 		<dateTimeFormat format="d/M/yyyy HH:mm:ss a" zoneId="America/New_York"/>
 	</dateTimeFormatters>
-	<!--<targetServer cookieKey="JSESSIONID" cookieValue="1sqpz5wpyyjad1rz7kmpj6j22n">http://localhost:8080</targetServer>-->
+	<upperDateTimeBound>Thu Jan 01 00:00:00 AEST 2015</upperDateTimeBound>
+	<lowerDateTimeBound>Mon Feb 01 00:00:00 AEST 2016</lowerDateTimeBound>
+	<targetServer cookieKey="JSESSIONID" cookieValue="mhiqsyz22igaxfnswr5qpell">http://localhost:8080</targetServer>
 </serverConfiguration>
