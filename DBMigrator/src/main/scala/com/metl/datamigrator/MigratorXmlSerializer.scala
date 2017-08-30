@@ -28,7 +28,14 @@ class MigratorXmlSerializer(configName:String,timezoneConverters:List[Either[Str
   val dateTimeFormatter = new MultiFormatDateFormatter(timezoneConverters.map(_.right.map(lt => (lt._1,ZoneId.of(lt._2)))):_*)
     override def fromConversation(input:Conversation):NodeSeq = Stopwatch.time("MigratorXmlSerializer.fromConversation",{
       val created:Long = DateTimeUtil.getBoundedDateTime(dateTimeFormatter.parse(input.created),upperDateTime,lowerDateTime)
-      val lastAccessed:Long = DateTimeUtil.getBoundedDateTime(input.lastAccessed,upperDateTime,lowerDateTime)
+      val lastAccessed:Long = {
+        if( input.lastAccessed < created ) {
+            created
+          }
+        else {
+          DateTimeUtil.getBoundedDateTime(input.lastAccessed, upperDateTime, lowerDateTime)
+        }
+      }
       metlXmlToXml("conversation",List(
         <author>{input.author}</author>,
         <lastAccessed>{lastAccessed}</lastAccessed>,
