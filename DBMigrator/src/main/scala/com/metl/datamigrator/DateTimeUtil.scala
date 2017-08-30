@@ -9,7 +9,9 @@ object DateTimeUtil extends Logger {
     var result = lower match {
       case Some(l) => {
         val max = List(input, l).max
-        if (max != input) debug("Restricting input date %s to lower bound %s".format(new Date(input), new Date(l)))
+        if (max != input) {
+          debug("Restricted date %s to lower bound %s".format(new Date(input), new Date(l)))
+        }
         max
       }
       case _ => input
@@ -17,7 +19,9 @@ object DateTimeUtil extends Logger {
     result = upper match {
       case Some(u) => {
         val min = List(result, u).min
-        if( min != result) debug("Restricting input date %s to upper bound %s".format(new Date(result), new Date(u)))
+        if( min != result) {
+          debug("Restricted date %s to upper bound %s".format(new Date(result), new Date(u)))
+        }
         min
       }
       case _ => result
