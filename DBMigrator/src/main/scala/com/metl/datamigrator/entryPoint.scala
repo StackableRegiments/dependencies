@@ -1,5 +1,7 @@
 package com.metl.datamigrator
 
+import java.text.SimpleDateFormat
+
 import com.metl.data._
 import com.metl.h2._
 import dispatch.Defaults._
@@ -28,6 +30,8 @@ object Main extends App with Logger {
     protected def mark(msg:String): Unit = {
       info("[%sms] %s".format(new java.util.Date().getTime - start,msg))
     }
+
+  try{
     val configurationFileLocation = System.getProperty("metlx.configurationFile")
     LocalH2ServerConfiguration.initialize
     ServerConfiguration.loadServerConfigsFromFile(
@@ -97,7 +101,16 @@ object Main extends App with Logger {
           case None => Left(format)
         }
       }).toList
-      val exportSerializer = new MigratorXmlSerializer(config,timezoneOverrides)
+
+      val dateFormat = new SimpleDateFormat("EEE MMM dd kk:mm:ss z yyyy")
+      val upperDateTime = (configFile \\ "upperDateTimeBound").headOption.map(_.text).filterNot(_ == "").map(s => {
+        dateFormat.parse(s).getTime
+      })
+      val lowerDateTime = (configFile \\ "lowerDateTimeBound").headOption.map(_.text).filterNot(_ == "").map(s => {
+        dateFormat.parse(s).getTime
+      })
+      val exportSerializer = new MigratorXmlSerializer(config, timezoneOverrides, upperDateTime, lowerDateTime)
+
       val privateFunc = generatePrivateListFunc(config)
       def exportConversation(onBehalfOfUser:String,conversation:String):Box[NodeSeq] = {
         tryo((for (
@@ -225,11 +238,17 @@ object Main extends App with Logger {
       }
       config.shutdown
     })
+    mark ("finished reading.")
+  } catch {
+    case e: Throwable => {
+      error("Cleaning up after Throwable",e)
+    }
+  } finally {
     maintainKeys.shutdown
-    Schedule.shutdown()
-    LAScheduler.shutdown()
-    mark("finished reading.")
-    System.exit(0)
+    Schedule.shutdown ()
+    LAScheduler.shutdown ()
+    System.exit (0)
+  }
 }
 
 case class AddKey(h:String,k:String,v:String)
