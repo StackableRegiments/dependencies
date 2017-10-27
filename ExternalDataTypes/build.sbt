@@ -1,5 +1,5 @@
 name := "external-data-types"
-version := "0.0.6"
+version := "0.0.7"
 organization := "io.github.stackableregiments"
 
 val scalaVersionString = "2.11.8"
@@ -83,7 +83,7 @@ traceLevel := 0
 
 //credentials += Credentials(file("/dev/.ivy2/.ivy2/ivy-credentials"))
 
-credentials += Credentials(Path.userHome / ".ivy2" / "ivy-credentials")
+credentials += Credentials(Path.userHome / "dev" / ".ivy2" / "ivy-credentials")
 
 pgpSecretRing := file(Path.userHome.toPath + "/dev/.ivy2/.sbt/gpg/secring.asc")
 
