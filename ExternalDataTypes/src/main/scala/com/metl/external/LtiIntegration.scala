@@ -27,7 +27,7 @@ case class LtiLaunch(user:LtiUser,version:String,messageType:String,resourceLink
 class RemotePluginSession(val token:String,val secret:String,val key:String,val launch:LtiLaunchResult)
 
 abstract class LtiIntegration(ltiIntegrations:Seq[(String,String)],metl:ReadOnlyMetlInterface,currentUserAccessor:() => String,isDevModeAccessor:() => Boolean) extends Logger {
-
+  val id = nextFuncName
   object sessionStore extends SessionVar[Map[String,RemotePluginSession]](Map.empty[String,RemotePluginSession])
   if (isDevModeAccessor()) {
     sessionStore(sessionStore.is.updated("testToken",new RemotePluginSession("testToken",
