@@ -48,6 +48,8 @@ abstract class LtiIntegration(ltiIntegrations:Seq[(String,String)],metl:ReadOnly
     Left(new Exception("not yet implemented"))
   }
 
+  def getEndpointPrefix:String
+
   def verifyLtiLaunch(reqBox:Box[HTTPRequest] = S.containerRequest):Either[Exception,RemotePluginSession] = {
     try {
       reqBox match {
